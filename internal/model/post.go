@@ -11,7 +11,7 @@ type Post struct {
 	Cover      string
 	AuthorID   uint
 	Author     User `gorm:"foreignKey:AuthorID"`
-	CategoryID uint
+	CategoryID *uint
 	Category   Category `gorm:"foreignKey:CategoryID"`
 	Tags       []Tag    `gorm:"many2many:post_tags;"`
 }

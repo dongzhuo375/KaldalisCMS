@@ -1,43 +1,8 @@
-# Project Progress / 项目进度
+## Project Progress (项目进度)
 
-## Phase 1: MVP Initialization / 第一阶段：MVP 初始化
+As of 2025年11月28日星期五:
 
-### Backend Setup (Go) / 后端搭建 (Go)
-
-The initial backend for the Minimum Viable Product (MVP) has been established.
-最小可行产品 (MVP) 的初始后端已经建立。
-
-- **Project Structure / 项目结构**:
-  - Basic project layout created, including `cmd/server` for the application entry point and `internal` for core logic.
-  - 基础项目结构已创建，包含应用入口 `cmd/server` 和核心逻辑 `internal` 目录。
-
-- **Web Framework / Web 框架**:
-  - `Gin` has been chosen and set up to handle API routing and HTTP requests.
-  - 已选择并设置 `Gin` 框架用于处理 API 路由和 HTTP 请求。
-
-- **Core Logic Layers / 核心逻辑分层**:
-  - A basic structure for API, Service, and Repository layers for `Post` management has been implemented.
-  - 已为 `Post` (文章) 管理实现了 API、Service 和 Repository 的基础分层结构。
-
-- **API Endpoints / API 接口**:
-  - RESTful CRUD endpoints for posts are available under `/api/v1/posts`.
-  - 文章的增删改查 (CRUD) RESTful 接口已在 `/api/v1/posts` 下提供。
-
-- **Database / 数据库**:
-  - An in-memory database is used for rapid prototyping, no external database is required at this stage.
-  - 当前使用内存数据库以实现快速原型开发，此阶段无需外部数据库。
-
-- **Status / 状态**:
-  - **Completed / 已完成**
-
----
-
-## Next Steps / 下一步计划
-
-- **Integrate GORM / 集成 GORM**:
-  - Integrate the `GORM` library as the Object-Relational Mapper.
-  - 集成 `GORM` 库作为对象关系映射 (ORM) 工具。
-
-- **Switch to SQLite / 切换到 SQLite**:
-  - Refactor the repository layer to use `GORM` with a `SQLite` database for data persistence.
-  - 重构 Repository 层，使用 `GORM` 和 `SQLite` 数据库以实现数据持久化。
+-   **Models Defined (模型定义):** Core models for `User`, `Category`, `Tag`, and `Post` are defined in `internal/model`. (核心模型，包括 `User`、`Category`、`Tag` 和 `Post` 已在 `internal/model` 中定义。)
+-   **GORM and PostgreSQL Setup (GORM 和 PostgreSQL 设置):** GORM with the PostgreSQL driver is configured in `go.mod`. The `internal/repository/db.go` file successfully initializes a PostgreSQL database connection using GORM and performs automatic schema migration (`AutoMigrate`) for all defined models. (GORM 及其 PostgreSQL 驱动已在 `go.mod` 中配置。`internal/repository/db.go` 文件已成功使用 GORM 初始化 PostgreSQL 数据库连接，并对所有已定义模型执行自动模式迁移（`AutoMigrate`）。)
+-   **Repository Implementation Status (仓库实现状态):** The `PostRepository` (in `internal/repository/post_repo.go`) has been integrated with GORM for actual database persistence, handling CRUD operations for the `Post` model. (在 `internal/repository/post_repo.go` 中的 `PostRepository` 已与 GORM 集成，实现了 `Post` 模型的数据库持久化 CRUD 操作。)
+-   **Post CRUD Operations Developed (帖子 CRUD 操作开发完成):** Basic Create, Read (single and all with preloaded associations), Update, and Delete operations for `Post` have been implemented and tested. `Author`, `Category`, and `Tags` are now correctly preloaded in read operations. (帖子的基本增删改查操作已开发完成并经过测试。读取操作现在能够正确预加载作者、分类和标签的关联信息。)
