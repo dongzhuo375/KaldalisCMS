@@ -2,7 +2,6 @@ package repository
 
 import (
 	"KaldalisCMS/internal/model"
-	"fmt"
 )
 
 type PostRepository struct{}
@@ -12,58 +11,47 @@ func NewPostRepository() *PostRepository {
 }
 
 func (r *PostRepository) GetAll() ([]model.Post, error) {
-	InMemoryDB.RLock()
-	defer InMemoryDB.RUnlock()
-
-	posts := make([]model.Post, 0, len(InMemoryDB.posts))
-	for _, post := range InMemoryDB.posts {
-		posts = append(posts, post)
+	var posts []model.Post
+	if err := DB.Preload("Author").Preload("Category").Preload("Tags").Find(&posts).Error; err != nil {
+		return nil, err
 	}
 	return posts, nil
 }
 
 func (r *PostRepository) GetByID(id int) (model.Post, error) {
-	InMemoryDB.RLock()
-	defer InMemoryDB.RUnlock()
-
-	post, exists := InMemoryDB.posts[id]
-	if !exists {
-		return model.Post{}, fmt.Errorf("post with ID %d not found", id)
+	var post model.Post
+	if err := DB.Preload("Author").Preload("Category").Preload("Tags").First(&post, id).Error; err != nil {
+		return model.Post{}, err
 	}
 	return post, nil
 }
 
 func (r *PostRepository) Create(post model.Post) (model.Post, error) {
-	InMemoryDB.Lock()
-	defer InMemoryDB.Unlock()
-
-	InMemoryDB.counter++
-	post.ID = InMemoryDB.counter
-	InMemoryDB.posts[post.ID] = post
+	if err := DB.Create(&post).Error; err != nil {
+		return model.Post{}, err
+	}
 	return post, nil
 }
 
 func (r *PostRepository) Update(id int, post model.Post) (model.Post, error) {
-	InMemoryDB.Lock()
-	defer InMemoryDB.Unlock()
+    var existingPost model.Post
+    if err := DB.First(&existingPost, id).Error; err != nil {
+        return model.Post{}, err
+    }
 
-	_, exists := InMemoryDB.posts[id]
-	if !exists {
-		return model.Post{}, fmt.Errorf("post with ID %d not found", id)
+	// It's generally better to update specific fields instead of the whole object
+	// but for this refactoring, we'll update the whole object.
+	// Note: GORM's Save updates all fields, which might not be what you want for partial updates.
+	// Consider using .Model(&post).Updates(post) for more control.
+	if err := DB.Model(&existingPost).Updates(post).Error; err != nil {
+		return model.Post{}, err
 	}
-	post.ID = id
-	InMemoryDB.posts[id] = post
-	return post, nil
+	return existingPost, nil
 }
 
 func (r *PostRepository) Delete(id int) error {
-	InMemoryDB.Lock()
-	defer InMemoryDB.Unlock()
-
-	_, exists := InMemoryDB.posts[id]
-	if !exists {
-		return fmt.Errorf("post with ID %d not found", id)
+	if err := DB.Delete(&model.Post{}, id).Error; err != nil {
+		return err
 	}
-	delete(InMemoryDB.posts, id)
 	return nil
 }
