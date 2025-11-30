@@ -12,13 +12,37 @@ const (
 )
 
 type Post struct {
-	ID        int
-	Title     string
-	Content   string
-	Slug      string // URL 标识符
-	Status    int    // 文章状态
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         int
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	Title      string
+	Slug       string
+	Content    string
+	Cover      string
+	AuthorID   uint
+	Author     User // 这里可能需要根据实际情况调整
+	CategoryID *uint
+	Category   Category // 这里可能需要根据实际情况调整
+	Tags       []Tag    // 这里可能需要根据实际情况调整
+	Status     int      // 文章状态
+}
+
+// User 结构体，简化版
+type User struct {
+	ID   uint
+	Name string
+}
+
+// Category 结构体，简化版
+type Category struct {
+	ID   uint
+	Name string
+}
+
+// Tag 结构体，简化版
+type Tag struct {
+	ID   uint
+	Name string
 }
 
 // 检查实体自身是否满足发布或更新的基本业务要求

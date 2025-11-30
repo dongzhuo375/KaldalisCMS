@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"KaldalisCMS/internal/model"
+	"KaldalisCMS/internal/core/entity"
 	"KaldalisCMS/internal/service"
 	"net/http"
 	"strconv"
@@ -50,7 +50,7 @@ func (api *PostAPI) GetPostByID(c *gin.Context) {
 }
 
 func (api *PostAPI) CreatePost(c *gin.Context) {
-	var newPost model.Post
+	var newPost entity.Post
 	if err := c.ShouldBindJSON(&newPost); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -71,7 +71,7 @@ func (api *PostAPI) UpdatePost(c *gin.Context) {
 		return
 	}
 
-	var updatedPost model.Post
+	var updatedPost entity.Post
 	if err := c.ShouldBindJSON(&updatedPost); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

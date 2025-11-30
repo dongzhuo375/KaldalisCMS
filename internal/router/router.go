@@ -1,11 +1,6 @@
 package router
 
 import (
-	v1 "KaldalisCMS/internal/api/v1"
-	"KaldalisCMS/internal/core"
-	"KaldalisCMS/internal/repository"
-	"KaldalisCMS/internal/service"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,13 +23,13 @@ func SetupRouter() *gin.Engine {
 	})
 
 	// Dependency Injection
-	var postRepo core.PostRepository = repository.NewPostRepository()
-	postService := service.NewPostService(postRepo)
-	postAPI := v1.NewPostAPI(postService)
+	//var postRepo core.PostRepository = repository.NewPostRepository()
+	//postService := service.NewPostService(postRepo)
+	//postAPI := v1.NewPostAPI(postService)
 
 	// Register routes
-	apiV1 := r.Group("/api/v1")
-	postAPI.RegisterRoutes(apiV1)
+	//apiV1 := r.Group("/api/v1")
+	//postAPI.RegisterRoutes(apiV1)
 
 	return r
 }
