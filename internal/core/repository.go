@@ -1,11 +1,12 @@
 package core
 
-import "KaldalisCMS/internal/model"
+import "KaldalisCMS/internal/core/entity"
 
 type PostRepository interface {
-	Get(id int) (*model.Post, error)
-	Create(post *model.Post) error
-	Update(post *model.Post) error
+	GetByID(id int) (entity.Post, error)
+	Create(post entity.Post) (entity.Post, error)
+	Update(post entity.Post) (entity.Post, error)
 	Delete(id int) error
-	List() ([]*model.Post, error)
+	GetAll() ([]entity.Post, error)
+	FindByID(id int) (entity.Post, error)
 }
