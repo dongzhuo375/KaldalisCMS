@@ -1,7 +1,10 @@
 package service
 
 import (
+	"errors"
 	"fmt"
+
+	slug "github.com/gosimple/slug"
 
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity" // Service 只能使用 Entity
@@ -17,24 +20,58 @@ func NewPostService(repo core.PostRepository) *PostService {
 	}
 }
 
-// --- Write Operations ---
-
-func (s *PostService) CreatePost(post entity.Post) ( error) {
+func (s *PostService) CreatePost(post entity.Post) error {
 	// 进行业务逻辑验证 (Entity 自身校验)
 	if err := post.CheckValidity(); err != nil {
-		return  fmt.Errorf("文章数据校验失败: %w", err)
+		return fmt.Errorf("文章数据校验失败: %w", err)
 	}
 
-	// 调用 Repository 执行持久化
-	 err := s.repo.Create(post)
+	generatedSlug := slug.Make(post.Title)
+
+	if generatedSlug == "" {
+		return fmt.Errorf("标题无法生成有效的URL标识符")
+	}
+
+	finalSlug, err := s.generateUniqueSlug(generatedSlug)
+	if err != nil {
+		return err // 无法生成唯一 Slug
+	}
+
+	post.Slug = finalSlug
+
+	err = s.repo.Create(post)
 	if err != nil {
 		// 封装错误
-		return  fmt.Errorf("保存文章失败: %w", err)
+		return fmt.Errorf("保存文章失败: %w", err)
 	}
-	return  nil
+	return nil
 }
 
-func (s *PostService) UpdatePost(id int, updatedEntity entity.Post) ( error) {
+func (s *PostService) generateUniqueSlug(initialSlug string) (string, error) {
+	currentSlug := initialSlug
+	counter := 0
+	maxAttempts := 100 // 最大尝试次数
+
+	for {
+		exists, err := s.repo.IsSlugExists(currentSlug)
+		if err != nil {
+			return "", fmt.Errorf("检查Slug唯一性失败: %w", err)
+		}
+
+		if !exists {
+			return currentSlug, nil
+		}
+
+		counter++
+		if counter >= maxAttempts {
+			return "", errors.New("无法在合理尝试次数内生成唯一的URL标识符")
+		}
+
+		currentSlug = fmt.Sprintf("%s-%d", initialSlug, counter)
+	}
+}
+
+func (s *PostService) UpdatePost(id int, updatedEntity entity.Post) error {
 	// 获取现有 Entity
 	existingEntity, err := s.repo.GetByID(id)
 	if err != nil {
@@ -53,12 +90,12 @@ func (s *PostService) UpdatePost(id int, updatedEntity entity.Post) ( error) {
 	}
 
 	// 调用 Repository 执行更新
-	 	err = s.repo.Update(existingEntity)
+	err = s.repo.Update(existingEntity)
 	if err != nil {
 		return fmt.Errorf("更新文章失败: %w", err)
 	}
 
-	return  nil
+	return nil
 }
 
 // --- Read Operations ---
@@ -106,7 +143,7 @@ func (s *PostService) PublishPost(id int) error {
 	}
 
 	// 3. Service 协调：将已修改的 Entity 传递给 Repo 持久化
-	  err = s.repo.Update(post)
+	err = s.repo.Update(post)
 	if err != nil {
 		return fmt.Errorf("更新发布状态失败: %w", err)
 	}
