@@ -66,18 +66,23 @@ type PostRepository struct {
 	db *gorm.DB
 }
 
+func (r *PostRepository) IsSlugExists(slug string) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+	//AMBER你好，我已经在service实现了slug的基本功能，但是在数据库上需要判断slug是否存在，所以给你定义了个新的接口，望你实现
+}
+
 func NewPostRepository(db *gorm.DB) *PostRepository {
 	return &PostRepository{db: db}
 }
-
 
 //根据core/error.go,主要处理未找到数据和重复错误，未知错误返回InternalError
 
 func (r *PostRepository) GetAll() ([]entity.Post, error) {
 	var postModels []model.Post
-		if err := r.db.Preload("Author").Preload("Category").Preload("Tags").Find(&postModels).Error; err != nil {
-			return nil, fmt.Errorf("repository.GetAll: %w", err)
-		}
+	if err := r.db.Preload("Author").Preload("Category").Preload("Tags").Find(&postModels).Error; err != nil {
+		return nil, fmt.Errorf("repository.GetAll: %w", err)
+	}
 	var postEntities []entity.Post
 	for _, pm := range postModels {
 		postEntities = append(postEntities, toEntity(pm))
@@ -88,21 +93,21 @@ func (r *PostRepository) GetAll() ([]entity.Post, error) {
 func (r *PostRepository) GetByID(id int) (entity.Post, error) {
 	var postModel model.Post
 	if err := r.db.Preload("Author").Preload("Category").Preload("Tags").First(&postModel, id).Error; err != nil {
-		if errors.Is(err,gorm.ErrRecordNotFound){
-			return entity.Post{},core.ErrNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return entity.Post{}, core.ErrNotFound
 		}
 		return entity.Post{}, fmt.Errorf("repository.GetByID: %w", err)
 	}
 	return toEntity(postModel), nil
 }
 
-func (r *PostRepository) Create(post entity.Post) ( error) {
+func (r *PostRepository) Create(post entity.Post) error {
 	postModel := toModel(post)
 	if err := r.db.Create(&postModel).Error; err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" { // 23505 is the SQLSTATE for unique_violation
-				return  core.ErrDuplicate
+				return core.ErrDuplicate
 			}
 		}
 		return fmt.Errorf("repository.Create: %w", err)
@@ -111,24 +116,24 @@ func (r *PostRepository) Create(post entity.Post) ( error) {
 	return nil
 }
 
-func (r *PostRepository) Update(post entity.Post) (error) {
+func (r *PostRepository) Update(post entity.Post) error {
 	postModel := toModel(post)
 
 	if err := r.db.Save(&postModel).Error; err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" { // 23505 is the SQLSTATE for unique_violation
-				return  core.ErrDuplicate
-			}
+				return core.ErrDuplicate
 			}
 		}
-		return nil
+	}
+	return nil
 }
 
 func (r *PostRepository) Delete(id int) error {
 	if err := r.db.Delete(&model.Post{}, id).Error; err != nil {
 		return fmt.Errorf("repository.Delete: %w", err)
 	}
-	
+
 	return nil
 }

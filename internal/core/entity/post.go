@@ -51,17 +51,16 @@ func (p *Post) CheckValidity() error {
 		return errors.New("标题不能为空")
 	}
 
-	// 内容最短为 100 个字节
-	if len(p.Content) < 100 {
-		return fmt.Errorf("内容长度必须大于 100 个字符 (当前 %d)", len(p.Content))
-	}
+	// 内容最短设置
+	//if len(p.Content) < 100 {
+	//	return fmt.Errorf("内容长度必须大于 100 个字符 (当前 %d)", len(p.Content))
+	//}
 
-	// slug待处理
 	//if p.Slug == "" {
 	//	return errors.New("URL 标识符 (Slug) 不能为空")
 	//}
 
-	// 可以在这里添加更复杂的逻辑，例如格式检查
+	// 其余检查
 	return nil
 }
 
