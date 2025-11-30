@@ -43,7 +43,7 @@
 │   │   │   └── plugin_service.go         # 插件生命周期管理服务
 │   │   │
 │   │   ├── repository/
-│   │   │   ├── mysql/
+│   │   │   ├── postgres/
 │   │   │   │   ├── theme_repo.go         # 主题数据访问
 │   │   │   │   ├── post_repo.go          # 文章数据访问
 │   │   │   │   ├── user_repo.go          # 用户数据访问

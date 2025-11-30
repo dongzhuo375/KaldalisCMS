@@ -19,27 +19,27 @@ func NewPostService(repo core.PostRepository) *PostService {
 
 // --- Write Operations ---
 
-func (s *PostService) CreatePost(post entity.Post) (entity.Post, error) {
+func (s *PostService) CreatePost(post entity.Post) ( error) {
 	// 进行业务逻辑验证 (Entity 自身校验)
 	if err := post.CheckValidity(); err != nil {
-		return entity.Post{}, fmt.Errorf("文章数据校验失败: %w", err)
+		return  fmt.Errorf("文章数据校验失败: %w", err)
 	}
 
 	// 调用 Repository 执行持久化
-	savedPost, err := s.repo.Create(post)
+	 err := s.repo.Create(post)
 	if err != nil {
 		// 封装错误
-		return entity.Post{}, fmt.Errorf("保存文章失败: %w", err)
+		return  fmt.Errorf("保存文章失败: %w", err)
 	}
-	return savedPost, nil
+	return  nil
 }
 
-func (s *PostService) UpdatePost(id int, updatedEntity entity.Post) (entity.Post, error) {
+func (s *PostService) UpdatePost(id int, updatedEntity entity.Post) ( error) {
 	// 获取现有 Entity
 	existingEntity, err := s.repo.GetByID(id)
 	if err != nil {
 		// 错误检查 (假设 core.ErrNotFound 已定义)
-		return entity.Post{}, fmt.Errorf("更新失败，文章不存在: %w", err)
+		return fmt.Errorf("更新失败，文章不存在: %w", err)
 	}
 
 	// 状态合并
@@ -49,16 +49,16 @@ func (s *PostService) UpdatePost(id int, updatedEntity entity.Post) (entity.Post
 
 	// Entity 检查自身完整性
 	if err := existingEntity.CheckValidity(); err != nil {
-		return entity.Post{}, fmt.Errorf("更新后的数据校验失败: %w", err)
+		return fmt.Errorf("更新后的数据校验失败: %w", err)
 	}
 
 	// 调用 Repository 执行更新
-	savedPost, err := s.repo.Update(existingEntity)
+	 	err = s.repo.Update(existingEntity)
 	if err != nil {
-		return entity.Post{}, fmt.Errorf("更新文章失败: %w", err)
+		return fmt.Errorf("更新文章失败: %w", err)
 	}
 
-	return savedPost, nil
+	return  nil
 }
 
 // --- Read Operations ---
@@ -106,7 +106,7 @@ func (s *PostService) PublishPost(id int) error {
 	}
 
 	// 3. Service 协调：将已修改的 Entity 传递给 Repo 持久化
-	_, err = s.repo.Update(post)
+	  err = s.repo.Update(post)
 	if err != nil {
 		return fmt.Errorf("更新发布状态失败: %w", err)
 	}

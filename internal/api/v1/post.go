@@ -56,12 +56,12 @@ func (api *PostAPI) CreatePost(c *gin.Context) {
 		return
 	}
 
-	createdPost, err := api.service.CreatePost(newPost)
+	err := api.service.CreatePost(newPost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, createdPost)
+	c.JSON(http.StatusCreated, nil)
 }
 
 func (api *PostAPI) UpdatePost(c *gin.Context) {
@@ -77,12 +77,12 @@ func (api *PostAPI) UpdatePost(c *gin.Context) {
 		return
 	}
 
-	post, err := api.service.UpdatePost(id, updatedPost)
+	err = api.service.UpdatePost(id, updatedPost)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, post)
+	c.JSON(http.StatusOK, nil)
 }
 
 func (api *PostAPI) DeletePost(c *gin.Context) {
