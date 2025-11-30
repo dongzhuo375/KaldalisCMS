@@ -14,4 +14,5 @@ type Post struct {
 	CategoryID *uint
 	Category   Category `gorm:"foreignKey:CategoryID"`
 	Tags       []Tag    `gorm:"many2many:post_tags;"`
+	Status		int   
 }

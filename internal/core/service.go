@@ -5,8 +5,8 @@ import "KaldalisCMS/internal/core/entity"
 type PostService interface {
 	GetAllPosts() ([]entity.Post, error)
 	GetPostByID(id int) (entity.Post, error)
-	CreatePost(post entity.Post) (entity.Post, error)
-	UpdatePost(id int, post entity.Post) (entity.Post, error)
+	CreatePost(post entity.Post) ( error)
+	UpdatePost(id int, post entity.Post) ( error)
 	DeletePost(id int) error
 	PublishPost(id int) error
 	DraftPost(id int) error
