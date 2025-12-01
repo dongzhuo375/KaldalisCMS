@@ -67,9 +67,14 @@ type PostRepository struct {
 }
 
 func (r *PostRepository) IsSlugExists(slug string) (bool, error) {
-	//TODO implement me
-	panic("implement me")
-	//AMBER你好，我已经在service实现了slug的基本功能，但是在数据库上需要判断slug是否存在，所以给你定义了个新的接口，望你实现
+	var postModel model.Post
+	if err := r.db.Where("slug = ?",slug).First(&postModel).Error; err !=nil{
+		if errors.Is(err,gorm.ErrRecordNotFound){
+			return false,nil //Slug不重复
+		}
+		return true,fmt.Errorf("repository.IsSlugExists:%w",err) 	//发生其他错误
+	} 
+	return true,nil  //默认返回slug重复
 }
 
 func NewPostRepository(db *gorm.DB) *PostRepository {
