@@ -14,11 +14,11 @@ import (
 // --- Mapper Functions ---
 
 // model转换成entity
-func toEntity(m model.Post) entity.Post {
+func postToEntity(m model.Post) entity.Post {
 	// Convert nested models to entities
 	var authorEntity entity.User
 	if m.Author.ID != 0 {
-		authorEntity = entity.User{ID: m.Author.ID, Name: m.Author.Username}
+		authorEntity = entity.User{ID:int( m.Author.ID), Username: m.Author.Username}
 	}
 
 	var categoryEntity entity.Category
@@ -49,7 +49,7 @@ func toEntity(m model.Post) entity.Post {
 }
 
 // entity转换成model
-func toModel(e entity.Post) model.Post {
+func postToModel(e entity.Post) model.Post {
 	return model.Post{
 		Model:      gorm.Model{ID: uint(e.ID), CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt},
 		Title:      e.Title,
@@ -86,11 +86,11 @@ func NewPostRepository(db *gorm.DB) *PostRepository {
 func (r *PostRepository) GetAll() ([]entity.Post, error) {
 	var postModels []model.Post
 	if err := r.db.Preload("Author").Preload("Category").Preload("Tags").Find(&postModels).Error; err != nil {
-		return nil, fmt.Errorf("repository.GetAll: %w", err)
+		return nil, fmt.Errorf("post_repository.GetAll: %w", err)
 	}
 	var postEntities []entity.Post
 	for _, pm := range postModels {
-		postEntities = append(postEntities, toEntity(pm))
+		postEntities = append(postEntities, postToEntity(pm))
 	}
 	return postEntities, nil
 }
@@ -101,13 +101,13 @@ func (r *PostRepository) GetByID(id int) (entity.Post, error) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return entity.Post{}, core.ErrNotFound
 		}
-		return entity.Post{}, fmt.Errorf("repository.GetByID: %w", err)
+		return entity.Post{}, fmt.Errorf("post_repository.GetByID: %w", err)
 	}
-	return toEntity(postModel), nil
+	return postToEntity(postModel), nil
 }
 
 func (r *PostRepository) Create(post entity.Post) error {
-	postModel := toModel(post)
+	postModel := postToModel(post)
 	if err := r.db.Create(&postModel).Error; err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -115,14 +115,14 @@ func (r *PostRepository) Create(post entity.Post) error {
 				return core.ErrDuplicate
 			}
 		}
-		return fmt.Errorf("repository.Create: %w", err)
+		return fmt.Errorf("post_repository.Create: %w", err)
 	}
 
 	return nil
 }
 
 func (r *PostRepository) Update(post entity.Post) error {
-	postModel := toModel(post)
+	postModel := postToModel(post)
 
 	if err := r.db.Save(&postModel).Error; err != nil {
 		var pgErr *pgconn.PgError
@@ -130,6 +130,7 @@ func (r *PostRepository) Update(post entity.Post) error {
 			if pgErr.Code == "23505" { // 23505 is the SQLSTATE for unique_violation
 				return core.ErrDuplicate
 			}
+				return fmt.Errorf("post_repository.Update: %w", err)
 		}
 	}
 	return nil
@@ -137,7 +138,7 @@ func (r *PostRepository) Update(post entity.Post) error {
 
 func (r *PostRepository) Delete(id int) error {
 	if err := r.db.Delete(&model.Post{}, id).Error; err != nil {
-		return fmt.Errorf("repository.Delete: %w", err)
+		return fmt.Errorf("post_repository.Delete: %w", err)
 	}
 
 	return nil
