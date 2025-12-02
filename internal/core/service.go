@@ -11,3 +11,11 @@ type PostService interface {
 	PublishPost(id int) error
 	DraftPost(id int) error
 }
+
+type UserService interface {
+	CreateUser(user entity.User) error
+	VerifyUser(username, password string) (entity.User, error)
+	//后面估计还加
+}
+
+

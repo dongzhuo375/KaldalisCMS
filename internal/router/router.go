@@ -27,14 +27,20 @@ func SetupRouter(db *gorm.DB) *gin.Engine {	r := gin.Default()
 		c.Next()
 	})
 
-	//Dependency Injection
+	//Dependency Injection for Post
 	var postRepo core.PostRepository = repository.NewPostRepository(db)
 	postService := service.NewPostService(postRepo)
 	postAPI := v1.NewPostAPI(postService)
 
+	 // Dependency Injection for User 
+    //var userRepo core.UserRepository = repository.NewUserRepository(db)
+     //userService := service.NewUserService(userRepo)
+     // userAPI := v1.NewUserAPI(userService) // 下一步就是创建UserAPI并注入userService
+
 	//Register routes
 	apiV1 := r.Group("/api/v1")
 	postAPI.RegisterRoutes(apiV1)
+
 
 	return r
 }

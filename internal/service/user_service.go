@@ -2,7 +2,7 @@ package service
 
 import (
 	"KaldalisCMS/internal/core"
-	"KaldalisCMS/internal/core/entity" // Service 只能使用 Entity
+	//"KaldalisCMS/internal/core/entity" // Service 只能使用 Entity
 )
 
 type UserService struct {
@@ -14,3 +14,6 @@ func NewUserService(repo core.UserRepository) *UserService {
 		repo: repo,
 	}
 }
+
+
+//dzcake,把bcrypt写一下
