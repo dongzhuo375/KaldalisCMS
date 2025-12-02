@@ -1,7 +1,7 @@
 package main
 
 import (
-	"KaldalisCMS/internal/repository/postgres"
+	"KaldalisCMS/internal/infra/repository/postgres"
 	"KaldalisCMS/internal/router"
 	"log"
 )
@@ -12,11 +12,11 @@ func main() {
 
 	// Initialize database
 	dsn := GetDatabaseDSN()
-	db,err:= repository.InitDB(dsn)
-	 if err != nil {
-        log.Fatal(err)
-    }
-	sqlDB,err:=db.DB()
+	db, err := repository.InitDB(dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sqlDB, err := db.DB()
 	if err != nil {
 		log.Fatalf("failed to get underlying sql.DB: %v", err)
 	}

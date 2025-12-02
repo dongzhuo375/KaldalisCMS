@@ -29,11 +29,34 @@
 │   │   │   └── router.go                 # 路由配置
 │   │   │
 │   │   ├── core/
-│   │   │   ├── entity.go                 # 领域实体定义
+│   │   │   ├── entity/   
+│   │   │   │   ├── post.go               # 文章实体
+│   │   │   │   └── user.go               # 用户实体
+│   │   │   │
 │   │   │   ├── service.go                # 服务接口
 │   │   │   ├── repository.go             # 仓储接口
 │   │   │   └── plugin.go                 # 插件核心接口定义
 │   │   │
+│   │   ├── infra/
+│   │   │   ├── repository/
+│   │   │   │   ├── postgres/
+│   │   │   │   │   ├── theme_repo.go         # 主题数据访问
+│   │   │   │   │   ├── post_repo.go          # 文章数据访问
+│   │   │   │   │   ├── user_repo.go          # 用户数据访问
+│   │   │   │   │   └── migration/
+│   │   │   │   │       └── 001_init.sql      # 初始迁移
+│   │   │   │   │
+│   │   │   │   └── redis/
+│   │   │   │       └── cache.go              # 缓存服务
+│   │   │   │
+│   │   │   └── model/
+│   │   │       ├── theme.go                  # 主题模型
+│   │   │       ├── post.go                   # 文章模型
+│   │   │       ├── user.go                   # 用户模型
+│   │   │       ├── category.go               # 分类模型
+│   │   │       ├── setting.go                # 系统设置模型
+│   │   │       └── plugin.go                 # 插件元数据模型
+│   │   │    
 │   │   ├── service/
 │   │   │   ├── theme_service.go          # 主题业务服务
 │   │   │   ├── post_service.go           # 文章业务服务
@@ -41,24 +64,6 @@
 │   │   │   ├── file_service.go           # 文件服务
 │   │   │   ├── system_service.go         # 系统服务
 │   │   │   └── plugin_service.go         # 插件生命周期管理服务
-│   │   │
-│   │   ├── repository/
-│   │   │   ├── postgres/
-│   │   │   │   ├── theme_repo.go         # 主题数据访问
-│   │   │   │   ├── post_repo.go          # 文章数据访问
-│   │   │   │   ├── user_repo.go          # 用户数据访问
-│   │   │   │   └── migration/
-│   │   │   │       └── 001_init.sql      # 初始迁移
-│   │   │   └── redis/
-│   │   │       └── cache.go              # 缓存服务
-│   │   │
-│   │   ├── model/
-│   │   │   ├── theme.go                  # 主题模型
-│   │   │   ├── post.go                   # 文章模型
-│   │   │   ├── user.go                   # 用户模型
-│   │   │   ├── category.go               # 分类模型
-│   │   │   ├── setting.go                # 系统设置模型
-│   │   │   └── plugin.go                 # 插件元数据模型
 │   │   │
 │   │   ├── theme/
 │   │   │   ├── manager.go                # 主题管理器
