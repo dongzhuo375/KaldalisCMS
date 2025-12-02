@@ -3,14 +3,15 @@ package router
 import (
 	v1 "KaldalisCMS/internal/api/v1"
 	"KaldalisCMS/internal/core"
-	repository "KaldalisCMS/internal/repository/postgres"
+	"KaldalisCMS/internal/infra/repository/postgres"
 	"KaldalisCMS/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func SetupRouter(db *gorm.DB) *gin.Engine {	r := gin.Default()
+func SetupRouter(db *gorm.DB) *gin.Engine {
+	r := gin.Default()
 
 	// Add a simple CORS middleware
 	r.Use(func(c *gin.Context) {
@@ -32,15 +33,14 @@ func SetupRouter(db *gorm.DB) *gin.Engine {	r := gin.Default()
 	postService := service.NewPostService(postRepo)
 	postAPI := v1.NewPostAPI(postService)
 
-	 // Dependency Injection for User 
-    //var userRepo core.UserRepository = repository.NewUserRepository(db)
-     //userService := service.NewUserService(userRepo)
-     // userAPI := v1.NewUserAPI(userService) // 下一步就是创建UserAPI并注入userService
+	// Dependency Injection for User
+	//var userRepo core.UserRepository = repository.NewUserRepository(db)
+	//userService := service.NewUserService(userRepo)
+	// userAPI := v1.NewUserAPI(userService) // 下一步就是创建UserAPI并注入userService
 
 	//Register routes
 	apiV1 := r.Group("/api/v1")
 	postAPI.RegisterRoutes(apiV1)
-
 
 	return r
 }

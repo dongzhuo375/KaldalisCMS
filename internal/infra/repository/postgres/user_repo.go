@@ -3,9 +3,10 @@ package repository
 import (
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
-	"KaldalisCMS/internal/model"
+	"KaldalisCMS/internal/infra/model"
 	"errors"
 	"fmt"
+
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 )

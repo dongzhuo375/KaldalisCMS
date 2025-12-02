@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	slug "github.com/gosimple/slug"
+	"github.com/gosimple/slug"
 
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity" // Service 只能使用 Entity

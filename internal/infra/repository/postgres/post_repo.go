@@ -3,7 +3,7 @@ package repository
 import (
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
-	"KaldalisCMS/internal/model"
+	"KaldalisCMS/internal/infra/model"
 	"errors"
 	"fmt"
 
@@ -18,7 +18,7 @@ func postToEntity(m model.Post) entity.Post {
 	// Convert nested models to entities
 	var authorEntity entity.User
 	if m.Author.ID != 0 {
-		authorEntity = entity.User{ID:int( m.Author.ID), Username: m.Author.Username}
+		authorEntity = entity.User{ID: int(m.Author.ID), Username: m.Author.Username}
 	}
 
 	var categoryEntity entity.Category
@@ -68,13 +68,13 @@ type PostRepository struct {
 
 func (r *PostRepository) IsSlugExists(slug string) (bool, error) {
 	var postModel model.Post
-	if err := r.db.Where("slug = ?",slug).First(&postModel).Error; err !=nil{
-		if errors.Is(err,gorm.ErrRecordNotFound){
-			return false,nil //Slug不重复
+	if err := r.db.Where("slug = ?", slug).First(&postModel).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil //Slug不重复
 		}
-		return true,fmt.Errorf("repository.IsSlugExists:%w",err) 	//发生其他错误
-	} 
-	return true,nil  //默认返回slug重复
+		return true, fmt.Errorf("repository.IsSlugExists:%w", err) //发生其他错误
+	}
+	return true, nil //默认返回slug重复
 }
 
 func NewPostRepository(db *gorm.DB) *PostRepository {
@@ -130,7 +130,7 @@ func (r *PostRepository) Update(post entity.Post) error {
 			if pgErr.Code == "23505" { // 23505 is the SQLSTATE for unique_violation
 				return core.ErrDuplicate
 			}
-				return fmt.Errorf("post_repository.Update: %w", err)
+			return fmt.Errorf("post_repository.Update: %w", err)
 		}
 	}
 	return nil

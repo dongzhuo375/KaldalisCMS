@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"KaldalisCMS/internal/model"
+	model2 "KaldalisCMS/internal/infra/model"
 	"fmt"
 	"log"
 
@@ -17,9 +17,9 @@ func InitDB(dsn string) (*gorm.DB, error) {
 	}
 
 	fmt.Println("Database connection established successfully.")
-	
+
 	// Auto-migrate the schema
-	err = db.AutoMigrate(&model.User{}, &model.Category{}, &model.Tag{}, &model.Post{})
+	err = db.AutoMigrate(&model2.User{}, &model2.Category{}, &model2.Tag{}, &model2.Post{})
 	if err != nil {
 		log.Printf("Failed to auto-migrate database: %v", err)
 		return nil, fmt.Errorf("failed to auto-migrate database: %w", err)
