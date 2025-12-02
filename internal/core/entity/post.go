@@ -27,11 +27,7 @@ type Post struct {
 	Status     int      // 文章状态
 }
 
-// User 结构体，简化版
-type User struct {
-	ID   uint
-	Name string
-}
+
 
 // Category 结构体，简化版
 type Category struct {
