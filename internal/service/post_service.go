@@ -126,7 +126,7 @@ func (s *PostService) GetAllPosts() ([]entity.Post, error) {
 	return posts, nil
 }
 
-//待repo补充错误处理
+
 
 // --- Status Operations ---
 

@@ -3,7 +3,7 @@ package router
 import (
 	v1 "KaldalisCMS/internal/api/v1"
 	"KaldalisCMS/internal/core"
-	"KaldalisCMS/internal/infra/repository/postgres"
+	repository "KaldalisCMS/internal/infra/repository/postgres" // Corrected import alias
 	"KaldalisCMS/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -28,19 +28,21 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 		c.Next()
 	})
 
-	//Dependency Injection for Post
+	// API V1 Group
+	apiV1 := r.Group("/api/v1")
+
+	// Dependency Injection for Post
 	var postRepo core.PostRepository = repository.NewPostRepository(db)
 	postService := service.NewPostService(postRepo)
 	postAPI := v1.NewPostAPI(postService)
+	postAPI.RegisterRoutes(apiV1) // Register Post routes
 
 	// Dependency Injection for User
-	//var userRepo core.UserRepository = repository.NewUserRepository(db)
-	//userService := service.NewUserService(userRepo)
-	// userAPI := v1.NewUserAPI(userService) // 下一步就是创建UserAPI并注入userService
-
-	//Register routes
-	apiV1 := r.Group("/api/v1")
-	postAPI.RegisterRoutes(apiV1)
+	var userRepo core.UserRepository = repository.NewUserRepository(db)
+	userService := service.NewUserService(userRepo)
+	userAPI := v1.NewUserAPI(userService) // NewUserAPI now takes concrete *service.UserService
+	userAPI.RegisterRoutes(apiV1)         // Register User routes
 
 	return r
 }
+

@@ -1,6 +1,6 @@
 ## Project Progress (项目进度)
 
-As of 2025年12月2日星期二:
+As of 2025年12月3日星期三:
 
 ### Completed Tasks (已完成任务):
 -   **Models Defined (模型定义):** Core models for `User`, `Category`, `Tag`, and `Post` are defined in `internal/model`. (核心模型，包括 `User`、`Category`、`Tag` 和 `Post` 已在 `internal/model` 中定义。)
@@ -14,4 +14,22 @@ As of 2025年12月2日星期二:
 -   **PostService Implementation (Post服务层实现):** The `PostService` in `internal/service/post_service.go` has been implemented, integrating with the `PostRepository` to provide business logic for post-related operations. (`internal/service/post_service.go` 中的 `PostService` 已实现，与 `PostRepository` 集成，为帖子相关操作提供业务逻辑。)
 -   **Post API Handlers (Post API 处理器):** API handlers for posts are implemented in `internal/api/v1/post.go`, handling requests and responses, and interacting with the `PostService`. (`internal/api/v1/post.go` 中已实现帖子相关的 API 处理器，负责处理请求和响应，并与 `PostService` 交互。)
 -   **Router Setup (路由设置):** The application router in `internal/router/router.go` has been configured to define API routes for the post endpoints. (`internal/router/router.go` 中的应用程序路由已配置，用于定义帖子端点的 API 路由。)
+-   **User Module Scaffolding (用户模块脚手架):**
+    -   **Entity and Model (实体与模型):** `User` entity (`internal/core/entity/user.go`) and GORM model (`internal/infra/model/user.go`) are defined.
+    -   **Repository (仓库层):** `UserRepository` (`internal/infra/repository/postgres/user_repo.go`) is fully implemented with CRUD operations, error handling, and entity-model mapping.
+    -   **API Layer (API 层):** Basic structure for `UserAPI` (`internal/api/v1/user.go`) is in place with `Register` and `Login` endpoints defined.
+
+### To-Do (待办事项):
+-   **Implement `UserService` Business Logic (实现 `UserService` 业务逻辑):**
+    -   Implement password hashing using `bcrypt` before creating a user.
+    -   Implement user creation and verification logic in `internal/service/user_service.go`.
+-   **Complete `UserAPI` Integration (完成 `UserAPI` 集成):**
+    -   Integrate the `UserAPI` with the completed `UserService`.
+    -   Implement JWT-based authentication in the `Login` handler.
+-   **Implement `Category` and `Tag` Modules (实现 `Category` 和 `Tag` 模块):**
+    -   Follow the same layered architecture pattern (Entity, Repository, Service, API) to implement the `Category` and `Tag` modules.
+-   **Refine Configuration Management (优化配置管理):**
+    -   Load configuration from `config.yaml` files.
+-   **Implement Database Migrations (实现数据库迁移):**
+    -   Set up a proper database migration system.
 
