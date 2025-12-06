@@ -14,7 +14,7 @@ type PostService interface {
 
 type UserService interface {
 	CreateUser(user entity.User) error
-	VerifyUser(username, password string) (entity.User, error)
+	VerifyUser(username, password string) (entity.User,string, error)
 	//后面估计还加
 }
 

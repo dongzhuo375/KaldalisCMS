@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupRouter(db *gorm.DB) *gin.Engine {
+func SetupRouter(db *gorm.DB, jwtSecret string, jwtExpHours int) *gin.Engine {
 	r := gin.Default()
 
 	// Add a simple CORS middleware
@@ -39,7 +39,7 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 
 	// Dependency Injection for User
 	var userRepo core.UserRepository = repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, jwtSecret, jwtExpHours)
 	userAPI := v1.NewUserAPI(userService) // NewUserAPI now takes concrete *service.UserService
 	userAPI.RegisterRoutes(apiV1)         // Register User routes
 

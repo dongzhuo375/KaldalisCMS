@@ -22,7 +22,7 @@ func main() {
 	}
 	defer sqlDB.Close()
 
-	r := router.SetupRouter(db)
+	r := router.SetupRouter(db, AppConfig.JWT.SecretKey, AppConfig.JWT.ExpirationHours)
 
 	log.Println("Server is starting on http://localhost:8080 ...")
 	if err := r.Run(":8080"); err != nil {
