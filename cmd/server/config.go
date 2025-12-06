@@ -19,6 +19,10 @@ type Config struct {
 		SSLMode  string `mapstructure:"sslmode"`
 		TimeZone string `mapstructure:"timezone"`
 	} `mapstructure:"database"`
+	JWT struct{
+		SecretKey string `mapstructure:"secret_key"`
+		ExpirationHours int `mapstructure:"expiration_hours"`
+	}`mapstructure:"jwt"`
 }
 
 var AppConfig Config
