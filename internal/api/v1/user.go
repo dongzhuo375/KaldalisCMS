@@ -23,7 +23,7 @@ func (api *UserAPI) RegisterRoutes(router *gin.RouterGroup) {
 	userRoutes := router.Group("/users")
 	{
 		userRoutes.POST("/register", api.Register)
-		// userRoutes.POST("/login", api.Login) //todo:实现jwt
+		userRoutes.POST("/login", api.Login)
 		
 	}
 }
@@ -48,31 +48,32 @@ func (api *UserAPI) Register(c *gin.Context) {
 
 // **dzcake,请您在下面实现jwt**
 // Login handles user authentication.
-// func (a *UserAPI) Login(c *gin.Context) {
-// 	// Use an anonymous struct for binding, as there is no specific DTO
-// 	var req struct {
-// 		Username string `json:"username" binding:"required"`
-// 		Password string `json:"password" binding:"required"`
-// 	}
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
+func (a *UserAPI) Login(c *gin.Context) {
+	// Use an anonymous struct for binding, as there is no specific DTO
+	var req struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-// 	user, err := a.service.VerifyUser(req.Username, req.Password)
-// 	if err != nil {
-// 		// Simplified error handling
-// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
-// 		return
-// 	}
+	user, token, err := a.service.VerifyUser(req.Username, req.Password)
+	if err != nil {
+		// Simplified error handling
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		return
+	}
 
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"message": "Login successful",
-// 		"user": gin.H{
-// 			"id":       user.ID,
-// 			"username": user.Username,
-// 			"email":    user.Email,
-// 			"role":     user.Role,
-// 		},
-// 	})
-// }
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful",
+		"token":   token, // Return the JWT token
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+			"role":     user.Role,
+		},
+	})
+}
