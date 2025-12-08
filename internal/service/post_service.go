@@ -71,7 +71,7 @@ func (s *PostService) generateUniqueSlug(initialSlug string) (string, error) {
 	}
 }
 
-func (s *PostService) UpdatePost(id int, updatedEntity entity.Post) error {
+func (s *PostService) UpdatePost(id uint, updatedEntity entity.Post) error {
 	// 获取现有 Entity
 	existingEntity, err := s.repo.GetByID(id)
 	if err != nil {
@@ -101,7 +101,7 @@ func (s *PostService) UpdatePost(id int, updatedEntity entity.Post) error {
 // --- Read Operations ---
 
 // 补充：根据 ID 获取文章
-func (s *PostService) GetPostByID(id int) (entity.Post, error) {
+func (s *PostService) GetPostByID(id uint) (entity.Post, error) {
 	post, err := s.repo.GetByID(id)
 
 	// 检查核心层抛出的契约错误
@@ -130,7 +130,7 @@ func (s *PostService) GetAllPosts() ([]entity.Post, error) {
 
 // --- Status Operations ---
 
-func (s *PostService) PublishPost(id int) error {
+func (s *PostService) PublishPost(id uint) error {
 	// 1. 获取 Entity
 	post, err := s.repo.GetByID(id)
 	if err != nil {
@@ -154,7 +154,7 @@ func (s *PostService) PublishPost(id int) error {
 // --- Delete Operations ---
 
 // 补充：删除文章
-func (s *PostService) DeletePost(id int) error {
+func (s *PostService) DeletePost(id uint) error {
 	// 可以在这里添加业务逻辑 (例如：权限检查、存档/软删除逻辑)
 
 	err := s.repo.Delete(id)

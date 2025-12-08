@@ -16,7 +16,7 @@ import (
 // model转换成entity
 func userToEntity(m model.User) entity.User {
 	return entity.User{
-		ID:        int(m.ID),
+		ID:        m.ID,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 		Username:  m.Username,
@@ -29,7 +29,7 @@ func userToEntity(m model.User) entity.User {
 // entity转换成model
 func userToModel(e entity.User) model.User {
 	return model.User{
-		ID: uint(e.ID), 
+		ID: e.ID, 
 		CreatedAt: e.CreatedAt, 
 		UpdatedAt: e.UpdatedAt,
 		Username: e.Username,
@@ -59,7 +59,7 @@ func (r *UserRepository) GetAll() ([]entity.User, error) {
 	return userEntities, nil
 }
 
-func (r *UserRepository) GetByID(id int) (entity.User, error) {
+func (r *UserRepository) GetByID(id uint) (entity.User, error) {
 	var userModel model.User
 	if err := r.db.First(&userModel, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -109,7 +109,7 @@ func (r *UserRepository) Update(user entity.User) error {
 	return nil
 }
 
-func (r *UserRepository) Delete(id int) error {
+func (r *UserRepository) Delete(id uint) error {
 	if err := r.db.Delete(&model.User{}, id).Error; err != nil {
 		return fmt.Errorf("repository.DeleteUser: %w", err)
 	}

@@ -19,7 +19,7 @@ func postToEntity(m model.Post) entity.Post {
 	var authorEntity entity.User
 	
 	if m.Author.ID != 0 { 
-		authorEntity = entity.User{ID: int(m.Author.ID), Username: m.Author.Username}
+		authorEntity = entity.User{ID: m.Author.ID, Username: m.Author.Username}
 	}
 
 	var categoryEntity entity.Category
@@ -40,7 +40,7 @@ func postToEntity(m model.Post) entity.Post {
 	}
 
 	return entity.Post{
-		ID:         int(m.ID),
+		ID:         m.ID,
 		CreatedAt:  m.CreatedAt,
 		UpdatedAt:  m.UpdatedAt,
 		Title:      m.Title,
@@ -61,7 +61,7 @@ func postToEntity(m model.Post) entity.Post {
 // entity转换成model
 func postToModel(e entity.Post) model.Post {
 	return model.Post{
-		ID: uint(e.ID), 
+		ID: e.ID, 
 		CreatedAt: e.CreatedAt, 
 		UpdatedAt: e.UpdatedAt,
 		Title:      e.Title,
@@ -107,7 +107,7 @@ func (r *PostRepository) GetAll() ([]entity.Post, error) {
 	return postEntities, nil
 }
 
-func (r *PostRepository) GetByID(id int) (entity.Post, error) {
+func (r *PostRepository) GetByID(id uint) (entity.Post, error) {
 	var postModel model.Post
 	if err := r.db.Preload("Author").Preload("Category").Preload("Tags").First(&postModel, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -148,7 +148,7 @@ func (r *PostRepository) Update(post entity.Post) error {
 	return nil
 }
 
-func (r *PostRepository) Delete(id int) error {
+func (r *PostRepository) Delete(id uint) error {
 	if err := r.db.Delete(&model.Post{}, id).Error; err != nil {
 		return fmt.Errorf("post_repository.Delete: %w", err)
 	}
