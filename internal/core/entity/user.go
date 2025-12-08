@@ -7,7 +7,7 @@ import (
 )
 
 type User struct {
-	ID        int
+	ID        uint
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Username  string

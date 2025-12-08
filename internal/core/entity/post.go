@@ -12,7 +12,7 @@ const (
 )
 
 type Post struct {
-	ID         int
+	ID         uint
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	Title      string
