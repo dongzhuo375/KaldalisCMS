@@ -15,15 +15,23 @@ import (
 
 // model转换成entity
 func postToEntity(m model.Post) entity.Post {
-	// Convert nested models to entities
+	
 	var authorEntity entity.User
-	if m.Author.ID != 0 {
+	
+	if m.Author.ID != 0 { 
 		authorEntity = entity.User{ID: int(m.Author.ID), Username: m.Author.Username}
 	}
 
 	var categoryEntity entity.Category
-	if m.Category.ID != 0 {
-		categoryEntity = entity.Category{ID: m.Category.ID, Name: m.Category.Name}
+	
+	
+	if m.Category != nil {
+		categoryEntity = entity.Category{
+			ID:   m.Category.ID, 
+			Name: m.Category.Name,
+			// 如果需要 Slug 就加上，不需要就删掉这行
+			// Slug: m.Category.Slug, 
+		}
 	}
 
 	var tagsEntity []entity.Tag
@@ -39,19 +47,23 @@ func postToEntity(m model.Post) entity.Post {
 		Slug:       m.Slug,
 		Content:    m.Content,
 		Cover:      m.Cover,
+		
 		AuthorID:   m.AuthorID,
 		Author:     authorEntity,
-		CategoryID: m.CategoryID,
+		
+		CategoryID: m.CategoryID, 
 		Category:   categoryEntity,
+		
 		Tags:       tagsEntity,
 		Status:     m.Status,
 	}
 }
-
 // entity转换成model
 func postToModel(e entity.Post) model.Post {
 	return model.Post{
-		Model:      gorm.Model{ID: uint(e.ID), CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt},
+		ID: uint(e.ID), 
+		CreatedAt: e.CreatedAt, 
+		UpdatedAt: e.UpdatedAt,
 		Title:      e.Title,
 		Slug:       e.Slug,
 		Content:    e.Content,
