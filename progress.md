@@ -18,6 +18,11 @@ As of 2025年12月3日星期三:
     -   **Entity and Model (实体与模型):** `User` entity (`internal/core/entity/user.go`) and GORM model (`internal/infra/model/user.go`) are defined.
     -   **Repository (仓库层):** `UserRepository` (`internal/infra/repository/postgres/user_repo.go`) is fully implemented with CRUD operations, error handling, and entity-model mapping.
     -   **API Layer (API 层):** Basic structure for `UserAPI` (`internal/api/v1/user.go`) is in place with `Register` and `Login` endpoints defined.
+-   **Database Model Optimization (数据库模型优化):**
+    -   **Handled empty strings (处理了空字符串):** Added `check` constraints to model fields to prevent empty or whitespace-only strings.
+    -   **Optimized JSON output (优化了JSON输出):** Used `json` tags (`-`, `omitempty`) to control the JSON output for frontend, preventing oversized payloads and circular references.
+    -   **Added relationships (添加了对应关系):** Defined `one-to-many` and `many-to-many` relationships between models.
+
 
 ### To-Do (待办事项):
 -   **Implement `UserService` Business Logic (实现 `UserService` 业务逻辑):**
@@ -32,4 +37,3 @@ As of 2025年12月3日星期三:
     -   Load configuration from `config.yaml` files.
 -   **Implement Database Migrations (实现数据库迁移):**
     -   Set up a proper database migration system.
-

@@ -29,7 +29,9 @@ func userToEntity(m model.User) entity.User {
 // entity转换成model
 func userToModel(e entity.User) model.User {
 	return model.User{
-		Model:    gorm.Model{ID: uint(e.ID), CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt},
+		ID: uint(e.ID), 
+		CreatedAt: e.CreatedAt, 
+		UpdatedAt: e.UpdatedAt,
 		Username: e.Username,
 		Email:    e.Email,
 		Password: e.Password,
