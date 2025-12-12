@@ -126,3 +126,10 @@ func (m *Manager) Parse(tokenStr string) (map[string]interface{}, error) {
 	}
 	return res, nil
 }
+
+func (m *Manager) AuthCookieName() string {
+	return m.AuthCookie
+}
+func (m *Manager) CSRFCookieName() string {
+	return m.CSRFCookie
+}

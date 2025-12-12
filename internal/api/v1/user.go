@@ -2,7 +2,6 @@ package v1
 
 import (
 	"KaldalisCMS/internal/core/entity"
-	"KaldalisCMS/internal/infra/auth"
 	"KaldalisCMS/internal/service"
 	"net/http"
 	"time"
@@ -12,13 +11,11 @@ import (
 
 type UserAPI struct {
 	service *service.UserService
-	authMgr *auth.Manager
 }
 
-func NewUserAPI(service *service.UserService, authMgr *auth.Manager) *UserAPI {
+func NewUserAPI(service *service.UserService) *UserAPI {
 	return &UserAPI{
 		service: service,
-		authMgr: authMgr,
 	}
 }
 
@@ -56,21 +53,12 @@ func (a *UserAPI) Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	user, err := a.service.VerifyUser(req.Username, req.Password)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
-		return
-	}
-
-	// secureFlag 可基于配置或请求 TLS 决定
 	secureFlag := c.Request.TLS != nil
-	if err := a.authMgr.Login(c.Writer, user.ID, secureFlag); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to set auth cookies"})
+	user, err := a.service.Login(c.Writer, req.Username, req.Password, secureFlag)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
-
-	// 返回用户信息（不返回 token）
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login successful",
 		"user": gin.H{
@@ -79,11 +67,12 @@ func (a *UserAPI) Login(c *gin.Context) {
 			"email":    user.Email,
 			"role":     user.Role,
 		},
-		"expires_at": time.Now().Add(a.authMgr.TTL).Format(time.RFC3339),
+		"expires_at": time.Now().Add(24 * time.Hour).Format(time.RFC3339), // 可改为从 manager 读取
 	})
 }
 
 func (a *UserAPI) Logout(c *gin.Context) {
-	a.authMgr.Logout(c.Writer)
+	// Logout 通过 service 层触发副作用
+	a.service.Logout(c.Writer)
 	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
 }

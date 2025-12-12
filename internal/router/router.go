@@ -45,8 +45,6 @@ func SetupRouter(db *gorm.DB, jwtSecret string, jwtExpHours int) *gin.Engine {
 
 	// Dependency Injection for User
 	var userRepo core.UserRepository = repository.NewUserRepository(db)
-	// keep existing service construction (do not change business logic)
-	userService := service.NewUserService(userRepo)
 
 	// Create a single auth manager instance (singleton) and pass it into UserAPI and middlewares.
 	// Cookie names, path, domain, secure and sameSite can be adjusted or moved to config as needed.
@@ -60,6 +58,8 @@ func SetupRouter(db *gorm.DB, jwtSecret string, jwtExpHours int) *gin.Engine {
 		true, // secure by default; in local dev you can set to false via config
 		http.SameSiteLaxMode,
 	)
+	// keep existing service construction (do not change business logic)
+	userService := service.NewUserService(userRepo, authMgr)
 
 	// Ensure OptionalAuthWithManager is actually used: apply it to apiV1 so handlers
 	// can observe optional login state (useful for SSR/public endpoints).
@@ -67,7 +67,7 @@ func SetupRouter(db *gorm.DB, jwtSecret string, jwtExpHours int) *gin.Engine {
 
 	// Construct UserAPI with existing userService and the singleton auth manager.
 	// This keeps your original user service logic while enabling infra-level cookie/jwt/csrf handling.
-	userAPI := v1.NewUserAPI(userService, authMgr)
+	userAPI := v1.NewUserAPI(userService)
 	userAPI.RegisterRoutes(apiV1) // Register User routes (register/login only)
 
 	// Protected group: require authentication + CSRF for mutating operations.
