@@ -3,21 +3,18 @@ package service
 import (
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
-	"github.com/golang-jwt/jwt/v5"
-	"time"
+	"net/http"
 )
 
 type UserService struct {
-	repo               core.UserRepository
-	jwtSecret          string
-	jwtExpirationHours int
+	repo    core.UserRepository
+	authMgr core.AuthManager
 }
 
-func NewUserService(repo core.UserRepository, jwtSecret string, jwtExpirationHours int) *UserService {
+func NewUserService(repo core.UserRepository, authMgr core.AuthManager) *UserService {
 	return &UserService{
-		repo:               repo,
-		jwtSecret:          jwtSecret,
-		jwtExpirationHours: jwtExpirationHours,
+		repo:    repo,
+		authMgr: authMgr,
 	}
 }
 
@@ -35,35 +32,32 @@ func (s *UserService) CreateUser(user entity.User) error {
 	return s.repo.Create(user)
 }
 
-// VerifyUser checks a user's credentials.
-// It retrieves the user by username and then validates the password.
-func (s *UserService) VerifyUser(username, password string) (entity.User, string, error) {
-	// Retrieve the user from the database.
+// VerifyUser 只做验证并返回 user
+func (s *UserService) VerifyUser(username, password string) (entity.User, error) {
 	user, err := s.repo.GetByUsername(username)
 	if err != nil {
-		// This could be ErrNotFound or a database connection error.
-		// The API layer will handle them accordingly.
-		return entity.User{}, "", err
+		return entity.User{}, err
 	}
-
-	// Use the entity's method to check the password.
 	if !user.CheckPassword(password) {
-		return entity.User{}, "", core.ErrInvalidCredentials
+		return entity.User{}, core.ErrInvalidCredentials
 	}
+	return user, nil
+}
 
-	// Password is correct. Generate a JWT token.
-	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userID": user.ID,
-		"exp":    time.Now().Add(time.Hour * time.Duration(s.jwtExpirationHours)).Unix(),
-		"iat":    time.Now().Unix(),
-		"iss":    "KaldalisCMS",
-	})
-
-	// Sign the token with the secret.
-	tokenString, err := claims.SignedString([]byte(s.jwtSecret))
+// Login 封装验证 + infra auth 登录副作用（写 cookie）
+func (s *UserService) Login(w http.ResponseWriter, username, password string, secureFlag bool) (entity.User, error) {
+	user, err := s.VerifyUser(username, password)
 	if err != nil {
-		return entity.User{}, "", err
+		return entity.User{}, err
 	}
+	// 使用注入的 AuthManager 写 cookie
+	if err := s.authMgr.Login(w, user.ID, secureFlag); err != nil {
+		return entity.User{}, err
+	}
+	return user, nil
+}
 
-	return user, tokenString, nil
+// Logout 登出作用
+func (s *UserService) Logout(w http.ResponseWriter) {
+	s.authMgr.Logout(w)
 }

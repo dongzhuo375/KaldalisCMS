@@ -4,6 +4,7 @@ import (
 	"KaldalisCMS/internal/core/entity"
 	"KaldalisCMS/internal/service"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,7 +25,6 @@ func (api *UserAPI) RegisterRoutes(router *gin.RouterGroup) {
 	{
 		userRoutes.POST("/register", api.Register)
 		userRoutes.POST("/login", api.Login)
-		
 	}
 }
 
@@ -36,7 +36,6 @@ func (api *UserAPI) Register(c *gin.Context) {
 		return
 	}
 
-	
 	if err := api.service.CreateUser(newUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -45,11 +44,7 @@ func (api *UserAPI) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
 }
 
-
-// **dzcake,请您在下面实现jwt**
-// Login handles user authentication.
 func (a *UserAPI) Login(c *gin.Context) {
-	// Use an anonymous struct for binding, as there is no specific DTO
 	var req struct {
 		Username string `json:"username" binding:"required"`
 		Password string `json:"password" binding:"required"`
@@ -58,22 +53,26 @@ func (a *UserAPI) Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	user, token, err := a.service.VerifyUser(req.Username, req.Password)
+	secureFlag := c.Request.TLS != nil
+	user, err := a.service.Login(c.Writer, req.Username, req.Password, secureFlag)
 	if err != nil {
-		// Simplified error handling
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login successful",
-		"token":   token, // Return the JWT token
 		"user": gin.H{
 			"id":       user.ID,
 			"username": user.Username,
 			"email":    user.Email,
 			"role":     user.Role,
 		},
+		"expires_at": time.Now().Add(24 * time.Hour).Format(time.RFC3339), // 可改为从 manager 读取
 	})
+}
+
+func (a *UserAPI) Logout(c *gin.Context) {
+	// Logout 通过 service 层触发副作用
+	a.service.Logout(c.Writer)
+	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
 }
