@@ -1,0 +1,13 @@
+database:
+  host: localhost
+  port: 5432
+  user: amber # Replace with your PostgreSQL username
+  password: AMBERZz # Replace with your PostgreSQL password
+  dbname: kaldalis_cms
+  sslmode: disable
+  timezone: Asia/Shanghai
+
+jwt:
+  secret_key: "AL3uaHdBI/zK/t0zfeXrFKb/7LOP8LECxp51j7pOo9PP7Ok99JceBQ8k4AZYlOE7tM8sV/55hPq/8I3WdzJi1w==" # Replace with a strong, random secret key
+  expiration_hours: 24
+
