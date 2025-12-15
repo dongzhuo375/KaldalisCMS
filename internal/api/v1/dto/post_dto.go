@@ -7,22 +7,23 @@ import (
 
 // CreatePostRequest defines the structure for creating a new post.
 type CreatePostRequest struct {
-	Title      string `json:"title" binding:"required"`
-	Content    string `json:"content"`
-	Cover      string `json:"cover"`
-	CategoryID *uint  `json:"category_id"`
-	Tags       []uint `json:"tags"`
+	Title      string `json:"Title" binding:"required"`
+	Content    string `json:"Content"`
+	Cover      string `json:"Cover"`
+	CategoryID *uint  `json:"CategoryID"`
+	Tags       []uint `json:"Tags"`
 }
 
 // ToEntity converts a CreatePostRequest DTO to an entity.Post.
-func (r *CreatePostRequest) ToEntity() *entity.Post {
+// It requires the authorID to be passed as it's not part of the request body.
+func (r *CreatePostRequest) ToEntity(authorID uint) *entity.Post {
 	post := &entity.Post{
 		Title:      r.Title,
 		Content:    r.Content,
 		Cover:      r.Cover,
 		CategoryID: r.CategoryID,
+		AuthorID:   authorID,          // <-- Add AuthorID
 		Status:     entity.StatusDraft, // 默认创建为草稿
-		AuthorID:  	3	,  	//测试用,先写死在里面 //等你把middleware写了我再处理
 	}
 	if r.Tags != nil {
 		post.Tags = make([]entity.Tag, len(r.Tags))

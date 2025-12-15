@@ -31,7 +31,7 @@ var AppConfig Config
 func InitConfig() {
 	viper.SetConfigName("config")    // name of config file (without extension)
 	viper.SetConfigType("yaml")      // type of the config file
-	viper.AddConfigPath("./configs") // path to look for the config file in
+	viper.AddConfigPath("./cmd/configs") // path to look for the config file in
 
 	// Optional: set default values
 	viper.SetDefault("database.host", "localhost")
