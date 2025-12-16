@@ -7,9 +7,9 @@ import (
 
 // CreatePostRequest defines the structure for creating a new post.
 type CreatePostRequest struct {
-	Title      string `json:"Title" binding:"required"`
+	Title      string `json:"Title" binding:"required,min=1,max=100"`
 	Content    string `json:"Content"`
-	Cover      string `json:"Cover"`
+	Cover      string `json:"Cover" binding:"max=255"`
 	CategoryID *uint  `json:"CategoryID"`
 	Tags       []uint `json:"Tags"`
 }
@@ -36,9 +36,9 @@ func (r *CreatePostRequest) ToEntity(authorID uint) *entity.Post {
 
 // UpdatePostRequest defines the structure for updating an existing post.
 type UpdatePostRequest struct {
-	Title      *string `json:"title"`
+	Title      *string `json:"title" binding:"omitempty,min=1,max=100"`
 	Content    *string `json:"content"`
-	Cover      *string `json:"cover"`
+	Cover      *string `json:"cover" binding:"omitempty,max=255"`
 	CategoryID *uint   `json:"category_id"`
 	Tags       []uint  `json:"tags"`
 	Status     *int    `json:"status"`
