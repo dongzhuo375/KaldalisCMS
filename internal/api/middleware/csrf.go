@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"net/http"
-	"strings"
+	//"strings"
 
 	infraauth "KaldalisCMS/internal/infra/auth"
 
@@ -38,6 +38,7 @@ func CSRFMiddlewareWithManager(mgr *infraauth.Manager) gin.HandlerFunc {
 		}
 
 		// Optional: 简单校验 Origin（如果有）和 Host 是否匹配（增强防护）
+	/*
 		origin := c.GetHeader("Origin")
 		if origin != "" {
 			if !strings.Contains(origin, c.Request.Host) {
@@ -45,7 +46,7 @@ func CSRFMiddlewareWithManager(mgr *infraauth.Manager) gin.HandlerFunc {
 				return
 			}
 		}
-
+		*/
 		c.Next()
 	}
 }

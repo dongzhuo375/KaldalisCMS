@@ -105,70 +105,66 @@
 │       │   ├── go.mod                    
 │       │   └── implementation.go         
 │       └── .gitkeep                      
-│
 ├── 前端应用 (Next.js 14+)
 │   ├── web/
-│   │   ├── public/                       # 静态资源 (Next.js标准)
+│   │   ├── public/                       # 静态资源
 │   │   │   ├── favicon.ico
 │   │   │   └── images/
 │   │   │
 │   │   ├── src/
-│   │   │   ├── app/                      # [核心] App Router 目录 (替代 router/)
-│   │   │   │   ├── (admin)/              # 后台管理路由组 (CSR模式)
-│   │   │   │   │   ├── dashboard/
-│   │   │   │   │   │   └── page.tsx      # 对应原 Dashboard.vue
-│   │   │   │   │   ├── themes/
-│   │   │   │   │   │   └── page.tsx      # 对应原 ThemeManagement.vue
-│   │   │   │   │   ├── posts/
-│   │   │   │   │   │   ├── page.tsx      # 对应原 PostManagement.vue
-│   │   │   │   │   │   └── editor/
-│   │   │   │   │   │       └── page.tsx  # 对应原 PostEditor.vue
+│   │   │   ├── app/                      # [核心] App Router 路由
+│   │   │   │   ├── layout.tsx            # [关键] 根布局 (包含 <html><body>)
+│   │   │   │   ├── globals.css           # 全局样式 (Tailwind v4 配置)
+│   │   │   │   │
+│   │   │   │   ├── (auth)/               # [路由组] 认证相关 (无侧边栏布局)
+│   │   │   │   │   ├── layout.tsx        # 居中卡片布局
 │   │   │   │   │   ├── login/
-│   │   │   │   │   │   └── page.tsx      # 对应原 LoginForm.vue
-│   │   │   │   │   └── layout.tsx        # 后台通用布局 (Sidebar/Header)
+│   │   │   │   │   │   └── page.tsx      # URL: /login
+│   │   │   │   │   └── register/
+│   │   │   │   │       └── page.tsx      # URL: /register
 │   │   │   │   │
-│   │   │   │   ├── (public)/             # 前台展示路由组 (SSR/SSG模式)
-│   │   │   │   │   ├── [slug]/           # 文章详情动态路由
-│   │   │   │   │   │   └── page.tsx      # 对应原主题的文章页逻辑
-│   │   │   │   │   ├── page.tsx          # 首页
-│   │   │   │   │   └── layout.tsx        # 前台布局 (负责动态加载主题)
+│   │   │   │   ├── (admin)/              # [路由组] 后台管理 (权限隔离)
+│   │   │   │   │   └── admin/            # 实体路径前缀 /admin
+│   │   │   │   │       ├── layout.tsx    # 后台布局 (Sidebar + Header + 登出逻辑)
+│   │   │   │   │       ├── dashboard/
+│   │   │   │   │       │   └── page.tsx  # URL: /admin/dashboard
+│   │   │   │   │       ├── posts/
+│   │   │   │   │       │   ├── page.tsx  # URL: /admin/posts (文章列表)
+│   │   │   │   │       │   └── [id]/     # 文章编辑/详情
+│   │   │   │   │       └── themes/       # 主题管理
+│   │   │   │   │           └── page.tsx
 │   │   │   │   │
-│   │   │   │   ├── api/auth/             # NextAuth 或自定义API路由
-│   │   │   │   ├── global.css            # 全局样式
-│   │   │   │   └── layout.tsx            # 根布局
+│   │   │   │   └── (public)/             # [路由组] 前台展示 (游客/普通用户)
+│   │   │   │       ├── layout.tsx        # 前台布局 (SiteHeader + Footer)
+│   │   │   │       ├── page.tsx          # URL: / (首页/欢迎页)
+│   │   │   │       └── posts/
+│   │   │   │           └── [slug]/
+│   │   │   │               └── page.tsx  # URL: /posts/xxx (文章详情)
 │   │   │   │
-│   │   │   ├── lib/                      # 工具库 (替代 utils/)
-│   │   │   │   ├── api.ts                # HTTP请求 (对应原 request.js，需处理Server/Client)
-│   │   │   │   ├── store.ts              # 状态管理 (Zustand/Jotai 替代 Pinia)
-│   │   │   │   └── utils.ts              # 通用工具
+│   │   │   ├── components/               # 组件库
+│   │   │   │   ├── ui/                   # [Shadcn] 基础原子组件 (Button, Input, Table...)
+│   │   │   │   ├── admin/                # 后台业务组件 (Sidebar, AdminHeader)
+│   │   │   │   ├── site/                 # 前台业务组件 (SiteHeader, Hero, FeatureCard)
+│   │   │   │   └── themes/               # 动态主题组件 (按需加载)
 │   │   │   │
-│   │   │   ├── hooks/                    # React Hooks (替代 composables/)
-│   │   │   │   ├── use-theme.ts          # 对应原 useTheme.js
-│   │   │   │   ├── use-auth.ts           # 对应原 useAuth.js
-│   │   │   │   └── use-plugin.ts         # 对应原 usePlugin.js
+│   │   │   ├── lib/                      # 工具库
+│   │   │   │   ├── api.ts                # [核心] Axios 封装 (拦截器, CSRF, Cookie)
+│   │   │   │   ├── utils.ts              # Shadcn cn() 工具
+│   │   │   │   └── types.ts              # TS 类型定义 (Post, User)
 │   │   │   │
-│   │   │   ├── components/               # 组件目录
-│   │   │   │   ├── ui/                   # 通用UI库 (Button, Input等)
-│   │   │   │   ├── admin/                # 后台专用组件
-│   │   │   │   │   ├── ThemeCard.tsx     # 对应原 ThemeCard.vue
-│   │   │   │   │   ├── UserList.tsx      # 对应原 UserList.vue
-│   │   │   │   │   └── PluginList.tsx    # 对应原 PluginManager.vue
-│   │   │   │   └── plugins/              # 前端插件插槽组件
-│   │   │   │       └── Registry.tsx      # 插件组件注册表
+│   │   │   ├── store/                    # 状态管理
+│   │   │   │   └── useAuthStore.ts       # [核心] Zustand (用户状态 + Persist持久化)
 │   │   │   │
-│   │   │   └── themes/                   # [关键] 前端主题目录 (React组件)
-│   │   │       ├── default/              # 默认主题
-│   │   │       │   ├── components/       # 主题特有组件
-│   │   │       │   ├── layouts/          # 主题布局
-│   │   │       │   └── theme.config.ts   # 主题配置
-│   │   │       └── .gitkeep
+│   │   │   ├── hooks/                    # 自定义 Hooks
+│   │   │   │   └── use-toast.ts          # Shadcn Toast Hook
+│   │   │   │
+│   │   │   └── middleware.ts             # [核心] 路由守卫 (未登录拦截 / 角色分流)
 │   │   │
+│   │   ├── components.json               # Shadcn 配置文件
+│   │   ├── next.config.mjs               # Next.js 配置
 │   │   ├── package.json
-│   │   ├── next.config.js                # Next.js 配置 (替代 vite.config.js)
-│   │   ├── tailwind.config.ts            # 样式配置 (推荐)
-│   │   └── tsconfig.json                 # TS 配置
-│   │
-│   └── .env.local                        # 前端环境变量
+│   │   ├── postcss.config.mjs
+│   │   └── .env.local                    # 环境变量 (NEXT_PUBLIC_API_URL)
 │
 ├── go.mod
 ├── go.sum
