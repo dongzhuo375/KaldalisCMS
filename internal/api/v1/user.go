@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"KaldalisCMS/internal/api/v1/dto"
 	"KaldalisCMS/internal/core/entity"
 	"KaldalisCMS/internal/service"
 	"net/http"
@@ -30,10 +31,17 @@ func (api *UserAPI) RegisterRoutes(router *gin.RouterGroup) {
 
 // Register handles new user registration.
 func (api *UserAPI) Register(c *gin.Context) {
-	var newUser entity.User
-	if err := c.ShouldBindJSON(&newUser); err != nil {
+	var req dto.UserRegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	newUser := entity.User{
+		Username: req.Username,
+		Password: req.Password,
+		Email:    req.Email,
+		Role:     "user", // Assign default role
 	}
 
 	if err := api.service.CreateUser(newUser); err != nil {
