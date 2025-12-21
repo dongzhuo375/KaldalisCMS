@@ -10,7 +10,7 @@ Content-Type: application/json
   "email": "test@example.com",
  "role": "user"
 }
-```
+```tester
 HTTP 201
 
 # 2. Login as the new user and capture auth tokens

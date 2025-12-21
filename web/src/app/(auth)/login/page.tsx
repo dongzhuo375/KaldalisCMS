@@ -27,8 +27,8 @@ export default function LoginPage() {
 
     try {
       // 1. 调用 Go 后端登录接口
-      // 注意：这里的路径要和你后端 Go 代码里定义的匹配，比如 /login
-      const res: any = await api.post("/login", { username, password });
+    
+      const res: any = await api.post("/users/login", { username, password });
 
       // 2. 登录成功：把用户信息存入 Zustand
       // 假设后端返回数据格式为: { code: 200, data: { username: 'admin', role: 'admin' } }
