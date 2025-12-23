@@ -57,11 +57,12 @@ func LoadConfig(v *viper.Viper) (*Config, error) {
 
 // EstablishSession 封装了登录时同时设置 JWT 和 CSRF Cookie 的逻辑
 func EstablishSession(w http.ResponseWriter, cfg Config, userID uint) error {
-	token, err := auth.Generate(userID, cfg.Secret, cfg.TTL)
+	csrf := security.GenerateToken()
+	token, err := auth.GenerateHashCSRF(userID, cfg.Secret, cfg.TTL, csrf)
+
 	if err != nil {
 		return err
 	}
-	csrf := security.GenerateToken()
 
 	// Auth Cookie (HttpOnly)
 	setCookie(w, cfg, cfg.AuthCookie, token, true)
