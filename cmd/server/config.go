@@ -20,7 +20,7 @@ type Config struct {
 		SSLMode  string `mapstructure:"sslmode"`
 		TimeZone string `mapstructure:"timezone"`
 	} `mapstructure:"database"`
-	Auth auth.Config `mapstructure:"jwt"`
+	Auth auth.Config
 }
 
 var AppConfig Config
