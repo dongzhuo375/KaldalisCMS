@@ -61,8 +61,7 @@ func (a *UserAPI) Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	secureFlag := c.Request.TLS != nil
-	user, err := a.service.Login(c.Writer, req.Username, req.Password, secureFlag)
+	user, err := a.service.Login(c.Writer, req.Username, req.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return

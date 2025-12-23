@@ -2,10 +2,11 @@ package v1
 
 import (
 	"KaldalisCMS/internal/api/middleware" // <-- New Import
+	"KaldalisCMS/internal/api/v1/dto"
 	"KaldalisCMS/internal/service"
 	"net/http"
 	"strconv"
-	"KaldalisCMS/internal/api/v1/dto"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,13 +18,14 @@ func NewPostAPI(service *service.PostService) *PostAPI {
 	return &PostAPI{service: service}
 }
 
-func (api *PostAPI) RegisterRoutes(group *gin.RouterGroup) {
-	group.GET("/posts", api.GetPosts)
-	group.POST("/posts", api.CreatePost)
-	group.GET("/posts/:id", api.GetPostByID)
-	group.PUT("/posts/:id", api.UpdatePost)
-	group.DELETE("/posts/:id", api.DeletePost)
-}
+//目前在router的protected中进行注册了
+//func (api *PostAPI) RegisterRoutes(group *gin.RouterGroup) {
+//	group.GET("/posts", api.GetPosts)
+//	group.POST("/posts", api.CreatePost)
+//	group.GET("/posts/:id", api.GetPostByID)
+//	group.PUT("/posts/:id", api.UpdatePost)
+//	group.DELETE("/posts/:id", api.DeletePost)
+//}
 
 func (api *PostAPI) GetPosts(c *gin.Context) {
 	posts, err := api.service.GetAllPosts()
@@ -50,35 +52,28 @@ func (api *PostAPI) GetPostByID(c *gin.Context) {
 }
 
 func (api *PostAPI) CreatePost(c *gin.Context) {
-	//对CreatePost进行DTO转换
 	var createReq dto.CreatePostRequest
-	
+
 	if err := c.ShouldBindJSON(&createReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 从上下文获取 userID
-	rawUserID, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: user ID not found in context"})
 		return
 	}
-	// Correctly handle the type conversion from context
-	userIDInt, ok := rawUserID.(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Server error: user ID in context is not an integer"})
-		return
-	}
-	userID := uint(userIDInt)
 
-	newPost	:= createReq.ToEntity(userID) // <-- Pass userID to ToEntity()
-	err := api.service.CreatePost(*newPost) // Note: ToEntity returns *entity.Post, so dereference it if CreatePost expects entity.Post
-	if err != nil {
+	// 业务逻辑处理
+	newPost := createReq.ToEntity(userID)
+
+	if err := api.service.CreatePost(*newPost); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, nil)
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Post created successfully"})
 }
 
 func (api *PostAPI) UpdatePost(c *gin.Context) {
@@ -88,7 +83,7 @@ func (api *PostAPI) UpdatePost(c *gin.Context) {
 		return
 	}
 	var req dto.UpdatePostRequest
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

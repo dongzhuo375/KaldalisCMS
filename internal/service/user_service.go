@@ -3,18 +3,21 @@ package service
 import (
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
+	"KaldalisCMS/internal/infra/auth"
 	"net/http"
 )
 
 type UserService struct {
 	repo    core.UserRepository
-	authMgr core.AuthManager
+	authCfg auth.Config
+	//enforcer *casbin.CachedEnforcer // 注入 Casbin 执行器
+	//rdb      *redis.Client          // 注入共享 Redis
 }
 
-func NewUserService(repo core.UserRepository, authMgr core.AuthManager) *UserService {
+func NewUserService(repo core.UserRepository, cfg auth.Config) *UserService {
 	return &UserService{
 		repo:    repo,
-		authMgr: authMgr,
+		authCfg: cfg,
 	}
 }
 
@@ -44,20 +47,21 @@ func (s *UserService) VerifyUser(username, password string) (entity.User, error)
 	return user, nil
 }
 
-// Login 封装验证 + infra auth 登录副作用（写 cookie）
-func (s *UserService) Login(w http.ResponseWriter, username, password string, secureFlag bool) (entity.User, error) {
+func (s *UserService) Login(w http.ResponseWriter, username, password string) (entity.User, error) {
 	user, err := s.VerifyUser(username, password)
 	if err != nil {
 		return entity.User{}, err
 	}
-	// 使用注入的 AuthManager 写 cookie
-	if err := s.authMgr.Login(w, user.ID, secureFlag); err != nil {
+
+	// 调用 infra 包的公开函数，并传入 s.authCfg
+	if err := auth.EstablishSession(w, s.authCfg, user.ID); err != nil {
 		return entity.User{}, err
 	}
+
 	return user, nil
 }
 
-// Logout 登出作用
+// Logout 登出逻辑
 func (s *UserService) Logout(w http.ResponseWriter) {
-	s.authMgr.Logout(w)
+	auth.DestroySession(w, s.authCfg)
 }
