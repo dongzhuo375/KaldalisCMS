@@ -1,106 +1,90 @@
 package middleware
 
 import (
+	"KaldalisCMS/internal/infra/auth"
+	pkgauth "KaldalisCMS/pkg/auth"
 	"net/http"
-	"strconv"
-	"strings"
-
-	infraauth "KaldalisCMS/internal/infra/auth"
 
 	"github.com/gin-gonic/gin"
 )
 
 const ctxUserIDKey = "kaldalis_user_id"
 
-// RequireAuthWithManager 返回一个 Gin 中间件函数，使用 infra auth.Manager 来解析 token
-func RequireAuthWithManager(mgr *infraauth.Manager) gin.HandlerFunc {
+func OptionalAuth(cfg auth.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var tokenStr string
-		if cookie, err := c.Request.Cookie(mgr.AuthCookie); err == nil && cookie != nil && cookie.Value != "" {
-			tokenStr = cookie.Value
-		} else {
-			// 回退到 Authorization header（Bearer ...）
-			authHeader := c.GetHeader("Authorization")
-			if strings.HasPrefix(authHeader, "Bearer ") {
-				tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
+		token, _ := c.Cookie(cfg.AuthCookie)
+		if token == "" {
+			ah := c.GetHeader("Authorization")
+			const prefix = "Bearer "
+			if len(ah) > len(prefix) && ah[:len(prefix)] == prefix {
+				token = ah[len(prefix):]
 			}
 		}
 
-		if tokenStr == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		if token == "" {
+			c.Next()
 			return
 		}
 
-		claims, err := mgr.Parse(tokenStr)
+		claims, err := pkgauth.Parse(token, cfg.Secret)
 		if err != nil {
-			// 清 cookie
-			mgr.Logout(c.Writer)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			auth.DestroySession(c.Writer, cfg)
+			c.Next()
 			return
 		}
 
-		if uidVal, exists := claims["userID"]; exists {
-			switch v := uidVal.(type) {
-			case float64:
-				c.Set(ctxUserIDKey, int(v))
-			case int:
-				c.Set(ctxUserIDKey, v)
-			case string:
-				if i, err := strconv.Atoi(v); err == nil {
-					c.Set(ctxUserIDKey, i)
-				} else {
-					c.Set(ctxUserIDKey, v)
-				}
-			}
-		}
-
+		c.Set(ctxUserIDKey, claims.UserID)
 		c.Next()
 	}
 }
 
-// OptionalAuthWithManager 如果有合法 token 则注入 user，否则不拦截
-func OptionalAuthWithManager(mgr *infraauth.Manager) gin.HandlerFunc {
+func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var tokenStr string
-		if cookie, err := c.Request.Cookie(mgr.AuthCookie); err == nil && cookie != nil && cookie.Value != "" {
-			tokenStr = cookie.Value
-		} else {
-			authHeader := c.GetHeader("Authorization")
-			if strings.HasPrefix(authHeader, "Bearer ") {
-				tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
-			}
-		}
-		if tokenStr == "" {
-			c.Next()
+		// 不再解析 JWT
+		if _, exists := c.Get(ctxUserIDKey); !exists {
+			c.AbortWithStatusJSON(401, gin.H{"error": "unauthorized"})
 			return
-		}
-		claims, err := mgr.Parse(tokenStr)
-		if err != nil {
-			// 清 cookie（可选）
-			mgr.Logout(c.Writer)
-			c.Next()
-			return
-		}
-		if uidVal, exists := claims["userID"]; exists {
-			switch v := uidVal.(type) {
-			case float64:
-				c.Set(ctxUserIDKey, int(v))
-			case int:
-				c.Set(ctxUserIDKey, v)
-			case string:
-				if i, err := strconv.Atoi(v); err == nil {
-					c.Set(ctxUserIDKey, i)
-				} else {
-					c.Set(ctxUserIDKey, v)
-				}
-			}
 		}
 		c.Next()
 	}
 }
 
-// GetUserID 从 gin.Context 获取当前请求的 user id（int 或 string）
-func GetUserID(c *gin.Context) (interface{}, bool) {
-	v, ok := c.Get(ctxUserIDKey)
-	return v, ok
+func CSRFCheck(cfg auth.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 放行审查
+		//switch c.Request.Method {
+		//case "GET", "HEAD", "OPTIONS", "TRACE":
+		//	c.Next()
+		//	return
+		//}
+
+		//冗余，做后续全员csrf验证的扩展
+		//_, loggedIn := c.Get(ctxUserIDKey)
+		//if !loggedIn {
+		//	c.Next()
+		//	return
+		//}
+
+		// 双重提交匹配
+		cookieVal, _ := c.Cookie(cfg.CSRFCookie)
+		headerVal := c.GetHeader("X-CSRF-Token")
+
+		if cookieVal == "" || headerVal != cookieVal {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error": "CSRF token mismatch or missing",
+			})
+			return
+		}
+		c.Next()
+	}
+}
+
+func GetUserID(c *gin.Context) (uint, bool) {
+	val, exists := c.Get(ctxUserIDKey)
+	if !exists {
+		return 0, false
+	}
+
+	uid, ok := val.(uint)
+	return uid, ok
 }
