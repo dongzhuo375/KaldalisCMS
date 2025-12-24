@@ -8,8 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const ctxUserIDKey = "kaldalis_user_id"
+const (
+	ctxUserIDKey   = "kaldalis_user_id"
+	ctxCsrfHashKey = "kaldalis_csrf_h"
+)
 
+// 识别
 func OptionalAuth(cfg auth.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, _ := c.Cookie(cfg.AuthCookie)
@@ -34,10 +38,12 @@ func OptionalAuth(cfg auth.Config) gin.HandlerFunc {
 		}
 
 		c.Set(ctxUserIDKey, claims.UserID)
+		c.Set(ctxCsrfHashKey, claims.CsrfH)
 		c.Next()
 	}
 }
 
+// 拦截
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 不再解析 JWT
@@ -75,6 +81,15 @@ func CSRFCheck(cfg auth.Config) gin.HandlerFunc {
 			})
 			return
 		}
+
+		if val, exists := c.Get(ctxCsrfHashKey); exists {
+			expectedHash := val.(string)
+			if pkgauth.HashToken(headerVal) != expectedHash {
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "binding invalid"})
+				return
+			}
+		}
+
 		c.Next()
 	}
 }
