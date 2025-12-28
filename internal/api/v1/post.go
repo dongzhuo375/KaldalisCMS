@@ -3,7 +3,7 @@ package v1
 import (
 	"KaldalisCMS/internal/api/middleware" // <-- New Import
 	"KaldalisCMS/internal/api/v1/dto"
-	"KaldalisCMS/internal/service"
+	"KaldalisCMS/internal/core"
 	"net/http"
 	"strconv"
 
@@ -11,10 +11,10 @@ import (
 )
 
 type PostAPI struct {
-	service *service.PostService
+	service core.PostService
 }
 
-func NewPostAPI(service *service.PostService) *PostAPI {
+func NewPostAPI(service core.PostService) *PostAPI {
 	return &PostAPI{service: service}
 }
 

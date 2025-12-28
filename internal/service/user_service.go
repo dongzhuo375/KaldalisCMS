@@ -3,21 +3,18 @@ package service
 import (
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
-	"KaldalisCMS/internal/infra/auth"
-	"net/http"
+	"context"
 )
 
 type UserService struct {
-	repo    core.UserRepository
-	authCfg auth.Config
+	repo core.UserRepository
 	//enforcer *casbin.CachedEnforcer // 注入 Casbin 执行器
 	//rdb      *redis.Client          // 注入共享 Redis
 }
 
-func NewUserService(repo core.UserRepository, cfg auth.Config) *UserService {
+func NewUserService(repo core.UserRepository) *UserService {
 	return &UserService{
-		repo:    repo,
-		authCfg: cfg,
+		repo: repo,
 	}
 }
 
@@ -47,21 +44,16 @@ func (s *UserService) VerifyUser(username, password string) (entity.User, error)
 	return user, nil
 }
 
-func (s *UserService) Login(w http.ResponseWriter, username, password string) (entity.User, error) {
+func (s *UserService) Login(ctx context.Context, username, password string) (entity.User, error) {
+	// 账号密码核对
 	user, err := s.VerifyUser(username, password)
 	if err != nil {
 		return entity.User{}, err
 	}
-
-	// 调用 infra 包的公开函数，并传入 s.authCfg
-	if err := auth.EstablishSession(w, s.authCfg, user.ID); err != nil {
-		return entity.User{}, err
-	}
-
 	return user, nil
 }
 
 // Logout 登出逻辑
-func (s *UserService) Logout(w http.ResponseWriter) {
-	auth.DestroySession(w, s.authCfg)
+func (s *UserService) Logout() {
+	//逻辑留空
 }

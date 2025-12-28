@@ -1,8 +1,7 @@
 package middleware
 
 import (
-	"KaldalisCMS/internal/infra/auth"
-	pkgauth "KaldalisCMS/pkg/auth"
+	"KaldalisCMS/internal/core"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,29 +13,19 @@ const (
 )
 
 // 识别
-func OptionalAuth(cfg auth.Config) gin.HandlerFunc {
+func OptionalAuth(sm core.SessionManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token, _ := c.Cookie(cfg.AuthCookie)
-		if token == "" {
-			ah := c.GetHeader("Authorization")
-			const prefix = "Bearer "
-			if len(ah) > len(prefix) && ah[:len(prefix)] == prefix {
-				token = ah[len(prefix):]
-			}
-		}
-
-		if token == "" {
-			c.Next()
-			return
-		}
-
-		claims, err := pkgauth.Parse(token, cfg.Secret)
+		claims, err := sm.Authenticate(c.Request)
 		if err != nil {
-			auth.DestroySession(c.Writer, cfg)
+			// 解析失败（比如过期或伪造），清理 Cookie 后放行
+			if err.Error() != "no token found" {
+				sm.DestroySession(c.Writer)
+			}
 			c.Next()
 			return
 		}
 
+		// 验证成功，将结果注入 Context
 		c.Set(ctxUserIDKey, claims.UserID)
 		c.Set(ctxCsrfHashKey, claims.CsrfH)
 		c.Next()
@@ -55,7 +44,7 @@ func RequireAuth() gin.HandlerFunc {
 	}
 }
 
-func CSRFCheck(cfg auth.Config) gin.HandlerFunc {
+func CSRFCheck(sm core.SessionManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 放行审查
 		//switch c.Request.Method {
@@ -64,30 +53,17 @@ func CSRFCheck(cfg auth.Config) gin.HandlerFunc {
 		//	return
 		//}
 
-		//冗余，做后续全员csrf验证的扩展
-		//_, loggedIn := c.Get(ctxUserIDKey)
-		//if !loggedIn {
-		//	c.Next()
-		//	return
-		//}
-
-		// 双重提交匹配
-		cookieVal, _ := c.Cookie(cfg.CSRFCookie)
-		headerVal := c.GetHeader("X-CSRF-Token")
-
-		if cookieVal == "" || headerVal != cookieVal {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "CSRF token mismatch or missing",
-			})
+		// 只有登录用户才检查 (从 Context 拿指纹)
+		val, exists := c.Get(ctxCsrfHashKey)
+		if !exists {
+			c.Next()
 			return
 		}
 
-		if val, exists := c.Get(ctxCsrfHashKey); exists {
-			expectedHash := val.(string)
-			if pkgauth.HashToken(headerVal) != expectedHash {
-				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "binding invalid"})
-				return
-			}
+		// CSRF校验
+		if err := sm.ValidateCSRF(c.Request, val.(string)); err != nil {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
 		}
 
 		c.Next()
