@@ -46,7 +46,8 @@ func (api *UserAPI) Register(c *gin.Context) {
 		Role:     "user", // Assign default role
 	}
 
-	if err := api.service.CreateUser(newUser); err != nil {
+	ctx := c.Request.Context()
+	if err := api.service.CreateUser(ctx, newUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

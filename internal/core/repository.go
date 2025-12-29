@@ -1,6 +1,9 @@
 package core
 
-import "KaldalisCMS/internal/core/entity"
+import (
+	"KaldalisCMS/internal/core/entity"
+	"context"	
+)
 
 type PostRepository interface {
 	GetByID(id uint) (entity.Post, error)
@@ -13,10 +16,10 @@ type PostRepository interface {
 
 // UserRepository defines the interface for user data operations.
 type UserRepository interface {
-	GetAll() ([]entity.User, error)
-	GetByID(id uint) (entity.User, error)
-	GetByUsername(username string) (entity.User, error)
-	Create(user entity.User) error
-	Update(user entity.User) error
-	Delete(id uint) error
+	GetAll(ctx context.Context) ([]entity.User, error)
+	GetByID(ctx context.Context, id uint) (entity.User, error)
+	GetByUsername(ctx context.Context, username string) (entity.User, error)
+	Create(ctx context.Context, user entity.User) error
+	Update(ctx context.Context, user entity.User) error
+	Delete(ctx context.Context, id uint) error
 }

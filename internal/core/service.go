@@ -16,8 +16,8 @@ type PostService interface {
 }
 
 type UserService interface {
-	CreateUser(user entity.User) error
-	VerifyUser(username, password string) (entity.User, error)
+	CreateUser(ctx context.Context, user entity.User) error
+	VerifyUser(ctx context.Context, username, password string) (entity.User, error)
 	Login(ctx context.Context, username, password string) (entity.User, error)
 	Logout()
 	//后面估计还加

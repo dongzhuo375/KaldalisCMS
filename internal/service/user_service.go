@@ -20,7 +20,7 @@ func NewUserService(repo core.UserRepository) *UserService {
 
 // CreateUser handles the business logic for creating a new user.
 // It hashes the password before passing the data to the repository.
-func (s *UserService) CreateUser(user entity.User) error {
+func (s *UserService) CreateUser(ctx context.Context, user entity.User) error {
 	// The user.Password field currently holds the plaintext password.
 	// We use the entity's own method to hash it.
 	if err := user.SetPassword(user.Password); err != nil {
@@ -29,12 +29,12 @@ func (s *UserService) CreateUser(user entity.User) error {
 
 	// Now user.Password holds the hashed password.
 	// We can pass the entity to the repository to be created.
-	return s.repo.Create(user)
+	return s.repo.Create(ctx, user)
 }
 
 // VerifyUser 只做验证并返回 user
-func (s *UserService) VerifyUser(username, password string) (entity.User, error) {
-	user, err := s.repo.GetByUsername(username)
+func (s *UserService) VerifyUser(ctx context.Context, username, password string) (entity.User, error) {
+	user, err := s.repo.GetByUsername(ctx, username)
 	if err != nil {
 		return entity.User{}, err
 	}
@@ -46,7 +46,7 @@ func (s *UserService) VerifyUser(username, password string) (entity.User, error)
 
 func (s *UserService) Login(ctx context.Context, username, password string) (entity.User, error) {
 	// 账号密码核对
-	user, err := s.VerifyUser(username, password)
+	user, err := s.VerifyUser(ctx, username, password)
 	if err != nil {
 		return entity.User{}, err
 	}
