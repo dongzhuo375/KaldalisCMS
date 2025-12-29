@@ -7,11 +7,11 @@ import (
 
 // CreatePostRequest defines the structure for creating a new post.
 type CreatePostRequest struct {
-	Title      string `json:"Title" binding:"required,min=1,max=100"`
-	Content    string `json:"Content"`
-	Cover      string `json:"Cover" binding:"max=255"`
-	CategoryID *uint  `json:"CategoryID"`
-	Tags       []uint `json:"Tags"`
+	Title      string `json:"title" binding:"required,min=1,max=100"`
+	Content    string `json:"content"`
+	Cover      string `json:"cover" binding:"max=255"`
+	CategoryID *uint  `json:"category_id"`
+	Tags       []uint `json:"tags"`
 }
 
 // ToEntity converts a CreatePostRequest DTO to an entity.Post.
