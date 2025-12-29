@@ -2,7 +2,6 @@ package router
 
 import (
 	v1 "KaldalisCMS/internal/api/v1"
-	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/infra/auth"
 	repository "KaldalisCMS/internal/infra/repository/postgres"
 	"KaldalisCMS/internal/service"
@@ -21,17 +20,18 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config) *gin.Engine {
 
 	// Dependency Injection for Post
 
-	var postRepo core.PostRepository = repository.NewPostRepository(db)
+	postRepo := repository.NewPostRepository(db)
 	postService := service.NewPostService(postRepo)
 	postAPI := v1.NewPostAPI(postService)
 
-	var userRepo core.UserRepository = repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo, authCfg)
-	userAPI := v1.NewUserAPI(userService)
+	userRepo := repository.NewUserRepository(db)
+	userService := service.NewUserService(userRepo)
+	sessionMgr := auth.NewSessionManager(authCfg)
+	userAPI := v1.NewUserAPI(userService, sessionMgr)
 
 	apiV1 := r.Group("/api/v1")
 	{
-		apiV1.Use(apimw.OptionalAuth(authCfg))
+		apiV1.Use(apimw.OptionalAuth(sessionMgr))
 
 		// --- 公开路由 ---
 		// 用户登录注册
@@ -45,7 +45,7 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config) *gin.Engine {
 		protected := apiV1.Group("/")
 
 		protected.Use(apimw.RequireAuth())
-		protected.Use(apimw.CSRFCheck(authCfg))
+		protected.Use(apimw.CSRFCheck(sessionMgr))
 
 		{
 			// 需要认证的 User 操作

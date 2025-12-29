@@ -14,6 +14,11 @@ type PostService struct {
 	repo core.PostRepository
 }
 
+func (s *PostService) DraftPost(id uint) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewPostService(repo core.PostRepository) *PostService {
 	return &PostService{
 		repo: repo,
@@ -125,8 +130,6 @@ func (s *PostService) GetAllPosts() ([]entity.Post, error) {
 	}
 	return posts, nil
 }
-
-
 
 // --- Status Operations ---
 

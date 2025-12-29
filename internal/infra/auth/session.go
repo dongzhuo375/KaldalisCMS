@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -55,49 +56,110 @@ func LoadConfig(v *viper.Viper) (*Config, error) {
 	}, nil
 }
 
+type SessionManager struct {
+	cfg Config // 配置已经被锁死在实例里了
+}
+
+func NewSessionManager(cfg Config) *SessionManager {
+	return &SessionManager{cfg: cfg}
+}
+
 // EstablishSession 封装了登录时同时设置 JWT 和 CSRF Cookie 的逻辑
-func EstablishSession(w http.ResponseWriter, cfg Config, userID uint) error {
+func (m *SessionManager) EstablishSession(w http.ResponseWriter, userID uint) error {
 	csrf := security.GenerateToken()
-	token, err := auth.GenerateHashCSRF(userID, cfg.Secret, cfg.TTL, csrf)
+	token, err := auth.GenerateHashCSRF(userID, m.cfg.Secret, m.cfg.TTL, csrf)
 
 	if err != nil {
 		return err
 	}
 
 	// Auth Cookie (HttpOnly)
-	setCookie(w, cfg, cfg.AuthCookie, token, true)
+	m.setCookie(w, m.cfg.AuthCookie, token, true)
 	// CSRF Cookie
-	setCookie(w, cfg, cfg.CSRFCookie, csrf, false)
+	m.setCookie(w, m.cfg.CSRFCookie, csrf, false)
 	return nil
 }
 
-func DestroySession(w http.ResponseWriter, cfg Config) {
-	deleteCookie(w, cfg, cfg.AuthCookie)
-	deleteCookie(w, cfg, cfg.CSRFCookie)
+func (m *SessionManager) DestroySession(w http.ResponseWriter) {
+	m.deleteCookie(w, m.cfg.AuthCookie)
+	m.deleteCookie(w, m.cfg.CSRFCookie)
 }
 
-func setCookie(w http.ResponseWriter, cfg Config, name, value string, httpOnly bool) {
+func (m *SessionManager) setCookie(w http.ResponseWriter, name, value string, httpOnly bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
-		Path:     cfg.Path,
-		Domain:   cfg.Domain,
-		MaxAge:   int(cfg.TTL.Seconds()),
+		Path:     m.cfg.Path,
+		Domain:   m.cfg.Domain,
+		MaxAge:   int(m.cfg.TTL.Seconds()),
 		HttpOnly: httpOnly,
-		Secure:   cfg.Secure,
-		SameSite: cfg.SameSite,
+		Secure:   m.cfg.Secure,
+		SameSite: m.cfg.SameSite,
 	})
 }
 
-func deleteCookie(w http.ResponseWriter, cfg Config, name string) {
+func (m *SessionManager) deleteCookie(w http.ResponseWriter, name string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    "",
-		Path:     cfg.Path,
-		Domain:   cfg.Domain,
+		Path:     m.cfg.Path,
+		Domain:   m.cfg.Domain,
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   cfg.Secure,
-		SameSite: cfg.SameSite,
+		Secure:   m.cfg.Secure,
+		SameSite: m.cfg.SameSite,
 	})
+}
+
+// 从请求中提取并校验身份
+func (m *SessionManager) Authenticate(r *http.Request) (*auth.CustomClaims, error) {
+	token := ""
+
+	//尝试从 Cookie 获取
+	if ck, err := r.Cookie(m.cfg.AuthCookie); err == nil {
+		token = ck.Value
+	}
+
+	//尝试从 Header 获取
+	if token == "" {
+		ah := r.Header.Get("Authorization")
+		const prefix = "Bearer "
+		if len(ah) > len(prefix) && ah[:len(prefix)] == prefix {
+			token = ah[len(prefix):]
+		}
+	}
+
+	if token == "" {
+		return nil, errors.New("no token found")
+	}
+
+	// 校验 Token（使用内部持有的 Secret）
+	return auth.Parse(token, m.cfg.Secret)
+}
+
+func (m *SessionManager) ValidateCSRF(r *http.Request, expectedHash string) error {
+	//Cookie
+	cookie, err := r.Cookie(m.cfg.CSRFCookie)
+	if err != nil {
+		return errors.New("CSRF cookie missing")
+	}
+
+	//Header
+	headerVal := r.Header.Get("X-CSRF-Token")
+	if headerVal == "" || headerVal != cookie.Value {
+		return errors.New("CSRF token mismatch")
+	}
+
+	//校验指纹绑定
+	if expectedHash != "" {
+		if auth.HashToken(headerVal) != expectedHash {
+			return errors.New("CSRF token binding invalid")
+		}
+	}
+
+	return nil
+}
+
+func (m *SessionManager) GetTTL() time.Duration {
+	return m.cfg.TTL
 }
