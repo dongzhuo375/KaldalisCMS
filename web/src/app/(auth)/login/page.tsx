@@ -38,19 +38,17 @@ export default function LoginPage() {
       console.log("登录响应数据:", res); // 调试用，看后端到底返了什么
 
       // 4. 解析数据
-      // 假设后端返回: { code: 200, message: "OK", data: { username: "admin", role: "admin" } }
-      // 如果你的后端把 role 放在 res.data.role，请确保这里取值正确
-      const userData = res.data || res; // 兼容处理，防止层级对不上
+      // 后端返回: { message: "...", user: { username: "admin", role: "admin" } }
+      const userData = res.user; // <-- 修正：从 res.user 获取嵌套的用户对象
 
-      if (!userData) {
-        throw new Error("返回数据格式错误");
+      if (!userData || !userData.role) {
+        throw new Error("返回数据格式错误，未找到用户信息或角色");
       }
 
       // 5. 存入 Zustand
-      setLogin(userData);
+      setLogin(userData); // 传递正确的 user 对象
 
       // 6. 核心跳转逻辑
-      // 注意：这里必须和后端返回的 role 字符串严格匹配
       if (userData.role === 'admin' || userData.role === 'super_admin') {
         router.replace("/admin/dashboard");
       } else {
