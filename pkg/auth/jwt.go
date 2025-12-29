@@ -11,7 +11,8 @@ import (
 
 type CustomClaims struct {
 	UserID uint   `json:"user_id"`
-	CsrfH  string `json:"csrf_h"` // 新增：用于存储 CSRF 指纹
+	Role string	  `json:"role"`
+	CsrfH  string `json:"csrf_h"`// 新增：用于存储 CSRF 指纹
 	jwt.RegisteredClaims
 }
 
@@ -53,11 +54,12 @@ func Parse(tokenStr string, secret []byte) (*CustomClaims, error) {
 }
 
 // 生成绑定CSRF的JWT字符串
-func GenerateHashCSRF(userID uint, secret []byte, ttl time.Duration, csrfToken string) (string, error) {
+func GenerateHashCSRF(userID uint,role string, secret []byte, ttl time.Duration, csrfToken string) (string, error) {
 	csrfHash := HashToken(csrfToken)
 
 	claims := CustomClaims{
 		UserID: userID,
+		Role: role, //
 		CsrfH:  csrfHash, // 绑定指纹
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),

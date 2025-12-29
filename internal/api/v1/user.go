@@ -70,7 +70,7 @@ func (a *UserAPI) Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
-	if err := a.sm.EstablishSession(c.Writer, user.ID); err != nil {
+	if err := a.sm.EstablishSession(c.Writer, user.ID, user.Role); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "登录状态创建失败"})
 		return
 	}

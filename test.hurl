@@ -3,25 +3,21 @@
 # 1. Register a new user
 POST http://localhost:8080/api/v1/users/register
 Content-Type: application/json
-```json
 {
  "username": "testuser",
  "password": "password123",
-  "email": "test@example.com",
+ "email": "test@example.com",
  "role": "user"
 }
-```tester
 HTTP 201
 
 # 2. Login as the new user and capture auth tokens
 POST http://localhost:8080/api/v1/users/login
 Content-Type: application/json
-```json
 {
   "username": "testuser",
   "password": "password123"
 }
-```
 HTTP 200
 [Captures]
 csrf_token: cookie "kaldalis_csrf"
@@ -32,12 +28,10 @@ POST http://localhost:8080/api/v1/posts
 Cookie: kaldalis_csrf={{csrf_token}}; kaldalis_auth={{auth_token}}
 X-CSRF-Token: {{csrf_token}}
 Content-Type: application/json
-```json
 {
   "title": "Minimal Post",
   "content": "This is a minimal test post."
 }
-```
 HTTP 201
 
 # 4. Get all posts and capture the ID of the first one
@@ -60,11 +54,10 @@ PUT http://localhost:8080/api/v1/posts/{{new_post_id}}
 Cookie: kaldalis_csrf={{csrf_token}}; kaldalis_auth={{auth_token}}
 X-CSRF-Token: {{csrf_token}}
 Content-Type: application/json
-```json
 {
-  "title": "Updated Minimal Post"
+  "title": "Updated Minimal Post",
+  "content": "Updated content content."
 }
-```
 HTTP 200
 
 # 7. Verify the post was updated

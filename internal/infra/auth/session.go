@@ -16,6 +16,7 @@ type Config struct {
 	TTL        time.Duration
 	AuthCookie string
 	CSRFCookie string
+	RoleCookie string
 	Path       string
 	Domain     string
 	Secure     bool
@@ -28,6 +29,7 @@ type rawConfig struct {
 	TTL        time.Duration `mapstructure:"ttl"`
 	AuthCookie string        `mapstructure:"auth_cookie"`
 	CSRFCookie string        `mapstructure:"csrf_cookie"`
+	RoleCookie string 		 `mapstructure:"role_cookie"`
 	Path       string        `mapstructure:"path"`
 	Domain     string        `mapstructure:"domain"`
 	Secure     bool          `mapstructure:"secure"`
@@ -49,6 +51,7 @@ func LoadConfig(v *viper.Viper) (*Config, error) {
 		TTL:        raw.TTL,
 		AuthCookie: raw.AuthCookie,
 		CSRFCookie: raw.CSRFCookie,
+		RoleCookie: raw.RoleCookie,
 		Path:       raw.Path,
 		Domain:     raw.Domain,
 		Secure:     raw.Secure,
@@ -65,16 +68,17 @@ func NewSessionManager(cfg Config) *SessionManager {
 }
 
 // EstablishSession 封装了登录时同时设置 JWT 和 CSRF Cookie 的逻辑
-func (m *SessionManager) EstablishSession(w http.ResponseWriter, userID uint) error {
+func (m *SessionManager) EstablishSession(w http.ResponseWriter, userID uint ,role string) error {
 	csrf := security.GenerateToken()
-	token, err := auth.GenerateHashCSRF(userID, m.cfg.Secret, m.cfg.TTL, csrf)
+	token, err := auth.GenerateHashCSRF(userID, role, m.cfg.Secret, m.cfg.TTL, csrf)
 
 	if err != nil {
 		return err
 	}
-
 	// Auth Cookie (HttpOnly)
 	m.setCookie(w, m.cfg.AuthCookie, token, true)
+	//Role cookie
+	m.setCookie(w, m.cfg.RoleCookie, role, false)
 	// CSRF Cookie
 	m.setCookie(w, m.cfg.CSRFCookie, csrf, false)
 	return nil
@@ -83,6 +87,7 @@ func (m *SessionManager) EstablishSession(w http.ResponseWriter, userID uint) er
 func (m *SessionManager) DestroySession(w http.ResponseWriter) {
 	m.deleteCookie(w, m.cfg.AuthCookie)
 	m.deleteCookie(w, m.cfg.CSRFCookie)
+	m.deleteCookie(w, m.cfg.RoleCookie)
 }
 
 func (m *SessionManager) setCookie(w http.ResponseWriter, name, value string, httpOnly bool) {
