@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+var ErrNoToken = errors.New("no token found")
+
 type Config struct {
 	Secret     []byte // 业务直接用 bytes
 	TTL        time.Duration
@@ -135,7 +137,7 @@ func (m *SessionManager) Authenticate(r *http.Request) (*auth.CustomClaims, erro
 	}
 
 	if token == "" {
-		return nil, errors.New("no token found")
+		return nil, ErrNoToken
 	}
 
 	// 校验 Token（使用内部持有的 Secret）
