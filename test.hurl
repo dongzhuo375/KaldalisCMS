@@ -1,15 +1,15 @@
 # KaldalisCMS API Tests
 
 # 1. Register a new user
-POST http://localhost:8080/api/v1/users/register
-Content-Type: application/json
-{
- "username": "testuser",
- "password": "password123",
- "email": "test@example.com",
- "role": "user"
-}
-HTTP 201
+#POST http://localhost:8080/api/v1/users/register
+#Content-Type: application/json
+#{
+# "username": "testuser",
+# "password": "password123",
+# "email": "test@example.com",
+# "role": "user"
+#}
+#HTTP 201
 
 # 2. Login as the new user and capture auth tokens
 POST http://localhost:8080/api/v1/users/login

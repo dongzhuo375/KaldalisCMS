@@ -2,17 +2,17 @@ package router
 
 import (
 	v1 "KaldalisCMS/internal/api/v1"
+	apimw "KaldalisCMS/internal/api/middleware"
 	"KaldalisCMS/internal/infra/auth"
 	repository "KaldalisCMS/internal/infra/repository/postgres"
 	"KaldalisCMS/internal/service"
 
-	apimw "KaldalisCMS/internal/api/middleware"
-
+	"github.com/casbin/casbin/v2" // 新增导入
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func SetupRouter(db *gorm.DB, authCfg auth.Config) *gin.Engine {
+func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *gin.Engine {
 	r := gin.Default()
 
 	// Add a simple CORS middleware
@@ -44,7 +44,9 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config) *gin.Engine {
 		// --- 受保护路由组 ---
 		protected := apiV1.Group("/")
 
+		// 先检查是否登录，再检查 CSRF，最后检查权限
 		protected.Use(apimw.RequireAuth())
+		protected.Use(apimw.Authorize(enforcer)) // 新增 Casbin 权限检查中间件
 		protected.Use(apimw.CSRFCheck(sessionMgr))
 
 		{
