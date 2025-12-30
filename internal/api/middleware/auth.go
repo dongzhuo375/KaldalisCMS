@@ -12,6 +12,7 @@ import (
 const (
 	ctxUserIDKey   = "kaldalis_user_id"
 	ctxCsrfHashKey = "kaldalis_csrf_h"
+	ctxUserRoleKey = "kaldalis_user_role" // 新增: 用于在 Gin context 中存储用户角色
 )
 
 // 识别
@@ -30,6 +31,7 @@ func OptionalAuth(sm core.SessionManager) gin.HandlerFunc {
 		// 验证成功，将结果注入 Context
 		c.Set(ctxUserIDKey, claims.UserID)
 		c.Set(ctxCsrfHashKey, claims.CsrfH)
+		c.Set(ctxUserRoleKey, claims.Role) // 新增: 将角色注入 Context
 		c.Next()
 	}
 }

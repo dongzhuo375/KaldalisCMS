@@ -170,3 +170,9 @@ func (m *SessionManager) ValidateCSRF(r *http.Request, expectedHash string) erro
 func (m *SessionManager) GetTTL() time.Duration {
 	return m.cfg.TTL
 }
+
+// GetRoleCookieName returns the configured name for the role cookie.
+func (m *SessionManager) GetRoleCookieName() string {
+	return m.cfg.RoleCookie
+}
+
