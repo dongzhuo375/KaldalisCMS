@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"KaldalisCMS/internal/core"
+	"KaldalisCMS/internal/infra/auth"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -17,8 +19,8 @@ func OptionalAuth(sm core.SessionManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, err := sm.Authenticate(c.Request)
 		if err != nil {
-			// 解析失败（比如过期或伪造），清理 Cookie 后放行
-			if err.Error() != "no token found" {
+			// 解析失败（比如过期或伪造），只要不是 "no token" 错误，就清理 Cookie 后放行
+			if !errors.Is(err, auth.ErrNoToken) {
 				sm.DestroySession(c.Writer)
 			}
 			c.Next()
