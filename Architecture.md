@@ -19,13 +19,18 @@
 │   │   │   │   ├── user.go               # 用户管理API
 │   │   │   │   ├── upload.go             # 文件上传API
 │   │   │   │   ├── system.go             # 系统管理API
-│   │   │   │   └── plugin.go             # 插件管理API
+│   │   │   │   ├── plugin.go             # 插件管理API
+│   │   │   │   └── dto/
+│   │   │   │       ├── post_dto.go
+│   │   │   │       └── user_dto.go
 │   │   │   ├── middleware/
 │   │   │   │   ├── auth.go               # [修改] 需支持从 Cookie 读取 Token (适配SSR)
+│   │   │   │   ├── casbin.go             # Casbin权限中间件
 │   │   │   │   ├── cors.go               # [修改] 更新 AllowedOrigins (如 localhost:3000)
 │   │   │   │   ├── logger.go             # 日志中间件
 │   │   │   │   ├── theme.go              # 主题上下文中间件
 │   │   │   │   └── plugin.go             # 插件中间件
+│   │   ├── router/
 │   │   │   └── router.go                 # 路由配置
 │   │   │
 │   │   ├── core/
@@ -38,6 +43,9 @@
 │   │   │   └── plugin.go                 # 插件核心接口定义
 │   │   │
 │   │   ├── infra/
+│   │   │   ├── auth/
+│   │   │   │   ├── casbin.go
+│   │   │   │   └── session.go
 │   │   │   ├── repository/
 │   │   │   │   ├── postgres/
 │   │   │   │   │   ├── theme_repo.go         # 主题数据访问
