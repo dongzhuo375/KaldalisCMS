@@ -2,18 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // 引入 Link 用于跳转注册
+import {Link} from '@/i18n/routing'; // 引入 Link 用于跳转注册
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslations } from 'next-intl';
 
 export default function LoginPage() {
   const router = useRouter();
   // 1. 修复：正确从 Zustand 获取 setLogin 方法
   const setLogin = useAuthStore((state) => state.setLogin);
+  const t = useTranslations();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -69,7 +71,7 @@ export default function LoginPage() {
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">Kaldalis CMS</CardTitle>
-        <CardDescription>请输入您的账号密码进入管理后台</CardDescription>
+        <CardDescription>{t('auth.login_title')}</CardDescription>
       </CardHeader>
       
       <form onSubmit={handleSubmit}>
@@ -81,26 +83,26 @@ export default function LoginPage() {
           )}
           
           <div className="space-y-2">
-            <Label htmlFor="username">用户名</Label>
+            <Label htmlFor="username">{t('auth.email')}</Label>
             <Input id="username" name="username" placeholder="admin" required disabled={loading} />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="password">密码</Label>
+            <Label htmlFor="password">{t('auth.password')}</Label>
             <Input id="password" name="password" type="password" required disabled={loading} />
           </div>
         </CardContent>
         
         <CardFooter className="flex flex-col space-y-2">
           <Button className="w-full" type="submit" disabled={loading}>
-            {loading ? "登录中..." : "立即登录"}
+            {loading ? "登录中..." : t('auth.sign_in')}
           </Button>
           
           {/* 补充：去注册页面的链接 */}
           <div className="text-sm text-center text-slate-500">
-            还没有账号？{" "}
+            {t('auth.dont_have_account')}{" "}
             <Link href="/register" className="text-blue-600 hover:underline">
-              去注册
+              {t('auth.sign_up')}
             </Link>
           </div>
         </CardFooter>

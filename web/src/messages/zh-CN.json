@@ -1,0 +1,33 @@
+{
+  "common": {
+    "welcome": "欢迎",
+    "login": "登录",
+    "register": "注册",
+    "logout": "退出",
+    "dashboard": "控制台",
+    "posts": "文章",
+    "settings": "设置",
+    "profile": "个人资料",
+    "admin": "管理",
+    "home": "首页",
+    "about": "关于",
+    "contact": "联系我们"
+  },
+  "auth": {
+    "login_title": "登录到您的账户",
+    "register_title": "创建新账户",
+    "email": "邮箱",
+    "password": "密码",
+    "confirm_password": "确认密码",
+    "forgot_password": "忘记密码？",
+    "remember_me": "记住我",
+    "already_have_account": "已有账户？",
+    "dont_have_account": "没有账户？",
+    "sign_in": "立即登录",
+    "sign_up": "立即注册"
+  },
+  "navigation": {
+    "language": "语言",
+    "theme": "主题"
+  }
+}

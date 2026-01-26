@@ -1,0 +1,33 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "dashboard": "Dashboard",
+    "posts": "Posts",
+    "settings": "Settings",
+    "profile": "Profile",
+    "admin": "Admin",
+    "home": "Home",
+    "about": "About",
+    "contact": "Contact"
+  },
+  "auth": {
+    "login_title": "Sign in to your account",
+    "register_title": "Create a new account",
+    "email": "Email",
+    "password": "Password",
+    "confirm_password": "Confirm Password",
+    "forgot_password": "Forgot password?",
+    "remember_me": "Remember me",
+    "already_have_account": "Already have an account?",
+    "dont_have_account": "Don't have an account?",
+    "sign_in": "Sign in",
+    "sign_up": "Sign up"
+  },
+  "navigation": {
+    "language": "Language",
+    "theme": "Theme"
+  }
+}

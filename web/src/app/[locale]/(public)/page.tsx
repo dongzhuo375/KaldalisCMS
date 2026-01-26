@@ -3,22 +3,24 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import Link from "next/link";
+import {Link} from '@/i18n/routing';
 import { ArrowRight, BookOpen, Users, Shield } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 export default function HomePage() {
   const { user, isLoggedIn } = useAuthStore();
+  const t = useTranslations();
 
   return (
     <div className="space-y-16">
       {/* Hero 区域 */}
       <section className="text-center py-24 space-y-8">
         <h1 className="text-4xl font-extrabold tracking-tight lg:text-6xl text-slate-900">
-          欢迎来到 Kaldalis CMS
+          {t('common.welcome')} Kaldalis CMS
         </h1>
         <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-          一个基于 Go + Next.js 14 构建的现代化内容管理系统。
-          极速、安全、易于扩展。
+          A modern content management system built with Go and Next.js.
+          Fast, secure, and easy to extend.
         </p>
         <div className="flex justify-center gap-4 pt-4">
            {isLoggedIn ? (
@@ -27,12 +29,12 @@ export default function HomePage() {
              </Button>
            ) : (
              <>
-               <Link href="/register">
-                 <Button size="lg" className="rounded-full px-8">立即注册</Button>
-               </Link>
-               <Link href="/login">
-                 <Button variant="outline" size="lg" className="rounded-full px-8">登录账号</Button>
-               </Link>
+                <Link href="/register">
+                  <Button size="lg" className="rounded-full px-8">{t('auth.sign_up')}</Button>
+                </Link>
+                <Link href="/login">
+                  <Button variant="outline" size="lg" className="rounded-full px-8">{t('auth.sign_in')}</Button>
+                </Link>
              </>
            )}
         </div>
