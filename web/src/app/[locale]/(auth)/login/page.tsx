@@ -61,7 +61,7 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error("登录错误:", err);
       // 优先显示后端返回的错误信息
-      setError(err.response?.data?.message || err.message || "登录失败，请检查账号密码");
+      setError(err.response?.data?.message || err.message || t('auth.login_failed'));
     } finally {
       setLoading(false);
     }
@@ -70,7 +70,7 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Kaldalis CMS</CardTitle>
+        <CardTitle className="text-2xl font-bold">{t('common.app_name')}</CardTitle>
         <CardDescription>{t('auth.login_title')}</CardDescription>
       </CardHeader>
       
@@ -83,7 +83,7 @@ export default function LoginPage() {
           )}
           
           <div className="space-y-2">
-            <Label htmlFor="username">{t('auth.email')}</Label>
+            <Label htmlFor="username">{t('auth.username')}</Label>
             <Input id="username" name="username" placeholder="admin" required disabled={loading} />
           </div>
           
@@ -95,7 +95,7 @@ export default function LoginPage() {
         
         <CardFooter className="flex flex-col space-y-2">
           <Button className="w-full" type="submit" disabled={loading}>
-            {loading ? "登录中..." : t('auth.sign_in')}
+            {loading ? t('auth.logging_in') : t('auth.sign_in')}
           </Button>
           
           {/* 补充：去注册页面的链接 */}

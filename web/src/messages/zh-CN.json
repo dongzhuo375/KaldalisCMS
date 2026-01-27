@@ -11,7 +11,18 @@
     "admin": "管理",
     "home": "首页",
     "about": "关于",
-    "contact": "联系我们"
+    "contact": "联系我们",
+    "app_name": "Kaldalis CMS",
+    "loading": "加载中...",
+    "save": "保存",
+    "cancel": "取消",
+    "edit": "编辑",
+    "delete": "删除",
+    "create": "创建",
+    "search": "搜索",
+    "back": "返回",
+    "next": "下一页",
+    "previous": "上一页"
   },
   "auth": {
     "login_title": "登录到您的账户",
@@ -24,10 +35,44 @@
     "already_have_account": "已有账户？",
     "dont_have_account": "没有账户？",
     "sign_in": "立即登录",
-    "sign_up": "立即注册"
+    "sign_up": "立即注册",
+    "logging_in": "登录中...",
+    "username": "用户名",
+    "logout_success": "退出登录成功",
+    "login_failed": "登录失败，请检查账号密码"
   },
   "navigation": {
     "language": "语言",
-    "theme": "主题"
+    "theme": "主题",
+    "home": "首页",
+    "posts_list": "文章列表",
+    "about_us": "关于我们",
+    "personal_profile": "个人中心",
+    "enter_admin": "进入后台",
+    "logout_text": "退出登录"
+  },
+  "home": {
+    "hero_subtitle": "一个基于 Go 和 Next.js 构建的现代化内容管理系统。快速、安全且易于扩展。",
+    "start_exploring": "开始探索",
+    "welcome_back": "欢迎回来",
+    "current_role": "当前身份",
+    "user_welcome_desc": "您现在位于前台首页。普通用户可以在这里浏览文章、管理个人资料。",
+    "admin_welcome_suffix": " 由于您是管理员，您也可以进入后台管理系统。",
+    "features": {
+      "content_management": "内容管理",
+      "content_management_desc": "高效的文章发布与编辑体验，支持 Markdown 与富文本。",
+      "user_system": "用户系统",
+      "user_system_desc": "完善的 RBAC 权限控制，支持多角色分级管理。",
+      "security": "安全可靠",
+      "security_desc": "基于 Go Gin 与 Casbin 构建的坚固后端安全防线。"
+    }
+  },
+  "errors": {
+    "data_format_error": "返回数据格式错误，未找到用户信息或角色",
+    "network_error": "网络错误，请稍后重试",
+    "server_error": "服务器错误，请联系管理员",
+    "unauthorized": "未授权，请重新登录",
+    "not_found": "页面不存在",
+    "unknown_error": "未知错误"
   }
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useTranslations } from 'next-intl';
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { 
@@ -16,6 +17,7 @@ import { LogOut, User, Settings } from "lucide-react";
 
 export function SiteHeader() {
   const { user, isLoggedIn, logout } = useAuthStore();
+  const t = useTranslations();
 
   const handleLogout = async () => {
     try {
@@ -36,13 +38,13 @@ export function SiteHeader() {
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center space-x-2">
             <span className="text-xl font-bold sm:inline-block">
-              Kaldalis CMS
+              {t('common.app_name')}
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-            <Link href="/" className="transition-colors hover:text-slate-900">首页</Link>
-            <Link href="/posts" className="transition-colors hover:text-slate-900">文章列表</Link>
-            <Link href="/about" className="transition-colors hover:text-slate-900">关于我们</Link>
+            <Link href="/" className="transition-colors hover:text-slate-900">{t('navigation.home')}</Link>
+            <Link href="/posts" className="transition-colors hover:text-slate-900">{t('navigation.posts_list')}</Link>
+            <Link href="/about" className="transition-colors hover:text-slate-900">{t('navigation.about_us')}</Link>
           </nav>
         </div>
 
@@ -67,29 +69,29 @@ export function SiteHeader() {
                 </div>
                 <DropdownMenuSeparator />
                 {/* 如果是管理员，显示后台入口 */}
-                {(user.role === 'admin' || user.role === 'super_admin') && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin/dashboard" className="cursor-pointer">
-                      <Settings className="mr-2 h-4 w-4" /> 进入后台
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" /> 个人中心
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 cursor-pointer">
-                  <LogOut className="mr-2 h-4 w-4" /> 退出登录
-                </DropdownMenuItem>
+                 {(user.role === 'admin' || user.role === 'super_admin') && (
+                   <DropdownMenuItem asChild>
+                     <Link href="/admin/dashboard" className="cursor-pointer">
+                       <Settings className="mr-2 h-4 w-4" /> {t('navigation.enter_admin')}
+                     </Link>
+                   </DropdownMenuItem>
+                 )}
+                 <DropdownMenuItem>
+                   <User className="mr-2 h-4 w-4" /> {t('navigation.personal_profile')}
+                 </DropdownMenuItem>
+                 <DropdownMenuSeparator />
+                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 cursor-pointer">
+                   <LogOut className="mr-2 h-4 w-4" /> {t('navigation.logout_text')}
+                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-2">
               <Link href="/login">
-                <Button variant="ghost" size="sm">登录</Button>
+                <Button variant="ghost" size="sm">{t('common.login')}</Button>
               </Link>
               <Link href="/register">
-                <Button size="sm">注册</Button>
+                <Button size="sm">{t('common.register')}</Button>
               </Link>
             </div>
           )}

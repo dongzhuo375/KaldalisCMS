@@ -11,7 +11,18 @@
     "admin": "Admin",
     "home": "Home",
     "about": "About",
-    "contact": "Contact"
+    "contact": "Contact",
+    "app_name": "Kaldalis CMS",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "create": "Create",
+    "search": "Search",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous"
   },
   "auth": {
     "login_title": "Sign in to your account",
@@ -24,10 +35,44 @@
     "already_have_account": "Already have an account?",
     "dont_have_account": "Don't have an account?",
     "sign_in": "Sign in",
-    "sign_up": "Sign up"
+    "sign_up": "Sign up",
+    "logging_in": "Logging in...",
+    "username": "Username",
+    "logout_success": "Logout successful",
+    "login_failed": "Login failed, please check your credentials"
   },
   "navigation": {
     "language": "Language",
-    "theme": "Theme"
+    "theme": "Theme",
+    "home": "Home",
+    "posts_list": "Posts List",
+    "about_us": "About Us",
+    "personal_profile": "Personal Profile",
+    "enter_admin": "Enter Admin",
+    "logout_text": "Logout"
+  },
+  "home": {
+    "hero_subtitle": "A modern content management system built with Go and Next.js. Fast, secure, and easy to extend.",
+    "start_exploring": "Start Exploring",
+    "welcome_back": "Welcome back",
+    "current_role": "Current role",
+    "user_welcome_desc": "You are now on the frontend homepage. Regular users can browse articles and manage personal profiles here.",
+    "admin_welcome_suffix": " As an administrator, you can also access the backend management system.",
+    "features": {
+      "content_management": "Content Management",
+      "content_management_desc": "Efficient article publishing and editing experience, supporting Markdown and rich text.",
+      "user_system": "User System",
+      "user_system_desc": "Complete RBAC permission control with multi-role hierarchical management.",
+      "security": "Security",
+      "security_desc": "Robust backend security built on Go Gin and Casbin."
+    }
+  },
+  "errors": {
+    "data_format_error": "Data format error, user information or role not found",
+    "network_error": "Network error, please try again later",
+    "server_error": "Server error, please contact administrator",
+    "unauthorized": "Unauthorized, please login again",
+    "not_found": "Page not found",
+    "unknown_error": "Unknown error"
   }
 }
