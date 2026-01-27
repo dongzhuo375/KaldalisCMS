@@ -2,6 +2,7 @@ import {NextIntlClientProvider} from 'next-intl';
 import {getMessages, getTranslations} from 'next-intl/server';
 import {Inter} from "next/font/google";
 import "../globals.css";
+import FloatingMenu from "@/components/floating-menu";
 
 const inter = Inter({subsets: ["latin"]});
 
@@ -31,6 +32,7 @@ export default async function RootLayout({
       <body className={inter.className}>
         <NextIntlClientProvider messages={messages}>
           {children}
+          <FloatingMenu />
         </NextIntlClientProvider>
       </body>
     </html>
