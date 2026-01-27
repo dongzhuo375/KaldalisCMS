@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname, Link } from '@/i18n/routing';
@@ -21,9 +21,12 @@ export default function FloatingMenu() {
     {code: 'en', name: 'English', flag: '🇺🇸'},
   ];
 
+  const [isPending, startTransition] = useTransition();
+
   const switchLanguage = (newLocale: string) => {
-    const currentPath = pathname.replace(/^\/[^\/]*/, '');
-    router.push(`/${newLocale}${currentPath}`);
+    startTransition(() => {
+      router.replace(pathname, { locale: newLocale });
+    });
   };
 
   const handleLogout = async () => {
@@ -52,10 +55,12 @@ export default function FloatingMenu() {
             {languages.map((language) => (
               <div
                 key={language.code}
-                onClick={() => switchLanguage(language.code)}
-                className={`flex items-center px-3 py-2 text-sm cursor-pointer rounded-md transition-colors hover:bg-accent ${
-                  locale === language.code ? 'bg-accent' : ''
-                }`}
+                onClick={() => !isPending && switchLanguage(language.code)}
+                className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                  isPending || locale === language.code 
+                    ? 'bg-accent cursor-not-allowed' 
+                    : 'cursor-pointer hover:bg-accent'
+                } ${isPending ? 'opacity-50' : ''}`}
               >
                 <span className="mr-2">{language.flag}</span>
                 {language.name}
