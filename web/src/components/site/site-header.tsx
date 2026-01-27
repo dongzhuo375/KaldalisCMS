@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import {Link} from '@/i18n/routing';
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslations } from 'next-intl';
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { 
@@ -48,8 +49,9 @@ export function SiteHeader() {
           </nav>
         </div>
 
-        {/* 右侧 用户区域 */}
-        <div className="flex items-center gap-2">
+{/* 右侧 用户区域 */}
+         <div className="flex items-center gap-2">
+           <LanguageSwitcher />
           {isLoggedIn && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
