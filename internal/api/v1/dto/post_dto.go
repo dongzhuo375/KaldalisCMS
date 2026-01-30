@@ -22,13 +22,14 @@ func (r *CreatePostRequest) ToEntity(authorID uint) *entity.Post {
 		Content:    r.Content,
 		Cover:      r.Cover,
 		CategoryID: r.CategoryID,
-		AuthorID:   authorID,          // <-- Add AuthorID
+		AuthorID:   authorID,           // <-- Add AuthorID
 		Status:     entity.StatusDraft, // 默认创建为草稿
 	}
 	if r.Tags != nil {
-		post.Tags = make([]entity.Tag, len(r.Tags))
-		for i, tagID := range r.Tags {
-			post.Tags[i] = entity.Tag{ID: tagID}
+		// Post.Tags 的元素类型在 entity 包内是 Tag（同包类型），不需要用 entity.Tag 显式限定。
+		post.Tags = make([]entity.Tag, 0, len(r.Tags))
+		for _, tagID := range r.Tags {
+			post.Tags = append(post.Tags, entity.Tag{ID: tagID})
 		}
 	}
 	return post
@@ -62,9 +63,9 @@ func (r *UpdatePostRequest) ToEntity() entity.Post {
 		post.CategoryID = r.CategoryID
 	}
 	if r.Tags != nil {
-		post.Tags = make([]entity.Tag, len(r.Tags))
-		for i, tagID := range r.Tags {
-			post.Tags[i] = entity.Tag{ID: tagID}
+		post.Tags = make([]entity.Tag, 0, len(r.Tags))
+		for _, tagID := range r.Tags {
+			post.Tags = append(post.Tags, entity.Tag{ID: tagID})
 		}
 	}
 	if r.Status != nil {
@@ -77,17 +78,17 @@ func (r *UpdatePostRequest) ToEntity() entity.Post {
 
 // PostResponse is the DTO for a single post.
 type PostResponse struct {
-	ID         uint              `json:"id"`
-	Title      string           `json:"title"`
-	Slug       string           `json:"slug"`
-	Content    string           `json:"content"`
-	Cover      string           `json:"cover"`
-	Status     int              `json:"status"`
-	Author     AuthorResponse   `json:"author"`
-	Category   *CategoryResponse `json:"category,omitempty"`
-	Tags       []TagResponse    `json:"tags,omitempty"`
-	CreatedAt  string           `json:"created_at"`
-	UpdatedAt  string           `json:"updated_at"`
+	ID        uint              `json:"id"`
+	Title     string            `json:"title"`
+	Slug      string            `json:"slug"`
+	Content   string            `json:"content"`
+	Cover     string            `json:"cover"`
+	Status    int               `json:"status"`
+	Author    AuthorResponse    `json:"author"`
+	Category  *CategoryResponse `json:"category,omitempty"`
+	Tags      []TagResponse     `json:"tags,omitempty"`
+	CreatedAt string            `json:"created_at"`
+	UpdatedAt string            `json:"updated_at"`
 }
 
 // AuthorResponse is the DTO for post author.
@@ -98,12 +99,6 @@ type AuthorResponse struct {
 
 // CategoryResponse is the DTO for post category.
 type CategoryResponse struct {
-	ID   uint   `json:"id"`
-	Name string `json:"name"`
-}
-
-// TagResponse is the DTO for post tags.
-type TagResponse struct {
 	ID   uint   `json:"id"`
 	Name string `json:"name"`
 }
@@ -154,7 +149,7 @@ func ToPostListResponse(posts []entity.Post) []*PostResponse {
 	if len(posts) == 0 {
 		return []*PostResponse{}
 	}
-	
+
 	res := make([]*PostResponse, len(posts))
 	for i, post := range posts {
 		res[i] = ToPostResponse(&post)
