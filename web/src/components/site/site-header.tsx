@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User, Settings } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export function SiteHeader() {
   const { user, isLoggedIn, logout } = useAuthStore();
@@ -50,6 +52,9 @@ export function SiteHeader() {
 
 {/* 右侧 用户区域 */}
          <div className="flex items-center gap-2">
+           <ThemeToggle />
+           <LanguageSwitcher />
+           
            {isLoggedIn && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

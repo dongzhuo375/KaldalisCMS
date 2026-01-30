@@ -2,7 +2,6 @@ import {NextIntlClientProvider} from 'next-intl';
 import {getMessages, getTranslations} from 'next-intl/server';
 import {Inter} from "next/font/google";
 import "../globals.css";
-import FloatingMenu from "@/components/floating-menu";
 import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({subsets: ["latin"]});
@@ -39,7 +38,6 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             {children}
-            <FloatingMenu />
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>
