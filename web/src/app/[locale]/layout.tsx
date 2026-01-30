@@ -3,6 +3,7 @@ import {getMessages, getTranslations} from 'next-intl/server';
 import {Inter} from "next/font/google";
 import "../globals.css";
 import FloatingMenu from "@/components/floating-menu";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({subsets: ["latin"]});
 
@@ -28,11 +29,18 @@ export default async function RootLayout({
   const messages = await getMessages({locale});
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
       <body className={inter.className}>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          {children}
-          <FloatingMenu />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <FloatingMenu />
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

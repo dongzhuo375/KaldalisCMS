@@ -32,19 +32,19 @@ export function SiteHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/95 dark:bg-slate-900/95 dark:border-slate-800 backdrop-blur supports-[backdrop-filter]:bg-white/60 transition-colors duration-300">
          <div className="container mx-auto max-w-7xl flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
             {/* 左侧 Logo */}
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center space-x-2">
-            <span className="text-xl font-bold sm:inline-block">
+            <span className="text-xl font-bold sm:inline-block dark:text-slate-200">
               {t('common.app_name')}
             </span>
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-            <Link href="/" className="transition-colors hover:text-slate-900">{t('navigation.home')}</Link>
-            <Link href="/posts" className="transition-colors hover:text-slate-900">{t('navigation.posts_list')}</Link>
-            <Link href="/about" className="transition-colors hover:text-slate-900">{t('navigation.about_us')}</Link>
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400">
+            <Link href="/" className="transition-colors hover:text-slate-900 dark:hover:text-slate-50">{t('navigation.home')}</Link>
+            <Link href="/posts" className="transition-colors hover:text-slate-900 dark:hover:text-slate-50">{t('navigation.posts_list')}</Link>
+            <Link href="/about" className="transition-colors hover:text-slate-900 dark:hover:text-slate-50">{t('navigation.about_us')}</Link>
           </nav>
         </div>
 

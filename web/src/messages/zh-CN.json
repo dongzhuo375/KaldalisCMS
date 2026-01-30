@@ -67,6 +67,30 @@
       "security_desc": "基于 Go Gin 与 Casbin 构建的坚固后端安全防线。"
     }
   },
+  "admin": {
+    "dashboard": "控制台",
+    "content": "内容管理",
+    "media": "媒体库",
+    "users": "用户管理",
+    "analytics": "数据统计",
+    "settings": "系统设置",
+    "system_overview": "系统概览",
+    "current_build": "当前版本",
+    "all_systems_operational": "所有系统运行正常",
+    "total_views": "总访问量",
+    "articles_published": "已发布文章",
+    "active_users": "活跃用户",
+    "server_load": "服务器负载",
+    "this_week": "本周",
+    "stable": "稳定",
+    "recent_content": "最近内容",
+    "title": "标题",
+    "author": "作者",
+    "status": "状态",
+    "date": "日期",
+    "system_resources": "系统资源",
+    "activity_log": "活动日志"
+  },
   "errors": {
     "data_format_error": "返回数据格式错误，未找到用户信息或角色",
     "network_error": "网络错误，请稍后重试",

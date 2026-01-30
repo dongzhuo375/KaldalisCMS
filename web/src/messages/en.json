@@ -67,6 +67,30 @@
       "security_desc": "Robust backend security built on Go Gin and Casbin."
     }
   },
+  "admin": {
+    "dashboard": "Dashboard",
+    "content": "Content",
+    "media": "Media",
+    "users": "Users",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "system_overview": "System Overview",
+    "current_build": "Current build",
+    "all_systems_operational": "All systems operational",
+    "total_views": "Total Views",
+    "articles_published": "Articles Published",
+    "active_users": "Active Users",
+    "server_load": "Server Load",
+    "this_week": "this week",
+    "stable": "Stable",
+    "recent_content": "Recent Content",
+    "title": "Title",
+    "author": "Author",
+    "status": "Status",
+    "date": "Date",
+    "system_resources": "System Resources",
+    "activity_log": "Activity Log"
+  },
   "errors": {
     "data_format_error": "Data format error, user information or role not found",
     "network_error": "Network error, please try again later",

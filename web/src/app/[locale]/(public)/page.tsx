@@ -15,10 +15,10 @@ export default function HomePage() {
     <div className="space-y-16">
       {/* Hero 区域 */}
       <section className="text-center py-24 space-y-8">
-        <h1 className="text-4xl font-extrabold tracking-tight lg:text-6xl text-slate-900">
+        <h1 className="text-4xl font-extrabold tracking-tight lg:text-6xl text-slate-900 dark:text-slate-50">
           {t('common.welcome')} {t('common.app_name')}
         </h1>
-        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+        <p className="text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
           {t('home.hero_subtitle')}
         </p>
         <div className="flex justify-center gap-4 pt-4">
@@ -46,11 +46,11 @@ export default function HomePage() {
             <CardHeader>
               <CardTitle>{t('home.welcome_back')}, {user.username} 👋</CardTitle>
               <CardDescription>
-                {t('home.current_role')}: <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-800">{user.role}</span>
+                {t('home.current_role')}: <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-800 dark:text-slate-200">{user.role}</span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-slate-600">
+              <p className="text-slate-600 dark:text-slate-400">
                 {t('home.user_welcome_desc')}
                 {user.role === 'admin' && t('home.admin_welcome_suffix')}
               </p>
@@ -103,7 +103,7 @@ function FeatureCard({ icon, title, desc }: { icon: any, title: string, desc: st
         <CardTitle className="text-xl">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-slate-500">{desc}</p>
+        <p className="text-slate-500 dark:text-slate-400">{desc}</p>
       </CardContent>
     </Card>
   )
