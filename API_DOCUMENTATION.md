@@ -10,11 +10,30 @@ All API endpoints are prefixed with `/api/v1`.
 
 ## Authentication
 
-Some endpoints require authentication using a JSON Web Token (JWT). To authenticate, you must first obtain a token by using the `POST /users/login` endpoint.
+The API uses **HttpOnly Cookies** for secure authentication and **Double Submit Cookie** pattern for CSRF protection.
 
-Once you have the token, you must include it in the `Authorization` header of your requests for protected endpoints.
+### How to Authenticate
 
-**Example:** `Authorization: Bearer <your_jwt_token>`
+1.  Call the `POST /users/login` endpoint.
+2.  On success, the server will set the following cookies:
+    *   **Auth Cookie** (`access_token`): Contains the signed session token (HttpOnly).
+    *   **CSRF Cookie** (`csrf_token`): Contains the CSRF token (Readable by JavaScript).
+    *   **Role Cookie** (`user_role`): Contains the user's role (Readable by JavaScript).
+3.  Browsers will automatically send these cookies with subsequent requests.
+
+### CSRF Protection
+
+For all state-changing requests (POST, PUT, DELETE), you **must** include the CSRF token in the request headers.
+
+1.  Read the value from the `csrf_token` cookie.
+2.  Add it to the request header: `X-CSRF-Token: <value>`.
+
+**Example:**
+```http
+POST /api/v1/posts HTTP/1.1
+Cookie: access_token=...; csrf_token=abc123...
+X-CSRF-Token: abc123...
+```
 
 ---
 
@@ -50,7 +69,7 @@ Registers a new user.
 
 ### `POST /users/login`
 
-Logs in a user and returns a JWT token.
+Logs in a user and establishes a session via cookies.
 
 **Request Body:**
 
@@ -63,21 +82,35 @@ Logs in a user and returns a JWT token.
 
 **Responses:**
 
-- `200 OK`: Login successful.
+- `200 OK`: Login successful. Sets `Set-Cookie` headers.
   ```json
   {
     "message": "Login successful",
-    "token": "<jwt_token>",
     "user": {
       "id": 1,
       "username": "testuser",
       "email": "test@example.com",
       "role": "user"
-    }
+    },
+    "expires_at": "2023-10-28T10:00:00Z"
   }
   ```
 - `401 Unauthorized`: Invalid username or password.
 - `400 Bad Request`: Invalid request body.
+- `500 Internal Server Error`: Server configuration error.
+
+### `POST /users/logout`
+
+Logs out the user and clears the session cookies.
+
+**Responses:**
+
+- `200 OK`: Logout successful.
+  ```json
+  {
+    "message": "logged out"
+  }
+  ```
 
 ---
 
