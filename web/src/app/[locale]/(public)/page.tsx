@@ -3,36 +3,37 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import Link from "next/link";
+import {Link} from '@/i18n/routing';
 import { ArrowRight, BookOpen, Users, Shield } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 export default function HomePage() {
   const { user, isLoggedIn } = useAuthStore();
+  const t = useTranslations();
 
   return (
     <div className="space-y-16">
       {/* Hero 区域 */}
       <section className="text-center py-24 space-y-8">
-        <h1 className="text-4xl font-extrabold tracking-tight lg:text-6xl text-slate-900">
-          欢迎来到 Kaldalis CMS
+        <h1 className="text-4xl font-extrabold tracking-tight lg:text-6xl text-slate-900 dark:text-slate-50">
+          {t('common.welcome')} {t('common.app_name')}
         </h1>
-        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-          一个基于 Go + Next.js 14 构建的现代化内容管理系统。
-          极速、安全、易于扩展。
+        <p className="text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
+          {t('home.hero_subtitle')}
         </p>
         <div className="flex justify-center gap-4 pt-4">
-           {isLoggedIn ? (
-             <Button size="lg" className="rounded-full px-8">
-               开始探索
-             </Button>
+            {isLoggedIn ? (
+              <Button size="lg" className="rounded-full px-8">
+                {t('home.start_exploring')}
+              </Button>
            ) : (
              <>
-               <Link href="/register">
-                 <Button size="lg" className="rounded-full px-8">立即注册</Button>
-               </Link>
-               <Link href="/login">
-                 <Button variant="outline" size="lg" className="rounded-full px-8">登录账号</Button>
-               </Link>
+                <Link href="/register">
+                  <Button size="lg" className="rounded-full px-8">{t('auth.sign_up')}</Button>
+                </Link>
+                <Link href="/login">
+                  <Button variant="outline" size="lg" className="rounded-full px-8">{t('auth.sign_in')}</Button>
+                </Link>
              </>
            )}
         </div>
@@ -43,25 +44,25 @@ export default function HomePage() {
         <section className="max-w-4xl mx-auto">
           <Card className="border-l-4 border-l-blue-500 shadow-sm">
             <CardHeader>
-              <CardTitle>欢迎回来, {user.username} 👋</CardTitle>
+              <CardTitle>{t('home.welcome_back')}, {user.username} 👋</CardTitle>
               <CardDescription>
-                当前身份: <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-800">{user.role}</span>
+                {t('home.current_role')}: <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-800 dark:text-slate-200">{user.role}</span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-slate-600">
-                您现在位于前台首页。普通用户可以在这里浏览文章、管理个人资料。
-                {user.role === 'admin' && " 由于您是管理员，您也可以进入后台管理系统。"}
+              <p className="text-slate-600 dark:text-slate-400">
+                {t('home.user_welcome_desc')}
+                {user.role === 'admin' && t('home.admin_welcome_suffix')}
               </p>
               <div className="flex gap-3">
                  <Button variant="secondary" className="gap-2">
-                   <Users className="h-4 w-4" /> 个人资料
+                   <Users className="h-4 w-4" /> {t('navigation.personal_profile')}
                  </Button>
                  {/* 只有管理员显示这个按钮 */}
                  {(user.role === 'admin' || user.role === 'super_admin') && (
                    <Link href="/admin/dashboard">
                      <Button className="gap-2">
-                       <Shield className="h-4 w-4" /> 进入后台
+                       <Shield className="h-4 w-4" /> {t('navigation.enter_admin')}
                      </Button>
                    </Link>
                  )}
@@ -75,18 +76,18 @@ export default function HomePage() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-10">
         <FeatureCard 
           icon={<BookOpen className="h-8 w-8 text-blue-500" />}
-          title="内容管理"
-          desc="高效的文章发布与编辑体验，支持 Markdown 与富文本。"
+          title={t('home.features.content_management')}
+          desc={t('home.features.content_management_desc')}
         />
         <FeatureCard 
           icon={<Users className="h-8 w-8 text-green-500" />}
-          title="用户系统"
-          desc="完善的 RBAC 权限控制，支持多角色分级管理。"
+          title={t('home.features.user_system')}
+          desc={t('home.features.user_system_desc')}
         />
         <FeatureCard 
           icon={<Shield className="h-8 w-8 text-purple-500" />}
-          title="安全可靠"
-          desc="基于 Go Gin 与 Casbin 构建的坚固后端安全防线。"
+          title={t('home.features.security')}
+          desc={t('home.features.security_desc')}
         />
       </section>
     </div>
@@ -102,7 +103,7 @@ function FeatureCard({ icon, title, desc }: { icon: any, title: string, desc: st
         <CardTitle className="text-xl">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-slate-500">{desc}</p>
+        <p className="text-slate-500 dark:text-slate-400">{desc}</p>
       </CardContent>
     </Card>
   )

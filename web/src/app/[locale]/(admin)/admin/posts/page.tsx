@@ -26,8 +26,8 @@ import api from "@/lib/api";
 
 // 临时假数据 (联调前用这个占位)
 const MOCK_POSTS: Post[] = [
-  { id: 1, title: "Hello World", slug: "hello-world", status: "published", author: { username: "admin" }, created_at: "2023-12-01", updated_at: "2023-12-01" },
-  { id: 2, title: "Next.js 14 教程", slug: "nextjs-14-guide", status: "draft", author: { username: "admin" }, created_at: "2023-12-05", updated_at: "2023-12-06" },
+  { id: 1, title: "Hello World", content: "This is the hello world post content", slug: "hello-world", status: "published", author_id: 1, author: { id: 1, username: "admin", role: "admin" }, created_at: "2023-12-01", updated_at: "2023-12-01" },
+  { id: 2, title: "Next.js 14 教程", content: "This is the Next.js 14 tutorial content", slug: "nextjs-14-guide", status: "draft", author_id: 1, author: { id: 1, username: "admin", role: "admin" }, created_at: "2023-12-05", updated_at: "2023-12-06" },
 ];
 
 export default function PostsPage() {
@@ -100,7 +100,7 @@ export default function PostsPage() {
                     {post.status === "published" ? "已发布" : "草稿"}
                   </Badge>
                 </TableCell>
-                <TableCell>{post.author.username}</TableCell>
+                <TableCell>{post.author?.username}</TableCell>
                 <TableCell>{post.created_at}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>

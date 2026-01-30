@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import {Link} from '@/i18n/routing';
 import { useAuthStore } from "@/store/useAuthStore";
+import { useTranslations } from 'next-intl';
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { 
@@ -13,9 +14,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User, Settings } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export function SiteHeader() {
   const { user, isLoggedIn, logout } = useAuthStore();
+  const t = useTranslations();
 
   const handleLogout = async () => {
     try {
@@ -30,25 +34,28 @@ export function SiteHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/95 dark:bg-slate-900/95 dark:border-slate-800 backdrop-blur supports-[backdrop-filter]:bg-white/60 transition-colors duration-300">
          <div className="container mx-auto max-w-7xl flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
             {/* 左侧 Logo */}
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center space-x-2">
-            <span className="text-xl font-bold sm:inline-block">
-              Kaldalis CMS
+            <span className="text-xl font-bold sm:inline-block dark:text-slate-200">
+              {t('common.app_name')}
             </span>
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-            <Link href="/" className="transition-colors hover:text-slate-900">首页</Link>
-            <Link href="/posts" className="transition-colors hover:text-slate-900">文章列表</Link>
-            <Link href="/about" className="transition-colors hover:text-slate-900">关于我们</Link>
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400">
+            <Link href="/" className="transition-colors hover:text-slate-900 dark:hover:text-slate-50">{t('navigation.home')}</Link>
+            <Link href="/posts" className="transition-colors hover:text-slate-900 dark:hover:text-slate-50">{t('navigation.posts_list')}</Link>
+            <Link href="/about" className="transition-colors hover:text-slate-900 dark:hover:text-slate-50">{t('navigation.about_us')}</Link>
           </nav>
         </div>
 
-        {/* 右侧 用户区域 */}
-        <div className="flex items-center gap-2">
-          {isLoggedIn && user ? (
+{/* 右侧 用户区域 */}
+         <div className="flex items-center gap-2">
+           <ThemeToggle />
+           <LanguageSwitcher />
+           
+           {isLoggedIn && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -67,29 +74,29 @@ export function SiteHeader() {
                 </div>
                 <DropdownMenuSeparator />
                 {/* 如果是管理员，显示后台入口 */}
-                {(user.role === 'admin' || user.role === 'super_admin') && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin/dashboard" className="cursor-pointer">
-                      <Settings className="mr-2 h-4 w-4" /> 进入后台
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" /> 个人中心
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 cursor-pointer">
-                  <LogOut className="mr-2 h-4 w-4" /> 退出登录
-                </DropdownMenuItem>
+                 {(user.role === 'admin' || user.role === 'super_admin') && (
+                   <DropdownMenuItem asChild>
+                     <Link href="/admin/dashboard" className="cursor-pointer">
+                       <Settings className="mr-2 h-4 w-4" /> {t('navigation.enter_admin')}
+                     </Link>
+                   </DropdownMenuItem>
+                 )}
+                 <DropdownMenuItem>
+                   <User className="mr-2 h-4 w-4" /> {t('navigation.personal_profile')}
+                 </DropdownMenuItem>
+                 <DropdownMenuSeparator />
+                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 cursor-pointer">
+                   <LogOut className="mr-2 h-4 w-4" /> {t('navigation.logout_text')}
+                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-2">
               <Link href="/login">
-                <Button variant="ghost" size="sm">登录</Button>
+                <Button variant="ghost" size="sm">{t('common.login')}</Button>
               </Link>
               <Link href="/register">
-                <Button size="sm">注册</Button>
+                <Button size="sm">{t('common.register')}</Button>
               </Link>
             </div>
           )}

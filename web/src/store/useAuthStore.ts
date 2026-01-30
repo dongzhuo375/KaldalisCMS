@@ -1,12 +1,7 @@
 // src/store/useAuthStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-interface User {
-  username: string;
-  role: string;
-  avatar?: string;
-}
+import { User } from '@/lib/types';
 
 interface AuthState {
   user: User | null;

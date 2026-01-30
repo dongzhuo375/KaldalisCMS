@@ -7,7 +7,7 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       <SiteHeader />
       
       {/* 🟢 修改重点：
@@ -19,7 +19,7 @@ export default function PublicLayout({
         {children}
       </main>
 
-      <footer className="border-t bg-white py-6 md:py-0">
+      <footer className="border-t bg-white dark:bg-slate-900 dark:border-slate-800 py-6 md:py-0 transition-colors duration-300">
         <div className="container mx-auto max-w-7xl flex flex-col items-center justify-between gap-4 px-4 md:h-24 md:flex-row">
           <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
             Built by <span className="font-medium underline underline-offset-4">Kaldalis Team</span>.
