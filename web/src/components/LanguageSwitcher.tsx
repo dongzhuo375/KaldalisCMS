@@ -1,7 +1,7 @@
 "use client";
 
 import {useLocale, useTranslations} from 'next-intl';
-import {useRouter, usePathname} from '@/i18n/routing';
+import {usePathname, Link} from '@/i18n/routing';
 import {Button} from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,7 +13,6 @@ import {Globe} from 'lucide-react';
 
 export default function LanguageSwitcher() {
   const locale = useLocale();
-  const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations('navigation');
 
@@ -21,11 +20,6 @@ export default function LanguageSwitcher() {
     {code: 'zh-CN', name: '简体中文', flag: '🇨🇳'},
     {code: 'en', name: 'English', flag: '🇺🇸'},
   ];
-
-  const switchLanguage = (newLocale: string) => {
-    const currentPath = pathname.replace(/^\/[^\/]*/, '');
-    router.push(`/${newLocale}${currentPath}`);
-  };
 
   const currentLanguage = languages.find(lang => lang.code === locale);
 
@@ -39,13 +33,15 @@ export default function LanguageSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {languages.map((language) => (
-          <DropdownMenuItem
-            key={language.code}
-            onClick={() => switchLanguage(language.code)}
-            className={locale === language.code ? 'bg-accent' : ''}
-          >
-            <span className="mr-2">{language.flag}</span>
-            {language.name}
+          <DropdownMenuItem key={language.code} asChild>
+            <Link 
+              href={pathname} 
+              locale={language.code}
+              className={locale === language.code ? 'bg-accent w-full cursor-pointer' : 'w-full cursor-pointer'}
+            >
+              <span className="mr-2">{language.flag}</span>
+              {language.name}
+            </Link>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
