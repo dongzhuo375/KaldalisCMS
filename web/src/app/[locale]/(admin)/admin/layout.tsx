@@ -1,11 +1,22 @@
 "use client";
 
 import React from "react";
-import { Link } from "@/i18n/routing";
+import { Link, usePathname } from "@/i18n/routing";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { useTranslations } from 'next-intl';
+import { cn } from "@/lib/utils";
+import { 
+  LayoutDashboard, 
+  FileText, 
+  Image, 
+  Users, 
+  BarChart3, 
+  Settings,
+  LogOut,
+  ChevronRight
+} from "lucide-react";
 
 // 引入 shadcn 组件
 import {
@@ -23,112 +34,152 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const router = useRouter();
+  const pathname = usePathname();
   const t = useTranslations('admin');
-  // 2. 从 Store 获取用户信息和清理方法
   const { user, logout } = useAuthStore();
 
-  // 3. 登出核心逻辑
   const handleLogout = async () => {
     try {
-      // 调用后端清除 HttpOnly Cookie (路径必须对)
       await api.post("/users/logout");
     } catch (error) {
       console.error("登出请求失败:", error);
-      // 即使后端报错，前端也要强制登出
     }
-
-    // 清除前端 Zustand 状态
     logout();
-
-    // 强制刷新跳转 (清除内存残留)
     window.location.href = "/login";
   };
+
+  const navItems = [
+    {
+      name: t('dashboard'),
+      href: "/admin/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      name: t('content'),
+      href: "/admin/posts",
+      icon: FileText,
+    },
+    {
+      name: t('media'),
+      href: "/admin/media",
+      icon: Image,
+    },
+    {
+      name: t('users'),
+      href: "/admin/users",
+      icon: Users,
+    },
+    {
+      name: t('analytics'),
+      href: "/admin/analytics",
+      icon: BarChart3,
+    },
+  ];
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-950 text-slate-200">
       {/* 左侧侧边栏 (Sidebar) */}
       <aside className="hidden w-64 flex-col border-r border-slate-800 bg-slate-950 md:flex">
         <div className="flex h-16 items-center border-b border-slate-800 px-6 text-lg font-bold tracking-tight text-white">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500 text-slate-950 font-bold mr-3">K</div>
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500 text-slate-950 font-bold mr-3 shadow-[0_0_15px_rgba(16,185,129,0.3)]">K</div>
           Kaldalis
         </div>
+        
         <nav className="flex-1 space-y-1 p-4">
-          <Link href="/admin/dashboard" className="flex items-center gap-3 rounded-lg bg-slate-800/50 px-3 py-2 text-sm font-medium text-white border border-slate-700/50">
-            <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-            {t('dashboard')}
-          </Link>
-          <Link href="/admin/posts" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-white transition-colors">
-            <svg className="w-5 h-5 text-slate-500 group-hover:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            {t('content')}
-          </Link>
-          <Link href="/admin/media" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-white transition-colors">
-            <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            {t('media')}
-          </Link>
-          <Link href="/admin/users" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-white transition-colors">
-            <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-            {t('users')}
-          </Link>
-          <Link href="/admin/analytics" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-white transition-colors">
-            <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            {t('analytics')}
-          </Link>
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <Link 
+                key={item.href}
+                href={item.href as any} 
+                className={cn(
+                  "flex items-center justify-between group rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  isActive 
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[inset_0_0_10px_rgba(16,185,129,0.05)]" 
+                    : "text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <item.icon className={cn(
+                    "w-5 h-5 transition-colors",
+                    isActive ? "text-emerald-400" : "text-slate-500 group-hover:text-slate-300"
+                  )} />
+                  {item.name}
+                </div>
+                {isActive && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+                )}
+              </Link>
+            );
+          })}
         </nav>
         
-        {/* Settings 放在底部 */}
-        <div className="p-4 mt-auto space-y-1">
-          <Link href="/admin/settings" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-white transition-colors">
-            <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+        {/* Settings & User Info */}
+        <div className="mt-auto border-t border-slate-800 p-4 space-y-4">
+          <Link 
+            href="/admin/settings" 
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              pathname.startsWith("/admin/settings")
+                ? "bg-slate-800 text-white"
+                : "text-slate-400 hover:bg-slate-900 hover:text-white"
+            )}
+          >
+            <Settings className="w-5 h-5 text-slate-500" />
             {t('settings')}
           </Link>
-        </div>
 
-        <div className="border-t border-slate-800 p-4">
-           {/* 底部用户信息 */}
-           <div className="flex items-center gap-3">
-             <Avatar className="h-9 w-9 border border-slate-700">
-               <AvatarImage src={user?.avatar || ""} />
-               <AvatarFallback className="bg-slate-800 text-slate-200">
-                 {user?.username?.[0]?.toUpperCase() || "A"}
-               </AvatarFallback>
-             </Avatar>
-             <div className="flex flex-col">
-               <span className="text-sm font-medium text-white">{user?.username || "Admin User"}</span>
-               <span className="text-xs text-slate-500">{user?.email || "sysop@kaldalis.io"}</span>
+          <div className="flex items-center justify-between bg-slate-900/40 rounded-xl p-3 border border-slate-800/50">
+             <div className="flex items-center gap-3">
+               <Avatar className="h-9 w-9 border border-slate-700">
+                 <AvatarImage src={user?.avatar || ""} />
+                 <AvatarFallback className="bg-slate-800 text-slate-200">
+                   {user?.username?.[0]?.toUpperCase() || "A"}
+                 </AvatarFallback>
+               </Avatar>
+               <div className="flex flex-col">
+                 <span className="text-sm font-semibold text-white truncate max-w-[100px]">{user?.username || "Admin"}</span>
+                 <span className="text-[10px] text-slate-500 font-mono uppercase tracking-tighter">System Admin</span>
+               </div>
              </div>
-           </div>
+             
+             <DropdownMenu>
+               <DropdownMenuTrigger asChild>
+                 <button className="text-slate-500 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors">
+                    <MoreHorizontal className="w-4 h-4" />
+                 </button>
+               </DropdownMenuTrigger>
+               <DropdownMenuContent align="end" side="top" className="w-56 bg-slate-900 border-slate-800 text-slate-200">
+                 <DropdownMenuLabel className="text-xs text-slate-500 font-mono uppercase">Manage Session</DropdownMenuLabel>
+                 <DropdownMenuItem className="cursor-pointer focus:bg-slate-800 focus:text-white">
+                   <Settings className="mr-2 h-4 w-4" /> {t('settings')}
+                 </DropdownMenuItem>
+                 <DropdownMenuSeparator className="bg-slate-800" />
+                 <DropdownMenuItem onClick={handleLogout} className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/30 cursor-pointer">
+                   <LogOut className="mr-2 h-4 w-4" /> {t('logout_text') || 'Logout'}
+                 </DropdownMenuItem>
+               </DropdownMenuContent>
+             </DropdownMenu>
+          </div>
         </div>
       </aside>
 
       {/* 右侧主内容区 */}
-      <div className="flex flex-1 flex-col bg-slate-950">
-        {/* Header 已经被集成到 Dashboard 页面内部了，这里可以移除或简化
-            根据设计图，Dashboard 页面自己有一个 Topbar。
-            所以这里的 Header 如果存在，应该是非常极简的，或者干脆没有。
-            设计图左侧 Sidebar，右侧是一个巨大的 Dashboard 面板。
-            Dashboard 面板内部有 "root @ ..." 的 Header。
-            所以 AdminLayout 的 Header 应该移除，给 Dashboard 全屏空间。
-        */}
-        
-        {/* 具体的页面内容 */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+      <div className="flex flex-1 flex-col bg-slate-950 relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+          <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-emerald-500 opacity-20 blur-[100px]"></div>
+          <div className="absolute right-0 bottom-0 -z-10 h-[310px] w-[310px] rounded-full bg-indigo-500 opacity-10 blur-[100px]"></div>
+        </div>
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 relative z-10">
           {children}
         </main>
       </div>
     </div>
   );
 }
+
+// 辅助图标
+import { MoreHorizontal } from "lucide-react";

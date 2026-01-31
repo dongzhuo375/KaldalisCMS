@@ -10,7 +10,7 @@ All API endpoints are prefixed with `/api/v1`.
 
 ## Authentication
 
-The API uses **HttpOnly Cookies** for secure authentication and **Double Submit Cookie** pattern for CSRF protection.
+The API uses **HttpOnly Cookies** for secure authentication and a **Double Submit Cookie** pattern for CSRF protection.
 
 ### How to Authenticate
 
@@ -51,8 +51,7 @@ Registers a new user.
 {
   "username": "testuser",
   "password": "password123",
-  "email": "test@example.com",
-  "role": "user"
+  "email": "test@example.com"
 }
 ```
 
@@ -101,7 +100,7 @@ Logs in a user and establishes a session via cookies.
 
 ### `POST /users/logout`
 
-Logs out the user and clears the session cookies.
+Logs out the user and clears the session cookies. Requires authentication.
 
 **Responses:**
 
@@ -120,7 +119,7 @@ The Posts API provides endpoints for managing blog posts.
 
 ### `GET /posts`
 
-Retrieves a list of all posts.
+Retrieves a list of all posts. Public endpoint.
 
 **Responses:**
 
@@ -128,16 +127,28 @@ Retrieves a list of all posts.
   ```json
   [
     {
-      "ID": 1,
-      "CreatedAt": "2023-10-27T10:00:00Z",
-      "UpdatedAt": "2023-10-27T10:00:00Z",
-      "Title": "My First Post",
-      "Slug": "my-first-post",
-      "Content": "This is the content of my first post.",
-      "Cover": "/path/to/cover.jpg",
-      "AuthorID": 1,
-      "CategoryID": 1,
-      "Status": 1
+      "id": 1,
+      "title": "My First Post",
+      "slug": "my-first-post",
+      "content": "This is the content of my first post.",
+      "cover": "/path/to/cover.jpg",
+      "status": 1,
+      "author": {
+        "id": 1,
+        "username": "author_name"
+      },
+      "category": {
+        "id": 1,
+        "name": "Tech"
+      },
+      "tags": [
+        {
+          "id": 1,
+          "name": "Golang"
+        }
+      ],
+      "created_at": "2023-10-27T10:00:00Z",
+      "updated_at": "2023-10-27T10:00:00Z"
     }
   ]
   ```
@@ -145,7 +156,7 @@ Retrieves a list of all posts.
 
 ### `GET /posts/:id`
 
-Retrieves a single post by its ID.
+Retrieves a single post by its ID. Public endpoint.
 
 **URL Parameters:**
 
@@ -156,16 +167,28 @@ Retrieves a single post by its ID.
 - `200 OK`: The requested post.
   ```json
   {
-    "ID": 1,
-    "CreatedAt": "2023-10-27T10:00:00Z",
-    "UpdatedAt": "2023-10-27T10:00:00Z",
-    "Title": "My First Post",
-    "Slug": "my-first-post",
-    "Content": "This is the content of my first post.",
-    "Cover": "/path/to/cover.jpg",
-    "AuthorID": 1,
-    "CategoryID": 1,
-    "Status": 1
+    "id": 1,
+    "title": "My First Post",
+    "slug": "my-first-post",
+    "content": "This is the content of my first post.",
+    "cover": "/path/to/cover.jpg",
+    "status": 1,
+    "author": {
+      "id": 1,
+      "username": "author_name"
+    },
+    "category": {
+      "id": 1,
+      "name": "Tech"
+    },
+    "tags": [
+      {
+        "id": 1,
+        "name": "Golang"
+      }
+    ],
+    "created_at": "2023-10-27T10:00:00Z",
+    "updated_at": "2023-10-27T10:00:00Z"
   }
   ```
 - `400 Bad Request`: Invalid post ID.
@@ -173,19 +196,17 @@ Retrieves a single post by its ID.
 
 ### `POST /posts`
 
-Creates a new post. (Authentication required)
+Creates a new post. (Authentication required, CSRF token required)
 
 **Request Body:**
 
 ```json
 {
-  "Title": "New Post Title",
-  "Slug": "new-post-title",
-  "Content": "Content of the new post.",
-  "Cover": "/path/to/image.jpg",
-  "AuthorID": 1,
-  "CategoryID": 2,
-  "Status": 0
+  "title": "New Post Title",
+  "content": "Content of the new post.",
+  "cover": "/path/to/image.jpg",
+  "category_id": 2,
+  "tags": [1, 3]
 }
 ```
 
@@ -193,11 +214,13 @@ Creates a new post. (Authentication required)
 
 - `201 Created`: Post created successfully.
 - `400 Bad Request`: Invalid request body.
+- `401 Unauthorized`: User not logged in.
+- `403 Forbidden`: CSRF token invalid or missing.
 - `500 Internal Server Error`: Server error.
 
 ### `PUT /posts/:id`
 
-Updates an existing post. (Authentication required)
+Updates an existing post. (Authentication required, CSRF token required)
 
 **URL Parameters:**
 
@@ -207,8 +230,12 @@ Updates an existing post. (Authentication required)
 
 ```json
 {
-  "Title": "Updated Post Title",
-  "Content": "Updated content."
+  "title": "Updated Post Title",
+  "content": "Updated content.",
+  "cover": "/path/to/new-cover.jpg",
+  "category_id": 2,
+  "tags": [1, 4],
+  "status": 1
 }
 ```
 
@@ -216,11 +243,13 @@ Updates an existing post. (Authentication required)
 
 - `200 OK`: Post updated successfully.
 - `400 Bad Request`: Invalid post ID or request body.
+- `401 Unauthorized`: User not logged in.
+- `403 Forbidden`: CSRF token invalid or missing.
 - `404 Not Found`: Post not found.
 
 ### `DELETE /posts/:id`
 
-Deletes a post. (Authentication required)
+Deletes a post. (Authentication required, CSRF token required)
 
 **URL Parameters:**
 
@@ -230,4 +259,6 @@ Deletes a post. (Authentication required)
 
 - `204 No Content`: Post deleted successfully.
 - `400 Bad Request`: Invalid post ID.
+- `401 Unauthorized`: User not logged in.
+- `403 Forbidden`: CSRF token invalid or missing.
 - `404 Not Found`: Post not found.

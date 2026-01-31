@@ -26,3 +26,19 @@
 ### 🛠️ Technical Debt & Cleanup
 - Refactored `LanguageSwitcher` to use declarative navigation.
 - Cleaned up unused components and redundant routing logic.
+
+## 2026-01-31
+
+### 🚀 Feature: Admin Posts Management
+- **Interface Overhaul**:
+  - Redesigned `admin/posts` to align with the high-fidelity "Cyberpunk/CLI" aesthetic.
+  - Implemented a **Separated Card Layout**: Split the monolithic interface into distinct, floating cards for Statistics, Toolbar, and Data Table.
+  - Added **Advanced Visuals**: Introduced a high-tech grid background with atmospheric glows (Emerald/Indigo) to the Admin Layout.
+  - **Enhanced Interactivity**: Added smooth row entrance animations, "pinging" status indicators, and hover effects.
+  - **Functionality**:
+    - Integrated standardized `Shadcn UI` Table and Dropdown components.
+    - Added a functional Pagination Footer.
+    - Implemented client-side filtering (Search + Status) and bulk selection checkboxes.
+- **Routing & Navigation**:
+  - Fixed Admin Sidebar links to correctly use localized routing (`/zh-CN/admin/...`), resolving navigation issues.
+  - Added active state highlighting to the Sidebar, giving visual feedback on the current page.
