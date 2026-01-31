@@ -11,15 +11,17 @@ export interface User {
 export interface Post {
   id: number;
   title: string;
-  content: string;
-  excerpt?: string;
   slug: string;
-  status: 'draft' | 'published' | 'archived';
+  content: string;
+  cover?: string;
+  status: number; // 0=draft, 1=published, 2=archived
   author_id: number;
   author?: User;
-  created_at?: string;
-  updated_at?: string;
-  published_at?: string;
+  category_id?: number;
+  category?: any; // Define Category type if needed later
+  tags?: any[];   // Define Tag type if needed later
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuthResponse {

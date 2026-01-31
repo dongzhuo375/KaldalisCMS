@@ -89,7 +89,27 @@
     "status": "Status",
     "date": "Date",
     "system_resources": "System Resources",
-    "activity_log": "Activity Log"
+    "activity_log": "Activity Log",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "actions": "Actions",
+    "id": "ID",
+    "published": "Published",
+    "draft": "Draft",
+    "archived": "Archived",
+    "total_posts": "Total Posts",
+    "cmd_delete": "Delete Post",
+    "cmd_edit": "Edit Post",
+    "cmd_view": "View Public"
+  },
+  "posts": {
+    "title": "Blog Posts",
+    "subtitle": "Latest updates and stories",
+    "read_more": "Read More",
+    "no_posts": "No posts found",
+    "published_by": "Published by",
+    "on": "on"
   },
   "errors": {
     "data_format_error": "Data format error, user information or role not found",

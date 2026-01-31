@@ -1,7 +1,7 @@
-"use client"; // 1. 必须变身客户端组件才能交互
+"use client";
 
 import React from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";

@@ -89,7 +89,27 @@
     "status": "状态",
     "date": "日期",
     "system_resources": "系统资源",
-    "activity_log": "活动日志"
+    "activity_log": "活动日志",
+    "create": "新建文章",
+    "search": "搜索文章...",
+    "filter": "筛选",
+    "actions": "操作",
+    "id": "ID",
+    "published": "已发布",
+    "draft": "草稿",
+    "archived": "已归档",
+    "total_posts": "全部文章",
+    "cmd_delete": "删除文章",
+    "cmd_edit": "编辑文章",
+    "cmd_view": "查看前台"
+  },
+  "posts": {
+    "title": "博客文章",
+    "subtitle": "最新动态与故事",
+    "read_more": "阅读全文",
+    "no_posts": "暂无文章",
+    "published_by": "发布者",
+    "on": "于"
   },
   "errors": {
     "data_format_error": "返回数据格式错误，未找到用户信息或角色",
