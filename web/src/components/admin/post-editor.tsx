@@ -85,8 +85,8 @@ export function PostEditor({ initialData, onSubmit, isSubmitting, mode }: PostEd
     onSubmit({
       ...formData,
       status: statusOverride ?? parseInt(formData.status),
-      category_id: 1, 
-      tags: [1] // Backend expects IDs for now
+      category_id: null, 
+      tags: [] // Changed from [1] to empty array as well
     });
   };
 

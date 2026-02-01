@@ -101,7 +101,9 @@
     "total_posts": "全部文章",
     "cmd_delete": "删除文章",
     "cmd_edit": "编辑文章",
-    "cmd_view": "查看前台"
+    "cmd_view": "查看前台",
+    "posts": "文章管理",
+    "logout_text": "退出登录"
   },
   "posts": {
     "title": "博客文章",
