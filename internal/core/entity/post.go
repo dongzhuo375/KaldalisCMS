@@ -27,8 +27,6 @@ type Post struct {
 	Status     int      // 文章状态
 }
 
-
-
 // Category 结构体，简化版
 type Category struct {
 	ID   uint
@@ -36,10 +34,8 @@ type Category struct {
 }
 
 // Tag 结构体，简化版
-type Tag struct {
-	ID   uint
-	Name string
-}
+//
+// NOTE: Tag 已迁移到 entity/tag.go（避免在同一 package 内重复声明）。
 
 // 检查实体自身是否满足发布或更新的基本业务要求
 func (p *Post) CheckValidity() error {
