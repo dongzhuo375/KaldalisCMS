@@ -14,7 +14,13 @@ api.interceptors.request.use(
   (config) => {
     // 1. 尝试从浏览器 Cookie 中获取 CSRF Token
     const csrfToken = Cookies.get('kaldalis_csrf');
-        console.log("🚀 [API Debug] URL:", config.url, "CSRF Token:", csrfToken);
+    // Debug info
+    if (typeof window !== 'undefined') {
+       console.log("🚀 [API Debug] Request:", config.url);
+       console.log("🚀 [API Debug] All Cookies:", document.cookie);
+       console.log("🚀 [API Debug] CSRF Token found:", csrfToken);
+    }
+
     // 2. 如果拿到了，就塞到 Header 里
     // 后端通常识别的 Header key 是 "X-CSRF-Token" 或 "X-Xsrf-Token"
     if (csrfToken) {

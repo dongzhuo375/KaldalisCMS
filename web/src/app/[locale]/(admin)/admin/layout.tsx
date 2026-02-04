@@ -173,7 +173,7 @@ export default function AdminLayout({
           <div className="absolute right-0 bottom-0 -z-10 h-[310px] w-[310px] rounded-full bg-indigo-500 opacity-10 blur-[100px]"></div>
         </div>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 relative z-10">
+        <main className="flex-1 overflow-hidden p-4 md:p-8 relative z-10 flex flex-col">
           {children}
         </main>
       </div>

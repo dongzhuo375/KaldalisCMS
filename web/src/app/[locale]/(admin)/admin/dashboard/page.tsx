@@ -129,7 +129,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-full bg-slate-950 text-slate-200 p-6 rounded-xl font-sans space-y-8">
+    <div className="h-full overflow-y-auto bg-slate-950 text-slate-200 p-6 rounded-xl font-sans space-y-8 custom-scrollbar">
       
       {/* 顶部 CLI 风格 Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
