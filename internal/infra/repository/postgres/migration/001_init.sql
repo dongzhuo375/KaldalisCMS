@@ -1,0 +1,4 @@
+-- Placeholder initial migration.
+-- This repo currently uses GORM AutoMigrate in internal/infra/repository/postgres/db.go.
+-- Keeping this file (as required by Architecture.md) allows a future switch to SQL migrations
+-- without changing the directory structure.
