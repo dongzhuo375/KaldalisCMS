@@ -3,7 +3,7 @@ import Cookies from 'js-cookie';
 
 // 创建 axios 实例
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api/v1',
   withCredentials: true, // 必须开启，否则不会发送 Cookie
   timeout: 10000,
 });
@@ -14,7 +14,13 @@ api.interceptors.request.use(
   (config) => {
     // 1. 尝试从浏览器 Cookie 中获取 CSRF Token
     const csrfToken = Cookies.get('kaldalis_csrf');
-        console.log("🚀 [API Debug] URL:", config.url, "CSRF Token:", csrfToken);
+    // Debug info
+    if (typeof window !== 'undefined') {
+       console.log("🚀 [API Debug] Request:", config.url);
+       console.log("🚀 [API Debug] All Cookies:", document.cookie);
+       console.log("🚀 [API Debug] CSRF Token found:", csrfToken);
+    }
+
     // 2. 如果拿到了，就塞到 Header 里
     // 后端通常识别的 Header key 是 "X-CSRF-Token" 或 "X-Xsrf-Token"
     if (csrfToken) {
