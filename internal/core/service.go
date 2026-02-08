@@ -22,3 +22,13 @@ type UserService interface {
 	Logout()
 	//后面估计还加
 }
+
+// TagService defines tag-related business operations.
+type TagService interface {
+	Create(ctx context.Context, tag entity.Tag) (entity.Tag, error)
+	GetAll(ctx context.Context) ([]entity.Tag, error)
+	GetByID(ctx context.Context, id uint) (entity.Tag, error)
+	GetByName(ctx context.Context, name string) (entity.Tag, error)
+	Update(ctx context.Context, tag entity.Tag) (entity.Tag, error)
+	Delete(ctx context.Context, id uint) error
+}

@@ -1,8 +1,8 @@
 package router
 
 import (
-	v1 "KaldalisCMS/internal/api/v1"
 	apimw "KaldalisCMS/internal/api/middleware"
+	v1 "KaldalisCMS/internal/api/v1"
 	"KaldalisCMS/internal/infra/auth"
 	repository "KaldalisCMS/internal/infra/repository/postgres"
 	"KaldalisCMS/internal/service"
@@ -29,6 +29,11 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *g
 	sessionMgr := auth.NewSessionManager(authCfg)
 	userAPI := v1.NewUserAPI(userService, sessionMgr)
 
+	// --- System init/setup ---
+	systemRepo := repository.NewSystemRepository(db)
+	systemService := service.NewSystemService(db, systemRepo, userService)
+	systemAPI := v1.NewSystemAPI(systemService)
+
 	apiV1 := r.Group("/api/v1")
 	{
 		apiV1.Use(apimw.OptionalAuth(sessionMgr))
@@ -36,6 +41,9 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *g
 		// --- 公开路由 ---
 		// 用户登录注册
 		userAPI.RegisterRoutes(apiV1)
+
+		// 系统状态与初始化
+		systemAPI.RegisterRoutes(apiV1)
 
 		// 文章只读接口
 		apiV1.GET("/posts", postAPI.GetPosts)
