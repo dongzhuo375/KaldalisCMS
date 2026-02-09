@@ -92,6 +92,9 @@
     "activity_log": "Activity Log",
     "create": "Create",
     "search": "Search",
+    "loading": "Loading...",
+    "edit": "Edit",
+    "delete": "Delete",
     "filter": "Filter",
     "actions": "Actions",
     "id": "ID",
@@ -101,7 +104,21 @@
     "total_posts": "Total Posts",
     "cmd_delete": "Delete Post",
     "cmd_edit": "Edit Post",
-    "cmd_view": "View Public"
+    "cmd_view": "View Public",
+    "media_library": "Media Library",
+    "upload_file": "Upload File",
+    "storage_used": "Storage Used",
+    "user_management": "User Management",
+    "add_user": "Add User",
+    "role": "Role",
+    "analytics_dashboard": "Analytics Dashboard",
+    "traffic_overview": "Traffic Overview",
+    "system_settings": "System Settings",
+    "site_information": "Site Information",
+    "seo_settings": "SEO & Metadata",
+    "security_settings": "Security Settings",
+    "advanced_settings": "Advanced Settings",
+    "save_changes": "Save Changes"
   },
   "posts": {
     "title": "Blog Posts",
@@ -118,5 +135,17 @@
     "unauthorized": "Unauthorized, please login again",
     "not_found": "Page not found",
     "unknown_error": "Unknown error"
+  },
+  "setup": {
+    "title": "Welcome to Kaldalis",
+    "subtitle": "Let's set up your new CMS in just a few steps.",
+    "site_name": "Site Name",
+    "admin_username": "Admin Username",
+    "admin_email": "Admin Email",
+    "admin_password": "Admin Password",
+    "complete_setup": "Complete Setup",
+    "setting_up": "Setting up...",
+    "success_title": "Setup Complete!",
+    "success_desc": "Kaldalis CMS has been successfully installed. You can now login to the admin dashboard."
   }
 }
