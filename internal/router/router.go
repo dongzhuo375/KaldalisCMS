@@ -7,19 +7,19 @@ import (
 	repository "KaldalisCMS/internal/infra/repository/postgres"
 	"KaldalisCMS/internal/service"
 
-	"github.com/casbin/casbin/v2" // 新增导入
+	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *gin.Engine {
+// NewAppRouter initializes the router for the fully functional application
+func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *gin.Engine {
 	r := gin.Default()
 
 	// Add a simple CORS middleware
 	r.Use(apimw.CORSMiddleware())
 
-	// Dependency Injection for Post
-
+	// Dependency Injection
 	postRepo := repository.NewPostRepository(db)
 	postService := service.NewPostService(postRepo)
 	postAPI := v1.NewPostAPI(postService)
@@ -29,7 +29,6 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *g
 	sessionMgr := auth.NewSessionManager(authCfg)
 	userAPI := v1.NewUserAPI(userService, sessionMgr)
 
-	// --- System init/setup ---
 	systemRepo := repository.NewSystemRepository(db)
 	systemService := service.NewSystemService(db, systemRepo, userService)
 	systemAPI := v1.NewSystemAPI(systemService)
@@ -38,34 +37,40 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *g
 	{
 		apiV1.Use(apimw.OptionalAuth(sessionMgr))
 
-		// --- 公开路由 ---
-		// 用户登录注册
 		userAPI.RegisterRoutes(apiV1)
-
-		// 系统状态与初始化
 		systemAPI.RegisterRoutes(apiV1)
 
-		// 文章只读接口
 		apiV1.GET("/posts", postAPI.GetPosts)
 		apiV1.GET("/posts/:id", postAPI.GetPostByID)
 
-		// --- 受保护路由组 ---
 		protected := apiV1.Group("/")
-
-		// 先检查是否登录，再检查 CSRF，最后检查权限
 		protected.Use(apimw.RequireAuth())
-		protected.Use(apimw.Authorize(enforcer)) // 新增 Casbin 权限检查中间件
+		protected.Use(apimw.Authorize(enforcer))
 		protected.Use(apimw.CSRFCheck(sessionMgr))
 
 		{
-			// 需要认证的 User 操作
 			protected.POST("/users/logout", userAPI.Logout)
-
-			// 需要认证的 Post 操作
 			protected.POST("/posts", postAPI.CreatePost)
 			protected.PUT("/posts/:id", postAPI.UpdatePost)
 			protected.DELETE("/posts/:id", postAPI.DeletePost)
 		}
+	}
+
+	return r
+}
+
+// NewSetupRouter initializes the router for the setup mode, hiding service instantiation from main
+func NewSetupRouter(save func(string, int, string, string, string) error, reload func() error) *gin.Engine {
+	r := gin.Default()
+	r.Use(apimw.CORSMiddleware())
+
+	// Service instantiation is now hidden inside router
+	setupSvc := service.NewSetupService(save, reload)
+	setupAPI := v1.NewSetupAPI(setupSvc)
+	
+	apiV1 := r.Group("/api/v1")
+	{
+		setupAPI.RegisterRoutes(apiV1)
 	}
 
 	return r
