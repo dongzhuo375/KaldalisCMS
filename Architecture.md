@@ -1,118 +1,138 @@
 /KaldalisCMS
 ├── 应用入口
 │   ├── cmd/
-│   │   └── server/
-│   │       ├── main.go                    # 应用主入口
-│   │       └── config.go                  # 配置初始化
-│   ├── configs/
-│   │   ├── config.yaml                    # 主配置文件
-│   │   ├── config.prod.yaml              # 生产环境配置
-│   │   └── config.dev.yaml               # 开发环境配置
-│   └── Makefile                          # 构建脚本
+│   │   ├── server/
+│   │   │   ├── main.go                    # 应用主入口 [已实现]
+│   │   │   └── config.go                  # 配置初始化（Viper）[已实现]
+│   │   └── configs/                       # [差异更新] 当前为 cmd/configs（不在 cmd/configs 根同级）
+│   │       ├── config.yaml                # 主配置文件 [已实现]
+│   │       └── casbin_model.conf          # Casbin 模型 [已实现]
+│   └── Makefile                          # 构建脚本 [预留]（当前仓库根目录未提供）
 │
 ├── 后端核心
 │   ├── internal/
 │   │   ├── api/
 │   │   │   ├── v1/
-│   │   │   │   ├── theme.go              # 主题管理API
-│   │   │   │   ├── post.go               # 文章管理API
-│   │   │   │   ├── user.go               # 用户管理API
-│   │   │   │   ├── upload.go             # 文件上传API
-│   │   │   │   ├── system.go             # 系统管理API
-│   │   │   │   ├── plugin.go             # 插件管理API
+│   │   │   │   ├── post.go               # 文章管理 API [已实现]
+│   │   │   │   ├── user.go               # 用户管理 API [已实现]
+│   │   │   │   ├── system.go             # 系统管理 API [已实现]
+│   │   │   │   ├── media.go              # 媒体库 API [已实现]
+│   │   │   │   ├── theme.go              # 主题管理 API [预留]
+│   │   │   │   ├── upload.go             # 通用文件上传 API [预留]（当前以 media.go 为主）
+│   │   │   │   ├── plugin.go             # 插件管理 API [预留]
 │   │   │   │   └── dto/
-│   │   │   │       ├── post_dto.go
-│   │   │   │       └── user_dto.go
-│   │   │   ├── middleware/
-│   │   │   │   ├── auth.go               # [修改] 需支持从 Cookie 读取 Token (适配SSR)
-│   │   │   │   ├── casbin.go             # Casbin权限中间件
-│   │   │   │   ├── cors.go               # [修改] 更新 AllowedOrigins (如 localhost:3000)
-│   │   │   │   ├── logger.go             # 日志中间件
-│   │   │   │   ├── theme.go              # 主题上下文中间件
-│   │   │   │   └── plugin.go             # 插件中间件
+│   │   │   │       ├── post_dto.go       # [已实现]
+│   │   │   │       ├── user_dto.go       # [已实现]
+│   │   │   │       ├── system_dto.go     # [已实现]
+│   │   │   │       ├── tag_dto.go        # [已实现]
+│   │   │   │       └── media_dto.go      # 媒体 DTO（显式 API contract）[已实现]
+│   │   │   └── middleware/
+│   │   │       ├── auth.go               # Cookie/JWT/CSRF 认证 [已实现]
+│   │   │       ├── casbin.go             # Casbin 权限中间件 [已实现]
+│   │   │       ├── cors.go               # CORS [已实现]
+│   │   │       ├── logger.go             # 日志中间件 [预留]
+│   │   │       ├── theme.go              # 主题上下文中间件 [预留]
+│   │   │       └── plugin.go             # 插件中间件 [预留]
+│   │   │
 │   │   ├── router/
-│   │   │   └── router.go                 # 路由配置
+│   │   │   ├── router.go                 # 路由配置/依赖注入 [已实现]
+│   │   │   └── env_parse.go              # env 解析（已迁移到 internal/utils/env.go，保留占位）[已实现]
 │   │   │
 │   │   ├── core/
-│   │   │   ├── entity/   
-│   │   │   │   ├── post.go               # 文章实体
-│   │   │   │   └── user.go               # 用户实体
-│   │   │   │
-│   │   │   ├── service.go                # 服务接口
-│   │   │   ├── repository.go             # 仓储接口
-│   │   │   └── plugin.go                 # 插件核心接口定义
+│   │   │   ├── entity/
+│   │   │   │   ├── post.go               # 文章实体 [已实现]
+│   │   │   │   ├── user.go               # 用户实体 [已实现]
+│   │   │   │   ├── tag.go                # 标签实体 [已实现]
+│   │   │   │   └── media_asset.go        # 媒体资产领域实体 [已实现]
+│   │   │   ├── service.go                # 服务接口 [已实现]
+│   │   │   ├── repository.go             # 仓储接口（含 MediaRepository）[已实现]
+│   │   │   ├── error.go                  # core.ErrPermission 等 [已实现]
+│   │   │   └── plugin.go                 # 插件核心接口定义 [预留]
 │   │   │
 │   │   ├── infra/
 │   │   │   ├── auth/
-│   │   │   │   ├── casbin.go
-│   │   │   │   └── session.go
+│   │   │   │   ├── casbin.go             # Casbin 初始化 [已实现]
+│   │   │   │   └── session.go            # Session/JWT/CSRF [已实现]
 │   │   │   ├── repository/
 │   │   │   │   ├── postgres/
-│   │   │   │   │   ├── theme_repo.go         # 主题数据访问
-│   │   │   │   │   ├── post_repo.go          # 文章数据访问
-│   │   │   │   │   ├── user_repo.go          # 用户数据访问
+│   │   │   │   │   ├── db.go             # InitDB + AutoMigrate [已实现]
+│   │   │   │   │   ├── post_repo.go      # 文章数据访问 [已实现]
+│   │   │   │   │   ├── user_repo.go      # 用户数据访问 [已实现]
+│   │   │   │   │   ├── tag_repo.go       # 标签数据访问 [已实现]
+│   │   │   │   │   ├── system_repo.go    # 系统数据访问 [已实现]
+│   │   │   │   │   ├── media_repo.go     # 媒体仓储（model<->entity mapper）[已实现]
+│   │   │   │   │   ├── theme_repo.go     # 主题数据访问 [预留]
 │   │   │   │   │   └── migration/
-│   │   │   │   │       └── 001_init.sql      # 初始迁移
-│   │   │   │   │
+│   │   │   │   │       └── 001_init.sql  # 初始迁移 [已实现]
 │   │   │   │   └── redis/
-│   │   │   │       └── cache.go              # 缓存服务
-│   │   │   │
+│   │   │   │       └── cache.go          # 缓存服务 [预留]
 │   │   │   └── model/
-│   │   │       ├── theme.go                  # 主题模型
-│   │   │       ├── post.go                   # 文章模型
-│   │   │       ├── user.go                   # 用户模型
-│   │   │       ├── category.go               # 分类模型
-│   │   │       ├── setting.go                # 系统设置模型
-│   │   │       └── plugin.go                 # 插件元数据模型
-│   │   │    
+│   │   │       ├── post.go               # 文章模型 [已实现]
+│   │   │       ├── user.go               # 用户模型 [已实现]
+│   │   │       ├── tag.go                # 标签模型 [已实现]
+│   │   │       ├── category.go           # 分类模型 [已实现]
+│   │   │       ├── setting.go            # 系统设置模型 [已实现]
+│   │   │       ├── media_asset.go        # 媒体模型 [已实现]
+│   │   │       ├── post_asset.go         # 引用关系模型 [已实现]
+│   │   │       ├── theme.go              # 主题模型 [预留]
+│   │   │       └── plugin.go             # 插件元数据模型 [预留]
+│   │   │
 │   │   ├── service/
-│   │   │   ├── theme_service.go          # 主题业务服务
-│   │   │   ├── post_service.go           # 文章业务服务
-│   │   │   ├── user_service.go           # 用户业务服务
-│   │   │   ├── file_service.go           # 文件服务
-│   │   │   ├── system_service.go         # 系统服务
-│   │   │   └── plugin_service.go         # 插件生命周期管理服务
+│   │   │   ├── post_service.go           # 文章业务服务（含引用同步）[已实现]
+│   │   │   ├── user_service.go           # 用户业务服务 [已实现]
+│   │   │   ├── tag_service.go            # 标签业务服务 [已实现]
+│   │   │   ├── system_service.go         # 系统服务 [已实现]
+│   │   │   ├── media_service.go          # 媒体库服务 [已实现]
+│   │   │   ├── media_imageutil.go        # 图片宽高工具 [已实现]
+│   │   │   ├── theme_service.go          # 主题业务服务 [预留]
+│   │   │   ├── file_service.go           # 通用文件服务 [预留]
+│   │   │   └── plugin_service.go         # 插件生命周期管理服务 [预留]
 │   │   │
-│   │   ├── theme/
-│   │   │   ├── manager.go                # [修改] 逻辑调整：不再负责前端文件分发，仅管理元数据
-│   │   │   ├── loader.go                 # 主题加载器
-│   │   │   ├── registry.go               # 主题注册表
-│   │   │   ├── validator.go              # [修改] 验证规则：检查 .tsx/.jsx 文件而非 .vue
-│   │   │   └── cache.go                  # 主题缓存
+│   │   ├── theme/                        # 主题系统核心 [预留]
+│   │   │   ├── manager.go
+│   │   │   ├── loader.go
+│   │   │   ├── registry.go
+│   │   │   ├── validator.go
+│   │   │   └── cache.go
 │   │   │
-│   │   ├── plugin/                       # 插件系统核心
-│   │   │   ├── manager.go                # 插件管理器
-│   │   │   ├── registry.go               # 插件注册表
-│   │   │   ├── loader.go                 # 插件加载器
-│   │   │   ├── dispatcher.go             # 事件分发器
-│   │   │   ├── service.go                # 插件RPC服务
-│   │   │   └── hook/                     # 钩子系统
-│   │   │       ├── hook.go               # 钩子定义
-│   │   │       ├── manager.go            # 钩子管理器
-│   │   │       └── types.go              # 钩子类型
+│   │   ├── plugin/                       # 插件系统核心 [预留]
+│   │   │   ├── manager.go
+│   │   │   ├── registry.go
+│   │   │   ├── loader.go
+│   │   │   ├── dispatcher.go
+│   │   │   ├── service.go
+│   │   │   └── hook/
+│   │   │       ├── hook.go
+│   │   │       ├── manager.go
+│   │   │       └── types.go
 │   │   │
 │   │   └── utils/
-│   │       ├── crypto.go                 # 加密工具
-│   │       ├── file.go                   # 文件工具
-│   │       └── validator.go              # 验证工具
+│   │       ├── env.go                    # env 工具（解析 MEDIA_*）[已实现]
+│   │       ├── crypto.go                 # 加密工具 [预留]
+│   │       ├── file.go                   # 文件工具 [预留]
+│   │       └── validator.go              # 验证工具 [预留]
 │   │
 │   ├── pkg/
-│   │   ├── plugin/                       # 插件SDK
-│   │   │   ├── sdk.go                    # 插件SDK主入口
-│   │   │   ├── interfaces.go             # 插件接口定义
-│   │   │   ├── types.go                  # 共享类型定义
-│   │   │   └── util.go                   # SDK工具函数
-│   │   │
-│   │   └── database/                     # 数据库工具包
+│   │   ├── auth/
+│   │   │   └── jwt.go                    # JWT 工具 [已实现]
+│   │   ├── security/
+│   │   │   └── csrf.go                   # CSRF 工具 [已实现]
+│   │   ├── plugin/                       # 插件 SDK [预留]
+│   │   │   ├── sdk.go
+│   │   │   ├── interfaces.go
+│   │   │   ├── types.go
+│   │   │   └── util.go
+│   │   └── database/                     # 数据库工具包 [预留]
 │   │       ├── mysql.go
 │   │       └── redis.go
 │   │
-│   └── plugins/                          # 后端插件目录 (Go源码)
-│       ├── example/                      
-│       │   ├── main.go                   
-│       │   ├── go.mod                    
-│       │   └── implementation.go         
-│       └── .gitkeep                      
+│   └── plugins/                          # 后端插件目录（Go源码）[预留]
+│       ├── example/
+│       │   ├── main.go
+│       │   ├── go.mod
+│       │   └── implementation.go
+│       └── .gitkeep
+│
 ├── 前端应用 (Next.js 14+)
 │   ├── web/
 │   │   ├── public/                       # 静态资源
@@ -177,3 +197,29 @@
 ├── go.mod
 ├── go.sum
 └── README.md
+
+---
+
+## 媒体库（Media Library）当前实现要点
+
+- 公共访问：`/media/a/{assetID}/{stored_name}`（静态目录映射到 `MEDIA_UPLOAD_DIR`，默认 `./data/uploads`）
+- 物理路径：`{MEDIA_UPLOAD_DIR}/a/{assetID}/{stored_name}`
+- 列表权限：admin 看全站；普通用户只看自己的资源。
+- 删除权限：普通用户“只能删自己上传的”；否则返回 `core.ErrPermission`（API 映射 403）。
+- 删除硬限制：被帖子引用（post_assets）则禁止删除（409）。
+- 引用同步：Post Create/Update 解析 Markdown 中的媒体 URL，写入 post_assets。
+- API：
+  - `POST   /api/v1/media`
+  - `GET    /api/v1/media`
+  - `DELETE /api/v1/media/:id`
+  - `GET    /api/v1/posts/:id/media`
+
+---
+
+## TODO（当前）
+
+1. （可选/增强）统一错误响应格式：例如 `{ code, message, details }`，并为常见错误建立规范化 code。
+2. （可选/增强）为媒体库增加“批量删除/批量查询”接口，并保持 owner 权限与引用硬限制一致。
+3. （可选/增强）为 media_assets 增加 SHA256 去重策略（同用户/全站可选）与重复上传处理策略。
+4. （可选/增强）增加后台运维接口：扫描上传目录与数据库记录的一致性（孤儿文件/孤儿记录）。
+5. （前端待做）实现帖子编辑器中的媒体选择/插入体验（本次暂不施工）。

@@ -6,8 +6,12 @@ import (
 	"KaldalisCMS/internal/infra/auth"
 	repository "KaldalisCMS/internal/infra/repository/postgres"
 	"KaldalisCMS/internal/service"
+	"KaldalisCMS/internal/utils"
 
-	"github.com/casbin/casbin/v2" // 新增导入
+	"os"
+	"path/filepath"
+
+	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -18,10 +22,41 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *g
 	// Add a simple CORS middleware
 	r.Use(apimw.CORSMiddleware())
 
+	// --- Static media (public) ---
+	uploadDir := os.Getenv("MEDIA_UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = filepath.FromSlash("./data/uploads")
+	}
+	maxUploadMB := os.Getenv("MEDIA_MAX_UPLOAD_SIZE_MB")
+	publicBaseURL := os.Getenv("MEDIA_PUBLIC_BASE_URL")
+	maxFilenameBytes := os.Getenv("MEDIA_MAX_FILENAME_BYTES")
+
+	// /media maps to uploadDir; assets are stored under uploadDir/a/{id}/{stored_name}
+	r.Static("/media", uploadDir)
+
+	// --- Media ---
+	mediaRepo := repository.NewMediaRepository(db)
+	mediaCfg := service.MediaConfig{
+		UploadDir: uploadDir,
+	}
+	if v := utils.ParseInt64(maxUploadMB); v > 0 {
+		mediaCfg.MaxUploadSizeMB = v
+	} else {
+		mediaCfg.MaxUploadSizeMB = 50
+	}
+	mediaCfg.PublicBaseURL = publicBaseURL
+	if v := utils.ParseInt(maxFilenameBytes); v > 0 {
+		mediaCfg.MaxFilenameBytes = v
+	} else {
+		mediaCfg.MaxFilenameBytes = 180
+	}
+	mediaSvc := service.NewMediaService(mediaRepo, mediaCfg)
+	mediaAPI := v1.NewMediaAPI(mediaSvc, mediaRepo)
+
 	// Dependency Injection for Post
 
 	postRepo := repository.NewPostRepository(db)
-	postService := service.NewPostService(postRepo)
+	postService := service.NewPostServiceWithMedia(postRepo, mediaSvc)
 	postAPI := v1.NewPostAPI(postService)
 
 	userRepo := repository.NewUserRepository(db)
@@ -54,7 +89,7 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *g
 
 		// 先检查是否登录，再检查 CSRF，最后检查权限
 		protected.Use(apimw.RequireAuth())
-		protected.Use(apimw.Authorize(enforcer)) // 新增 Casbin 权限检查中间件
+		protected.Use(apimw.Authorize(enforcer))
 		protected.Use(apimw.CSRFCheck(sessionMgr))
 
 		{
@@ -65,6 +100,9 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *g
 			protected.POST("/posts", postAPI.CreatePost)
 			protected.PUT("/posts/:id", postAPI.UpdatePost)
 			protected.DELETE("/posts/:id", postAPI.DeletePost)
+
+			// 需要认证的 Media 操作
+			mediaAPI.RegisterRoutes(protected)
 		}
 	}
 

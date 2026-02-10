@@ -4,6 +4,7 @@ import (
 	"KaldalisCMS/internal/infra/auth"
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -21,6 +22,13 @@ type Config struct {
 		TimeZone string `mapstructure:"timezone"`
 	} `mapstructure:"database"`
 	Auth auth.Config
+
+	Media struct {
+		UploadDir        string `mapstructure:"upload_dir"`
+		MaxUploadSizeMB  int64  `mapstructure:"max_upload_size_mb"`
+		PublicBaseURL    string `mapstructure:"public_base_url"`
+		MaxFilenameBytes int    `mapstructure:"max_filename_bytes"`
+	} `mapstructure:"media"`
 }
 
 var AppConfig Config
@@ -40,6 +48,12 @@ func InitConfig() {
 	v.SetDefault("database.dbname", "kaldalis_cms")
 	v.SetDefault("database.sslmode", "disable")
 	v.SetDefault("database.timezone", "Asia/Shanghai")
+
+	// Media defaults (project-root relative by default)
+	v.SetDefault("media.upload_dir", filepath.FromSlash("./data/uploads"))
+	v.SetDefault("media.max_upload_size_mb", int64(50))
+	v.SetDefault("media.public_base_url", "") // if empty, API returns relative URLs like /media/...
+	v.SetDefault("media.max_filename_bytes", 180)
 
 	// Read config file
 	if err := v.ReadInConfig(); err != nil {

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -12,17 +13,24 @@ import (
 
 type PostService struct {
 	repo core.PostRepository
-}
-
-func (s *PostService) DraftPost(id uint) error {
-	//TODO implement me
-	panic("implement me")
+	// media is optional; when nil, reference sync is skipped.
+	media *MediaService
 }
 
 func NewPostService(repo core.PostRepository) *PostService {
 	return &PostService{
 		repo: repo,
 	}
+}
+
+// NewPostServiceWithMedia wires an optional MediaService to keep post_assets in sync.
+func NewPostServiceWithMedia(repo core.PostRepository, media *MediaService) *PostService {
+	return &PostService{repo: repo, media: media}
+}
+
+func (s *PostService) DraftPost(id uint) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (s *PostService) CreatePost(post entity.Post) error {
@@ -44,10 +52,15 @@ func (s *PostService) CreatePost(post entity.Post) error {
 
 	post.Slug = finalSlug
 
-	err = s.repo.Create(post)
+	created, err := s.repo.Create(post)
 	if err != nil {
 		// 封装错误
 		return fmt.Errorf("保存文章失败: %w", err)
+	}
+
+	// Sync media references best-effort.
+	if s.media != nil {
+		_ = s.media.SyncPostReferences(context.Background(), created.ID, created.Content, created.Cover)
 	}
 	return nil
 }
@@ -98,6 +111,10 @@ func (s *PostService) UpdatePost(id uint, updatedEntity entity.Post) error {
 	err = s.repo.Update(existingEntity)
 	if err != nil {
 		return fmt.Errorf("更新文章失败: %w", err)
+	}
+
+	if s.media != nil {
+		_ = s.media.SyncPostReferences(context.Background(), id, existingEntity.Content, existingEntity.Cover)
 	}
 
 	return nil

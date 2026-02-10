@@ -54,6 +54,30 @@ func main() {
 		log.Println("策略已存在: admin, /api/v1/posts, GET")
 	}
 
+	// 初始化媒体相关策略
+	if has, _ := enforcer.AddPolicy("admin", "/api/v1/media", "POST"); !has {
+		log.Println("策略已存在: admin, /api/v1/media, POST")
+	}
+	if has, _ := enforcer.AddPolicy("admin", "/api/v1/media", "GET"); !has {
+		log.Println("策略已存在: admin, /api/v1/media, GET")
+	}
+	if has, _ := enforcer.AddPolicy("admin", "/api/v1/media/:id", "DELETE"); !has {
+		log.Println("策略已存在: admin, /api/v1/media/:id, DELETE")
+	}
+	if has, _ := enforcer.AddPolicy("admin", "/api/v1/posts/:id/media", "GET"); !has {
+		log.Println("策略已存在: admin, /api/v1/posts/:id/media, GET")
+	}
+
+	if has, _ := enforcer.AddPolicy("user", "/api/v1/media", "POST"); !has {
+		log.Println("策略已存在: user, /api/v1/media, POST")
+	}
+	if has, _ := enforcer.AddPolicy("user", "/api/v1/media", "GET"); !has {
+		log.Println("策略已存在: user, /api/v1/media, GET")
+	}
+	if has, _ := enforcer.AddPolicy("user", "/api/v1/posts/:id/media", "GET"); !has {
+		log.Println("策略已存在: user, /api/v1/posts/:id/media, GET")
+	}
+
 	// --- Casbin 初始化结束 ---
 
 	// 将 enforcer 传递给路由设置函数
