@@ -1,66 +1,102 @@
 package main
 
 import (
-	"KaldalisCMS/internal/infra/auth" // 新增导入
+	"KaldalisCMS/internal/infra/auth"
 	"KaldalisCMS/internal/infra/repository/postgres"
 	"KaldalisCMS/internal/router"
 	"log"
+	"net/http"
+	"sync"
 )
+
+// RouterManager acts as a dynamic proxy for the active http.Handler
+type RouterManager struct {
+	mu      sync.RWMutex
+	current http.Handler
+}
+
+func (rm *RouterManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	rm.mu.RLock()
+	handler := rm.current
+	rm.mu.RUnlock()
+	if handler != nil {
+		handler.ServeHTTP(w, r)
+	} else {
+		http.Error(w, "Service initializing...", http.StatusServiceUnavailable)
+	}
+}
+
+func (rm *RouterManager) Switch(h http.Handler) {
+	rm.mu.Lock()
+	rm.current = h
+	rm.mu.Unlock()
+}
+
+var routerManager = &RouterManager{}
 
 func main() {
 	// Initialize configuration
 	InitConfig()
 
-	// Initialize database
-	dsn := GetDatabaseDSN()
-	db, err := repository.InitDB(dsn)
-	if err != nil {
-		log.Fatal(err)
+	// Try to bootstrap the full application
+	if err := BootstrapApp(); err != nil {
+		log.Printf("Initialization failed: %v. Switching to SETUP MODE.", err)
+		SwitchToSetupMode()
 	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		log.Fatalf("failed to get underlying sql.DB: %v", err)
-	}
-	defer sqlDB.Close()
-
-	// --- Casbin 初始化 ---
-	// 调用封装好的 Casbin 初始化函数
-	enforcer := auth.InitCasbin(db, auth.CasbinConfig{
-		ModelPath: "cmd/configs/casbin_model.conf", // Casbin 模型文件路径
-	})
-
-	// 规则初始化 (在 main 中)
-	// 4. 添加一些初始的权限策略，以便测试
-	//    如果策略已存在，则不会重复添加
-	// 格式: p, 角色, 路由, 方法
-	// 示例：允许 admin 角色访问 /api/v1/posts 并执行 POST 请求
-	if has, _ := enforcer.AddPolicy("admin", "/api/v1/posts", "POST"); !has {
-		log.Println("策略已存在: admin, /api/v1/posts, POST")
-	}
-	if has, _ := enforcer.AddPolicy("admin", "/api/v1/posts/:id", "PUT"); !has {
-		log.Println("策略已存在: admin, /api/v1/posts/:id, PUT")
-	}
-	if has, _ := enforcer.AddPolicy("admin", "/api/v1/posts/:id", "DELETE"); !has {
-		log.Println("策略已存在: admin, /api/v1/posts/:id, DELETE")
-	}
-	// 允许所有角色 (包括匿名) 访问 /api/v1/posts 并执行 GET 请求
-	if has, _ := enforcer.AddPolicy("anonymous", "/api/v1/posts", "GET"); !has {
-		log.Println("策略已存在: anonymous, /api/v1/posts, GET")
-	}
-	if has, _ := enforcer.AddPolicy("user", "/api/v1/posts", "GET"); !has {
-		log.Println("策略已存在: user, /api/v1/posts, GET")
-	}
-	if has, _ := enforcer.AddPolicy("admin", "/api/v1/posts", "GET"); !has {
-		log.Println("策略已存在: admin, /api/v1/posts, GET")
-	}
-
-	// --- Casbin 初始化结束 ---
-
-	// 将 enforcer 传递给路由设置函数
-	r := router.SetupRouter(db, AppConfig.Auth, enforcer)
 
 	log.Println("Server is starting on http://localhost:8080 ...")
-	if err := r.Run(":8080"); err != nil {
+	if err := http.ListenAndServe(":8080", routerManager); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}
+}
+
+// BootstrapApp tries to connect to DB and setup the full application router
+func BootstrapApp() error {
+	dsn := GetDatabaseDSN()
+	
+	db, err := repository.InitDB(dsn)
+	if err != nil {
+		return err
+	}
+
+	enforcer := auth.InitCasbin(db, auth.CasbinConfig{
+		ModelPath: "cmd/configs/casbin_model.conf",
+	})
+
+	// Setup Default Policies
+	enforcer.AddPolicy("admin", "/api/v1/posts", "POST")
+	enforcer.AddPolicy("admin", "/api/v1/posts/:id", "PUT")
+	enforcer.AddPolicy("admin", "/api/v1/posts/:id", "DELETE")
+	enforcer.AddPolicy("anonymous", "/api/v1/posts", "GET")
+	enforcer.AddPolicy("user", "/api/v1/posts", "GET")
+	enforcer.AddPolicy("admin", "/api/v1/posts", "GET")
+
+	// Create App Router
+	r := router.NewAppRouter(db, AppConfig.Auth, enforcer)
+
+	// Switch global handler
+	routerManager.Switch(r)
+	log.Println("System running in APP MODE")
+	return nil
+}
+
+// SwitchToSetupMode initializes the limited setup router
+func SwitchToSetupMode() {
+	// Now main only communicates with router, passing callbacks
+	// No need to import internal/service here
+	r := router.NewSetupRouter(
+		SaveDatabaseConfig, // The save callback
+		func() error {      // The reload callback
+			log.Println("Configuration saved. Attempting hot reload...")
+			if err := BootstrapApp(); err != nil {
+				log.Printf("Hot reload failed: %v", err)
+				return err
+			}
+			log.Println("Hot reload successful!")
+			return nil
+		},
+	)
+
+	routerManager.Switch(r)
+	log.Println("System running in SETUP MODE")
 }

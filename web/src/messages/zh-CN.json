@@ -91,7 +91,10 @@
     "system_resources": "系统资源",
     "activity_log": "活动日志",
     "create": "新建文章",
-    "search": "搜索文章...",
+    "search": "搜索",
+    "loading": "加载中...",
+    "edit": "编辑",
+    "delete": "删除",
     "filter": "筛选",
     "actions": "操作",
     "id": "ID",
@@ -103,7 +106,21 @@
     "cmd_edit": "编辑文章",
     "cmd_view": "查看前台",
     "posts": "文章管理",
-    "logout_text": "退出登录"
+    "logout_text": "退出登录",
+    "media_library": "媒体库",
+    "upload_file": "上传文件",
+    "storage_used": "已用空间",
+    "user_management": "用户管理",
+    "add_user": "添加用户",
+    "role": "角色",
+    "analytics_dashboard": "数据统计看板",
+    "traffic_overview": "流量概览",
+    "system_settings": "系统设置",
+    "site_information": "站点信息",
+    "seo_settings": "SEO 与元数据",
+    "security_settings": "安全设置",
+    "advanced_settings": "高级设置",
+    "save_changes": "保存更改"
   },
   "posts": {
     "title": "博客文章",
@@ -120,5 +137,17 @@
     "unauthorized": "未授权，请重新登录",
     "not_found": "页面不存在",
     "unknown_error": "未知错误"
+  },
+  "setup": {
+    "title": "欢迎使用 Kaldalis",
+    "subtitle": "只需几个简单步骤，即可完成您的 CMS 初始化。",
+    "site_name": "站点名称",
+    "admin_username": "管理员用户名",
+    "admin_email": "管理员邮箱",
+    "admin_password": "管理员密码",
+    "complete_setup": "完成安装",
+    "setting_up": "正在安装...",
+    "success_title": "安装成功！",
+    "success_desc": "Kaldalis CMS 已成功安装。您现在可以登录到管理后台。"
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import {Link} from '@/i18n/routing'; // 引入 Link 用于跳转注册
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
