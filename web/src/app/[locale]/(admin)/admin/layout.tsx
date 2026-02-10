@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import { Link, usePathname } from "@/i18n/routing";
-import { useRouter } from "next/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { useTranslations } from 'next-intl';
@@ -35,8 +34,16 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const t = useTranslations('admin');
-  const { user, logout } = useAuthStore();
+  const { user, isLoggedIn, logout } = useAuthStore();
+
+  // 登录守卫：如果未登录，重定向到登录页
+  React.useEffect(() => {
+    if (!isLoggedIn) {
+      router.replace("/login");
+    }
+  }, [isLoggedIn, router]);
 
   const handleLogout = async () => {
     try {
@@ -45,8 +52,12 @@ export default function AdminLayout({
       console.error("登出请求失败:", error);
     }
     logout();
-    window.location.href = "/login";
+    router.push("/login");
   };
+
+  if (!isLoggedIn) {
+    return null; // 或者返回一个加载动画，防止内容闪烁
+  }
 
   const navItems = [
     {

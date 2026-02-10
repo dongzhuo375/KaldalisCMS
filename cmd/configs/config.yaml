@@ -1,22 +1,20 @@
 database:
-  host: localhost
-  port: 5432
-  user: amber # Replace with your PostgreSQL username
-  password: AMBERZz # Replace with your PostgreSQL password
-  dbname: kaldalis_cms
-  sslmode: disable
-  timezone: Asia/Shanghai
-
+    dbname: kaldalis_cms
+    host: localhost
+    password: "12"
+    port: 5432
+    sslmode: disable
+    timezone: Asia/Shanghai
+    user: postgres
 jwt:
-  secret: "AL3uaHdBI/zK/t0zfeXrFKb/7LOP8LECxp51j7pOo9PP7Ok99JceBQ8k4AZYlOE7tM8sV/55hPq/8I3WdzJi1w==" 
-  ttl: 24h
-  auth_cookie: kaldalis_auth 
-  csrf_cookie: kaldalis_csrf 
-  role_cookie: kaldalis_role
-  path: /
-  domain: 
-  secure: false
-  same_site: 1
+    auth_cookie: kaldalis_auth
+    csrf_cookie: kaldalis_csrf
+    path: /
+    role_cookie: kaldalis_role
+    same_site: 1
+    secret: AL3uaHdBI/zK/t0zfeXrFKb/7LOP8LECxp51j7pOo9PP7Ok99JceBQ8k4AZYlOE7tM8sV/55hPq/8I3WdzJi1w==
+    secure: false
+    ttl: 24h
 
 media:
   # Project-local storage by default. For Docker, map a volume to /app/data/uploads and set MEDIA_UPLOAD_DIR accordingly.

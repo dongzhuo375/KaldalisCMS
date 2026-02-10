@@ -60,6 +60,8 @@ func InitConfig() {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found; ignore error if desired
 			log.Println("Config file not found, using defaults and environment variables.")
+			// Create empty config file if not exists so WriteConfig works?
+			// viper.SafeWriteConfig() might be needed if file doesn't exist.
 		} else {
 			// Config file was found but another error was produced
 			log.Fatalf("Fatal error config file: %s \n", err)
@@ -67,10 +69,8 @@ func InitConfig() {
 	}
 
 	// Environment variables
-	// AutomaticEnv makes Viper check for a lowercase version of the key in environment variables.
-	// For example, if database.host is requested, it will check for DATABASE_HOST.
 	v.AutomaticEnv()
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) // Replace dots with underscores for env vars
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// Unmarshal the config into the AppConfig struct
 	if err := v.Unmarshal(&AppConfig); err != nil {
@@ -92,4 +92,23 @@ func GetDatabaseDSN() string {
 	db := AppConfig.Database
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
 		db.Host, db.Port, db.User, db.Password, db.DBName, db.SSLMode, db.TimeZone)
+}
+
+// SaveDatabaseConfig updates the database configuration and writes it to the file
+func SaveDatabaseConfig(host string, port int, user, pass, dbname string) error {
+	v := viper.GetViper()
+	v.Set("database.host", host)
+	v.Set("database.port", port)
+	v.Set("database.user", user)
+	v.Set("database.password", pass)
+	v.Set("database.dbname", dbname)
+
+	// Update the in-memory struct as well
+	AppConfig.Database.Host = host
+	AppConfig.Database.Port = port
+	AppConfig.Database.User = user
+	AppConfig.Database.Password = pass
+	AppConfig.Database.DBName = dbname
+
+	return v.WriteConfig()
 }

@@ -3,6 +3,7 @@ import {getMessages, getTranslations} from 'next-intl/server';
 import {Inter} from "next/font/google";
 import "../globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SystemStatusGuard } from "@/components/system-status-guard";
 
 const inter = Inter({subsets: ["latin"]});
 
@@ -37,7 +38,9 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <SystemStatusGuard>
+              {children}
+            </SystemStatusGuard>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

@@ -16,7 +16,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *gin.Engine {
+// NewAppRouter initializes the router for the fully functional application
+func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *gin.Engine {
 	r := gin.Default()
 
 	// Add a simple CORS middleware
@@ -56,7 +57,7 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *g
 	// Dependency Injection for Post
 
 	postRepo := repository.NewPostRepository(db)
-	postService := service.NewPostServiceWithMedia(postRepo, mediaSvc)
+	postService := service.NewPostService(postRepo)
 	postAPI := v1.NewPostAPI(postService)
 
 	userRepo := repository.NewUserRepository(db)
@@ -104,6 +105,23 @@ func SetupRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *g
 			// 需要认证的 Media 操作
 			mediaAPI.RegisterRoutes(protected)
 		}
+	}
+
+	return r
+}
+
+// NewSetupRouter initializes the router for the setup mode, hiding service instantiation from main
+func NewSetupRouter(save func(string, int, string, string, string) error, reload func() error) *gin.Engine {
+	r := gin.Default()
+	r.Use(apimw.CORSMiddleware())
+
+	// Service instantiation is now hidden inside router
+	setupSvc := service.NewSetupService(save, reload)
+	setupAPI := v1.NewSetupAPI(setupSvc)
+
+	apiV1 := r.Group("/api/v1")
+	{
+		setupAPI.RegisterRoutes(apiV1)
 	}
 
 	return r

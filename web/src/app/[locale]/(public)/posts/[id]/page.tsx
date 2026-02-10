@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { useTranslations, useFormatter } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import api from "@/lib/api";
