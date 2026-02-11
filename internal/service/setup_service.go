@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type SetupConfig struct {
@@ -79,7 +79,7 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 	if err := db.FirstOrCreate(&setting, model.SystemSetting{ID: 1}).Error; err != nil {
 		return fmt.Errorf("failed to set system setting: %w", err)
 	}
-	
+
 	if err := db.Model(&setting).Updates(model.SystemSetting{SiteName: cfg.SiteName, Installed: true}).Error; err != nil {
 		return fmt.Errorf("failed to update system setting: %w", err)
 	}

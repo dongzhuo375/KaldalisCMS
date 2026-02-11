@@ -53,14 +53,16 @@ func main() {
 // BootstrapApp tries to connect to DB and setup the full application router
 func BootstrapApp() error {
 	dsn := GetDatabaseDSN()
-	
+
 	db, err := repository.InitDB(dsn)
 	if err != nil {
 		return err
 	}
 
+	// --- Casbin 初始化 ---
+	// 调用封装好的 Casbin 初始化函数
 	enforcer := auth.InitCasbin(db, auth.CasbinConfig{
-		ModelPath: "cmd/configs/casbin_model.conf",
+		ModelPath: "cmd/configs/casbin_model.conf", // Casbin 模型文件路径
 	})
 
 	// Setup Default Policies
@@ -70,6 +72,32 @@ func BootstrapApp() error {
 	enforcer.AddPolicy("anonymous", "/api/v1/posts", "GET")
 	enforcer.AddPolicy("user", "/api/v1/posts", "GET")
 	enforcer.AddPolicy("admin", "/api/v1/posts", "GET")
+
+	// 初始化媒体相关策略
+	if has, _ := enforcer.AddPolicy("admin", "/api/v1/media", "POST"); !has {
+		log.Println("策略已存在: admin, /api/v1/media, POST")
+	}
+	if has, _ := enforcer.AddPolicy("admin", "/api/v1/media", "GET"); !has {
+		log.Println("策略已存在: admin, /api/v1/media, GET")
+	}
+	if has, _ := enforcer.AddPolicy("admin", "/api/v1/media/:id", "DELETE"); !has {
+		log.Println("策略已存在: admin, /api/v1/media/:id, DELETE")
+	}
+	if has, _ := enforcer.AddPolicy("admin", "/api/v1/posts/:id/media", "GET"); !has {
+		log.Println("策略已存在: admin, /api/v1/posts/:id/media, GET")
+	}
+
+	if has, _ := enforcer.AddPolicy("user", "/api/v1/media", "POST"); !has {
+		log.Println("策略已存在: user, /api/v1/media, POST")
+	}
+	if has, _ := enforcer.AddPolicy("user", "/api/v1/media", "GET"); !has {
+		log.Println("策略已存在: user, /api/v1/media, GET")
+	}
+	if has, _ := enforcer.AddPolicy("user", "/api/v1/posts/:id/media", "GET"); !has {
+		log.Println("策略已存在: user, /api/v1/posts/:id/media, GET")
+	}
+
+	// --- Casbin 初始化结束 ---
 
 	// Create App Router
 	r := router.NewAppRouter(db, AppConfig.Auth, enforcer)
@@ -86,7 +114,7 @@ func SwitchToSetupMode() {
 	// No need to import internal/service here
 	r := router.NewSetupRouter(
 		SaveDatabaseConfig, // The save callback
-		func() error {      // The reload callback
+		func() error { // The reload callback
 			log.Println("Configuration saved. Attempting hot reload...")
 			if err := BootstrapApp(); err != nil {
 				log.Printf("Hot reload failed: %v", err)

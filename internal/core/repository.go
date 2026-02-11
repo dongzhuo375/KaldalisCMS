@@ -7,11 +7,24 @@ import (
 
 type PostRepository interface {
 	GetByID(id uint) (entity.Post, error)
-	Create(post entity.Post) error
+	Create(post entity.Post) (entity.Post, error)
 	Update(post entity.Post) error
 	Delete(id uint) error
 	GetAll() ([]entity.Post, error)
 	IsSlugExists(slug string) (bool, error)
+}
+
+// MediaRepository defines persistence operations for media assets and post-media relations.
+// Service layer should depend on this interface, not a specific DB implementation.
+type MediaRepository interface {
+	Create(ctx context.Context, asset *entity.MediaAsset) error
+	GetByID(ctx context.Context, id uint) (entity.MediaAsset, error)
+	List(ctx context.Context, ownerUserID *uint, offset, limit int, q string) ([]entity.MediaAsset, int64, error)
+	Delete(ctx context.Context, id uint) error
+	CountReferences(ctx context.Context, assetID uint) (int64, error)
+	UpsertPostReferences(ctx context.Context, postID uint, purpose string, assetIDs []uint) error
+	ListPostMedia(ctx context.Context, postID uint, purpose *string) ([]entity.MediaAsset, error)
+	UpdateAssetFields(ctx context.Context, assetID uint, fields map[string]any) error
 }
 
 // UserRepository defines the interface for user data operations.

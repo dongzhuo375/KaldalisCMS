@@ -15,3 +15,11 @@ jwt:
     secret: AL3uaHdBI/zK/t0zfeXrFKb/7LOP8LECxp51j7pOo9PP7Ok99JceBQ8k4AZYlOE7tM8sV/55hPq/8I3WdzJi1w==
     secure: false
     ttl: 24h
+
+media:
+  # Project-local storage by default. For Docker, map a volume to /app/data/uploads and set MEDIA_UPLOAD_DIR accordingly.
+  upload_dir: ./data/uploads
+  max_upload_size_mb: 50
+  # If empty, API returns relative URLs like /media/a/{id}/{name}. Set e.g. https://cdn.example.com for production.
+  public_base_url: ""
+  max_filename_bytes: 180

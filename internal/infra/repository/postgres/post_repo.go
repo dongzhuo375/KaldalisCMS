@@ -15,22 +15,21 @@ import (
 
 // model转换成entity
 func postToEntity(m model.Post) entity.Post {
-	
+
 	var authorEntity entity.User
-	
-	if m.Author.ID != 0 { 
+
+	if m.Author.ID != 0 {
 		authorEntity = entity.User{ID: m.Author.ID, Username: m.Author.Username}
 	}
 
 	var categoryEntity entity.Category
-	
-	
+
 	if m.Category != nil {
 		categoryEntity = entity.Category{
-			ID:   m.Category.ID, 
+			ID:   m.Category.ID,
 			Name: m.Category.Name,
 			// 如果需要 Slug 就加上，不需要就删掉这行
-			// Slug: m.Category.Slug, 
+			// Slug: m.Category.Slug,
 		}
 	}
 
@@ -40,30 +39,31 @@ func postToEntity(m model.Post) entity.Post {
 	}
 
 	return entity.Post{
-		ID:         m.ID,
-		CreatedAt:  m.CreatedAt,
-		UpdatedAt:  m.UpdatedAt,
-		Title:      m.Title,
-		Slug:       m.Slug,
-		Content:    m.Content,
-		Cover:      m.Cover,
-		
-		AuthorID:   m.AuthorID,
-		Author:     authorEntity,
-		
-		CategoryID: m.CategoryID, 
+		ID:        m.ID,
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
+		Title:     m.Title,
+		Slug:      m.Slug,
+		Content:   m.Content,
+		Cover:     m.Cover,
+
+		AuthorID: m.AuthorID,
+		Author:   authorEntity,
+
+		CategoryID: m.CategoryID,
 		Category:   categoryEntity,
-		
-		Tags:       tagsEntity,
-		Status:     m.Status,
+
+		Tags:   tagsEntity,
+		Status: m.Status,
 	}
 }
+
 // entity转换成model
 func postToModel(e entity.Post) model.Post {
 	return model.Post{
-		ID: e.ID, 
-		CreatedAt: e.CreatedAt, 
-		UpdatedAt: e.UpdatedAt,
+		ID:         e.ID,
+		CreatedAt:  e.CreatedAt,
+		UpdatedAt:  e.UpdatedAt,
 		Title:      e.Title,
 		Slug:       e.Slug,
 		Content:    e.Content,
@@ -118,19 +118,21 @@ func (r *PostRepository) GetByID(id uint) (entity.Post, error) {
 	return postToEntity(postModel), nil
 }
 
-func (r *PostRepository) Create(post entity.Post) error {
+func (r *PostRepository) Create(post entity.Post) (entity.Post, error) {
 	postModel := postToModel(post)
 	if err := r.db.Create(&postModel).Error; err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" { // 23505 is the SQLSTATE for unique_violation
-				return core.ErrDuplicate
+				return entity.Post{}, core.ErrDuplicate
 			}
 		}
-		return fmt.Errorf("post_repository.Create: %w", err)
+		return entity.Post{}, fmt.Errorf("post_repository.Create: %w", err)
 	}
 
-	return nil
+	created := post
+	created.ID = postModel.ID
+	return created, nil
 }
 
 func (r *PostRepository) Update(post entity.Post) error {
