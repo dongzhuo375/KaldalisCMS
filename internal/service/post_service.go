@@ -62,14 +62,17 @@ func (s *PostService) CreatePost(ctx context.Context, post entity.Post) error {
 
 	// Sync media references.
 	if s.media != nil {
-		// 创建独立的超时 Context，防止主 Context 取消影响后台同步（尽管它不是完全离线的）
-		// 或者复用请求上下文但加上超时保护
-		syncCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// Use a separate context with timeout for media sync to ensure it doesn't hang indefinitely.
+		// We don't want to block the user too long, but we also want reliability.
+		syncCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // 10s should be enough for parsing and DB updates
 		defer cancel()
 
 		if err := s.media.SyncPostReferences(syncCtx, created.ID, created.Content, created.Cover); err != nil {
-			// Do NOT rollback. Just log the error.
-			log.Printf("[WARN] Post created (ID: %d) but failed to sync media references: %v", created.ID, err)
+			// Still do not rollback, but log explicitly.
+			// In a real system, we'd emit a metric or push to a retry queue here.
+			log.Printf("[ERROR] Post created (ID: %d) but failed to sync media references: %v", created.ID, err)
+			// Return a warning if possible, but standard error return is nil.
+			// We consider the post creation successful as the content is saved.
 		}
 	}
 	return nil

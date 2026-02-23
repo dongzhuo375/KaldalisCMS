@@ -28,6 +28,8 @@ type MediaRepository interface {
 	UpdateAssetFields(ctx context.Context, assetID uint, fields map[string]any) error
 	UpdateStatus(ctx context.Context, id uint, status entity.MediaStatus) error
 	ListPendingOlderThan(ctx context.Context, cutoff time.Time, limit int) ([]entity.MediaAsset, error)
+	ListSoftDeletedOlderThan(ctx context.Context, cutoff time.Time, limit int) ([]entity.MediaAsset, error)
+	DeletePhysical(ctx context.Context, id uint) error
 }
 
 // UserRepository defines the interface for user data operations.

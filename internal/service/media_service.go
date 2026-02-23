@@ -223,42 +223,63 @@ func (s *MediaService) Delete(ctx context.Context, assetID uint) error {
 	return s.deleteByAsset(ctx, asset)
 }
 
-// CleanupPendingMedia scans for stale PENDING assets and removes them.
+// CleanupStaleMedia scans for stale PENDING assets AND soft-deleted assets and removes them.
 // Providing a robust "Eventual Consistency" guarantee.
-func (s *MediaService) CleanupPendingMedia(ctx context.Context) error {
-	// 1 hour cutoff
-	cutoff := time.Now().Add(-1 * time.Hour)
-	limit := 100
+func (s *MediaService) CleanupStaleMedia(ctx context.Context) error {
+	// 1. Clean up Pending assets (older than 1 hour)
+	cutoffPending := time.Now().Add(-1 * time.Hour)
+	limit := 50 // process in batches
 
-	staleAssets, err := s.repo.ListPendingOlderThan(ctx, cutoff, limit)
+	staleAssets, err := s.repo.ListPendingOlderThan(ctx, cutoffPending, limit)
 	if err != nil {
-		return fmt.Errorf("failed to list pending assets: %w", err)
-	}
-
-	if len(staleAssets) == 0 {
-		return nil
-	}
-
-	fmt.Printf("[MediaCleanup] Found %d stale pending assets. Cleaning up...\n", len(staleAssets))
-
-	for _, asset := range staleAssets {
-		// 1. Delete physical file (if exists)
-		// We re-construct path logic here. Ideally extracted to a helper.
-		objectKey := filepath.ToSlash(filepath.Join("a", fmt.Sprintf("%d", asset.ID), asset.StoredName))
-		absPath := filepath.Join(s.cfg.UploadDir, filepath.FromSlash(objectKey))
-
-		// Best effort remove file and dir
-		_ = os.Remove(absPath)
-		_ = os.Remove(filepath.Dir(absPath))
-
-		// 2. Delete DB record
-		if err := s.repo.Delete(ctx, asset.ID); err != nil {
-			fmt.Printf("[MediaCleanup] Failed to delete asset ID %d: %v\n", asset.ID, err)
-		} else {
-			fmt.Printf("[MediaCleanup] Deleted stale asset ID %d\n", asset.ID)
+		fmt.Printf("[MediaCleanup] Failed to list pending assets: %v\n", err)
+	} else if len(staleAssets) > 0 {
+		fmt.Printf("[MediaCleanup] Found %d stale pending assets. Cleaning up...\n", len(staleAssets))
+		for _, asset := range staleAssets {
+			s.physicalDelete(ctx, asset)
 		}
 	}
+
+	// 2. Clean up Soft-Deleted assets (older than 24 hours to allow accidental recovery if needed, or immediate if preferred)
+	// For this requirement (Scheme A), we can clean them up relatively quickly, e.g., 1 hour or even 5 minutes.
+	// Let's use 1 hour to be safe and consistent with Pending cleanup.
+	cutoffDeleted := time.Now().Add(-1 * time.Hour)
+	deletedAssets, err := s.repo.ListSoftDeletedOlderThan(ctx, cutoffDeleted, limit)
+	if err != nil {
+		return fmt.Errorf("failed to list soft-deleted assets: %w", err)
+	}
+
+	if len(deletedAssets) > 0 {
+		fmt.Printf("[MediaCleanup] Found %d soft-deleted assets. Finalizing cleanup...\n", len(deletedAssets))
+		for _, asset := range deletedAssets {
+			s.physicalDelete(ctx, asset)
+		}
+	}
+
 	return nil
+}
+
+func (s *MediaService) physicalDelete(ctx context.Context, asset entity.MediaAsset) {
+	// 1. Delete physical file (if exists)
+	objectKey := filepath.ToSlash(filepath.Join("a", fmt.Sprintf("%d", asset.ID), asset.StoredName))
+	absPath := filepath.Join(s.cfg.UploadDir, filepath.FromSlash(objectKey))
+
+	// Best effort remove file and dir
+	// We check if file exists to give better logs, but Remove is idempotent-ish
+	if _, err := os.Stat(absPath); err == nil {
+		if err := os.Remove(absPath); err != nil {
+			fmt.Printf("[MediaCleanup] Failed to remove file %s: %v\n", absPath, err)
+			return // If file deletion fails (e.g. locked), retry later
+		}
+	}
+	_ = os.Remove(filepath.Dir(absPath)) // try remove dir
+
+	// 2. Delete DB record HARD
+	if err := s.repo.DeletePhysical(ctx, asset.ID); err != nil {
+		fmt.Printf("[MediaCleanup] Failed to hard delete asset ID %d: %v\n", asset.ID, err)
+	} else {
+		fmt.Printf("[MediaCleanup] Hard deleted asset ID %d\n", asset.ID)
+	}
 }
 
 func (s *MediaService) deleteByAsset(ctx context.Context, asset entity.MediaAsset) error {
@@ -270,14 +291,12 @@ func (s *MediaService) deleteByAsset(ctx context.Context, asset entity.MediaAsse
 		return ErrAssetReferenced
 	}
 
+	// Scheme A: Soft Delete Only
+	// We rely on background job to cleanup the file and hard delete the record.
 	if err := s.repo.Delete(ctx, asset.ID); err != nil {
 		return err
 	}
 
-	// Best-effort remove physical file + dir.
-	absPath := filepath.Join(s.cfg.UploadDir, filepath.FromSlash(asset.ObjectKey))
-	_ = os.Remove(absPath)
-	_ = os.Remove(filepath.Dir(absPath))
 	return nil
 }
 

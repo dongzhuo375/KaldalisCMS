@@ -81,9 +81,9 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *
 		utils.RunTicker(1*time.Hour, func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
-			if err := mediaSvc.CleanupPendingMedia(ctx); err != nil {
+			if err := mediaSvc.CleanupStaleMedia(ctx); err != nil {
 				// In production, use a proper logger
-				println("Error cleaning up pending media:", err.Error())
+				println("Error cleaning up media:", err.Error())
 			}
 		})
 	}()

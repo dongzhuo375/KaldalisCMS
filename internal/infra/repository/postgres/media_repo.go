@@ -127,9 +127,17 @@ func (r *MediaRepository) List(ctx context.Context, ownerUserID *uint, offset, l
 }
 
 func (r *MediaRepository) Delete(ctx context.Context, id uint) error {
-	// For hard delete, we remove the record completely
-	if err := r.db.WithContext(ctx).Unscoped().Delete(&model.MediaAsset{}, id).Error; err != nil {
+	// GORM Default is Soft Delete if model has DeletedAt
+	if err := r.db.WithContext(ctx).Delete(&model.MediaAsset{}, id).Error; err != nil {
 		return fmt.Errorf("media_repository.Delete: %w", err)
+	}
+	return nil
+}
+
+func (r *MediaRepository) DeletePhysical(ctx context.Context, id uint) error {
+	// Hard delete (Unscoped)
+	if err := r.db.WithContext(ctx).Unscoped().Delete(&model.MediaAsset{}, id).Error; err != nil {
+		return fmt.Errorf("media_repository.DeletePhysical: %w", err)
 	}
 	return nil
 }
@@ -146,6 +154,20 @@ func (r *MediaRepository) ListPendingOlderThan(ctx context.Context, cutoff time.
 	// Status 0: PENDING
 	if err := r.db.WithContext(ctx).Where("status = ? AND created_at < ?", 0, cutoff).Limit(limit).Find(&ms).Error; err != nil {
 		return nil, fmt.Errorf("media_repository.ListPendingOlderThan: %w", err)
+	}
+	out := make([]entity.MediaAsset, 0, len(ms))
+	for _, m := range ms {
+		out = append(out, mediaModelToEntity(m))
+	}
+	return out, nil
+}
+
+func (r *MediaRepository) ListSoftDeletedOlderThan(ctx context.Context, cutoff time.Time, limit int) ([]entity.MediaAsset, error) {
+	var ms []model.MediaAsset
+	// Find records where deleted_at IS NOT NULL (soft deleted)
+	// We use Unscoped() to include soft-deleted records in the query
+	if err := r.db.WithContext(ctx).Unscoped().Where("deleted_at IS NOT NULL AND deleted_at < ?", cutoff).Limit(limit).Find(&ms).Error; err != nil {
+		return nil, fmt.Errorf("media_repository.ListSoftDeletedOlderThan: %w", err)
 	}
 	out := make([]entity.MediaAsset, 0, len(ms))
 	for _, m := range ms {
