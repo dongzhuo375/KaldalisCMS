@@ -6,6 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -13,6 +17,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -93,6 +98,8 @@ func (s *MediaService) CreateAssetFromUpload(ctx context.Context, ownerUserID ui
 	}
 	defer f.Close()
 
+	// --- State Machine Step 1: PENDING ---
+	// Insert DB record first to get ID. Status defaults to PENDING (0).
 	asset := entity.MediaAsset{
 		OwnerUserID:  ownerUserID,
 		OriginalName: origName,
@@ -101,13 +108,14 @@ func (s *MediaService) CreateAssetFromUpload(ctx context.Context, ownerUserID ui
 		MimeType:     mimeType,
 		SizeBytes:    fileHeader.Size,
 		Storage:      "local",
+		Status:       entity.MediaStatusPending,
 	}
 
-	// Create row first to get asset.ID.
 	if err := s.repo.Create(ctx, &asset); err != nil {
 		return entity.MediaAsset{}, err
 	}
 
+	// Calculate paths
 	objectKey := filepath.ToSlash(filepath.Join("a", fmt.Sprintf("%d", asset.ID), storedName))
 	asset.ObjectKey = objectKey
 	asset.Url = joinPublicURL(s.cfg.PublicBaseURL, "/media/"+objectKey)
@@ -120,27 +128,56 @@ func (s *MediaService) CreateAssetFromUpload(ctx context.Context, ownerUserID ui
 		}
 	}
 
-	// Persist ObjectKey/Url/Width/Height
-	if err := s.repo.UpdateAssetFields(ctx, asset.ID, map[string]any{"object_key": asset.ObjectKey, "url": asset.Url, "width": asset.Width, "height": asset.Height}); err != nil {
-		return entity.MediaAsset{}, fmt.Errorf("media_service.update_metadata: %w", err)
-	}
-
-	// Ensure directory and write file.
+	// --- State Machine Step 2: WRITE FILE ---
 	absPath := filepath.Join(s.cfg.UploadDir, filepath.FromSlash(objectKey))
 	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
+		// Write failed -> Mark as FAILED
+		_ = s.repo.UpdateStatus(ctx, asset.ID, entity.MediaStatusFailed)
 		return entity.MediaAsset{}, fmt.Errorf("media_service.MkdirAll: %w", err)
 	}
 
 	out, err := os.OpenFile(absPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
+		// Write failed -> Mark as FAILED
+		_ = s.repo.UpdateStatus(ctx, asset.ID, entity.MediaStatusFailed)
 		return entity.MediaAsset{}, fmt.Errorf("media_service.OpenFile: %w", err)
 	}
-	defer out.Close()
+	// We must close explicitely to ensure flush before DB update
+	// so we don't rely on defer alone for the success path
+	copyErr := func() error {
+		defer out.Close()
+		if _, err := io.Copy(out, f); err != nil {
+			return err
+		}
+		return nil
+	}()
 
-	if _, err := io.Copy(out, f); err != nil {
-		return entity.MediaAsset{}, fmt.Errorf("media_service.Copy: %w", err)
+	if copyErr != nil {
+		// Copy failed -> Mark as FAILED
+		// Try to clean up partial file
+		_ = os.Remove(absPath)
+		_ = s.repo.UpdateStatus(ctx, asset.ID, entity.MediaStatusFailed)
+		return entity.MediaAsset{}, fmt.Errorf("media_service.Copy: %w", copyErr)
 	}
 
+	// --- State Machine Step 3: UPLOADED ---
+	// File is safe on disk. Update metadata and flip status to UPLOADED.
+	updates := map[string]any{
+		"object_key": asset.ObjectKey,
+		"url":        asset.Url,
+		"width":      asset.Width,
+		"height":     asset.Height,
+		"status":     int(entity.MediaStatusUploaded),
+	}
+
+	if err := s.repo.UpdateAssetFields(ctx, asset.ID, updates); err != nil {
+		// DB update failed. This is the "Inconsistent" state (File ok, DB pending).
+		// We leave it as PENDING. The background cleanup job will see it's old and delete the file + record.
+		// Alternatively, we could try to delete the file here, but let's rely on the cleanup job for robustness.
+		return entity.MediaAsset{}, fmt.Errorf("media_service.update_metadata: %w", err)
+	}
+
+	asset.Status = entity.MediaStatusUploaded
 	return asset, nil
 }
 
@@ -184,6 +221,44 @@ func (s *MediaService) Delete(ctx context.Context, assetID uint) error {
 		return err
 	}
 	return s.deleteByAsset(ctx, asset)
+}
+
+// CleanupPendingMedia scans for stale PENDING assets and removes them.
+// Providing a robust "Eventual Consistency" guarantee.
+func (s *MediaService) CleanupPendingMedia(ctx context.Context) error {
+	// 1 hour cutoff
+	cutoff := time.Now().Add(-1 * time.Hour)
+	limit := 100
+
+	staleAssets, err := s.repo.ListPendingOlderThan(ctx, cutoff, limit)
+	if err != nil {
+		return fmt.Errorf("failed to list pending assets: %w", err)
+	}
+
+	if len(staleAssets) == 0 {
+		return nil
+	}
+
+	fmt.Printf("[MediaCleanup] Found %d stale pending assets. Cleaning up...\n", len(staleAssets))
+
+	for _, asset := range staleAssets {
+		// 1. Delete physical file (if exists)
+		// We re-construct path logic here. Ideally extracted to a helper.
+		objectKey := filepath.ToSlash(filepath.Join("a", fmt.Sprintf("%d", asset.ID), asset.StoredName))
+		absPath := filepath.Join(s.cfg.UploadDir, filepath.FromSlash(objectKey))
+
+		// Best effort remove file and dir
+		_ = os.Remove(absPath)
+		_ = os.Remove(filepath.Dir(absPath))
+
+		// 2. Delete DB record
+		if err := s.repo.Delete(ctx, asset.ID); err != nil {
+			fmt.Printf("[MediaCleanup] Failed to delete asset ID %d: %v\n", asset.ID, err)
+		} else {
+			fmt.Printf("[MediaCleanup] Deleted stale asset ID %d\n", asset.ID)
+		}
+	}
+	return nil
 }
 
 func (s *MediaService) deleteByAsset(ctx context.Context, asset entity.MediaAsset) error {
@@ -349,7 +424,7 @@ func tryReadImageSize(fileHeader *multipart.FileHeader) (*int, *int) {
 	}
 	defer f.Close()
 
-	cfg, _, err := decodeImageConfig(f)
+	cfg, _, err := image.DecodeConfig(f)
 	if err != nil {
 		return nil, nil
 	}

@@ -3,6 +3,7 @@ package core
 import (
 	"KaldalisCMS/internal/core/entity"
 	"context"
+	"time"
 )
 
 type PostRepository interface {
@@ -25,6 +26,8 @@ type MediaRepository interface {
 	UpsertPostReferences(ctx context.Context, postID uint, purpose string, assetIDs []uint) error
 	ListPostMedia(ctx context.Context, postID uint, purpose *string) ([]entity.MediaAsset, error)
 	UpdateAssetFields(ctx context.Context, assetID uint, fields map[string]any) error
+	UpdateStatus(ctx context.Context, id uint, status entity.MediaStatus) error
+	ListPendingOlderThan(ctx context.Context, cutoff time.Time, limit int) ([]entity.MediaAsset, error)
 }
 
 // UserRepository defines the interface for user data operations.

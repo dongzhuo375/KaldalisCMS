@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/gosimple/slug"
 
@@ -60,17 +62,14 @@ func (s *PostService) CreatePost(ctx context.Context, post entity.Post) error {
 
 	// Sync media references.
 	if s.media != nil {
-		// If sync fails, we must rollback the post creation to maintain consistency
-		// because we don't have a distributed transaction manager here.
-		if err := s.media.SyncPostReferences(ctx, created.ID, created.Content, created.Cover); err != nil {
-			// Rollback: delete the created post
-			deleteErr := s.repo.Delete(ctx, created.ID)
-			if deleteErr != nil {
-				// Both sync and rollback failed. This is a critical error.
-				// In a real system, we might log this to a special audit log or alert system.
-				return fmt.Errorf("media sync failed: %v; ROLLBACK FAILED: %v", err, deleteErr)
-			}
-			return fmt.Errorf("media sync failed (post rolled back): %w", err)
+		// 创建独立的超时 Context，防止主 Context 取消影响后台同步（尽管它不是完全离线的）
+		// 或者复用请求上下文但加上超时保护
+		syncCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := s.media.SyncPostReferences(syncCtx, created.ID, created.Content, created.Cover); err != nil {
+			// Do NOT rollback. Just log the error.
+			log.Printf("[WARN] Post created (ID: %d) but failed to sync media references: %v", created.ID, err)
 		}
 	}
 	return nil
@@ -125,11 +124,12 @@ func (s *PostService) UpdatePost(ctx context.Context, id uint, updatedEntity ent
 	}
 
 	if s.media != nil {
-		// For update, we probably don't want to rollback the whole update if sync fails,
-		// but it's arguable. The user specific concerns were about Create.
-		// For now, let's just surface the error significantly.
-		if err := s.media.SyncPostReferences(ctx, id, existingEntity.Content, existingEntity.Cover); err != nil {
-			return fmt.Errorf("文章更新成功 but 媒体引用同步失败: %w", err)
+		// Use independent context to ensure sync completes even if request context is cancelled
+		syncCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := s.media.SyncPostReferences(syncCtx, id, existingEntity.Content, existingEntity.Cover); err != nil {
+			log.Printf("[WARN] Post updated (ID: %d) but failed to sync media references: %v", id, err)
 		}
 	}
 

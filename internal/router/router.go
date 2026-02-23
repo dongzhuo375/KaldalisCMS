@@ -8,8 +8,10 @@ import (
 	"KaldalisCMS/internal/service"
 	"KaldalisCMS/internal/utils"
 
+	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
@@ -71,6 +73,20 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *
 	systemRepo := repository.NewSystemRepository(db)
 	systemService := service.NewSystemService(db, systemRepo, userService)
 	systemAPI := v1.NewSystemAPI(systemService)
+
+	// --- Background Jobs ---
+	// Start the background cleanup job for stale pending media.
+	// This runs every hour to remove files and DB records that failed during upload.
+	go func() {
+		utils.RunTicker(1*time.Hour, func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+			defer cancel()
+			if err := mediaSvc.CleanupPendingMedia(ctx); err != nil {
+				// In production, use a proper logger
+				println("Error cleaning up pending media:", err.Error())
+			}
+		})
+	}()
 
 	apiV1 := r.Group("/api/v1")
 	{
