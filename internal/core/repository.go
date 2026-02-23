@@ -6,12 +6,12 @@ import (
 )
 
 type PostRepository interface {
-	GetByID(id uint) (entity.Post, error)
-	Create(post entity.Post) (entity.Post, error)
-	Update(post entity.Post) error
-	Delete(id uint) error
-	GetAll() ([]entity.Post, error)
-	IsSlugExists(slug string) (bool, error)
+	GetByID(ctx context.Context, id uint) (entity.Post, error)
+	Create(ctx context.Context, post entity.Post) (entity.Post, error)
+	Update(ctx context.Context, post entity.Post) error
+	Delete(ctx context.Context, id uint) error
+	GetAll(ctx context.Context) ([]entity.Post, error)
+	IsSlugExists(ctx context.Context, slug string) (bool, error)
 }
 
 // MediaRepository defines persistence operations for media assets and post-media relations.

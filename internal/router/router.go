@@ -57,7 +57,9 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *
 	// Dependency Injection for Post
 
 	postRepo := repository.NewPostRepository(db)
-	postService := service.NewPostService(postRepo)
+
+	// Use NewPostServiceWithMedia to enable media synchronization
+	postService := service.NewPostServiceWithMedia(postRepo, mediaSvc)
 	postAPI := v1.NewPostAPI(postService)
 
 	userRepo := repository.NewUserRepository(db)

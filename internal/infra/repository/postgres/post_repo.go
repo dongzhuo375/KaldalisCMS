@@ -4,6 +4,7 @@ import (
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
 	"KaldalisCMS/internal/infra/model"
+	"context"
 	"errors"
 	"fmt"
 
@@ -78,9 +79,9 @@ type PostRepository struct {
 	db *gorm.DB
 }
 
-func (r *PostRepository) IsSlugExists(slug string) (bool, error) {
+func (r *PostRepository) IsSlugExists(ctx context.Context, slug string) (bool, error) {
 	var postModel model.Post
-	if err := r.db.Where("slug = ?", slug).First(&postModel).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&postModel).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil //Slug不重复
 		}
@@ -95,9 +96,9 @@ func NewPostRepository(db *gorm.DB) *PostRepository {
 
 //根据core/error.go,主要处理未找到数据和重复错误，未知错误返回InternalError
 
-func (r *PostRepository) GetAll() ([]entity.Post, error) {
+func (r *PostRepository) GetAll(ctx context.Context) ([]entity.Post, error) {
 	var postModels []model.Post
-	if err := r.db.Preload("Author").Preload("Category").Preload("Tags").Find(&postModels).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Author").Preload("Category").Preload("Tags").Find(&postModels).Error; err != nil {
 		return nil, fmt.Errorf("post_repository.GetAll: %w", err)
 	}
 	var postEntities []entity.Post
@@ -107,9 +108,9 @@ func (r *PostRepository) GetAll() ([]entity.Post, error) {
 	return postEntities, nil
 }
 
-func (r *PostRepository) GetByID(id uint) (entity.Post, error) {
+func (r *PostRepository) GetByID(ctx context.Context, id uint) (entity.Post, error) {
 	var postModel model.Post
-	if err := r.db.Preload("Author").Preload("Category").Preload("Tags").First(&postModel, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Author").Preload("Category").Preload("Tags").First(&postModel, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return entity.Post{}, core.ErrNotFound
 		}
@@ -118,9 +119,9 @@ func (r *PostRepository) GetByID(id uint) (entity.Post, error) {
 	return postToEntity(postModel), nil
 }
 
-func (r *PostRepository) Create(post entity.Post) (entity.Post, error) {
+func (r *PostRepository) Create(ctx context.Context, post entity.Post) (entity.Post, error) {
 	postModel := postToModel(post)
-	if err := r.db.Create(&postModel).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(&postModel).Error; err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" { // 23505 is the SQLSTATE for unique_violation
@@ -135,10 +136,10 @@ func (r *PostRepository) Create(post entity.Post) (entity.Post, error) {
 	return created, nil
 }
 
-func (r *PostRepository) Update(post entity.Post) error {
+func (r *PostRepository) Update(ctx context.Context, post entity.Post) error {
 	postModel := postToModel(post)
 
-	if err := r.db.Save(&postModel).Error; err != nil {
+	if err := r.db.WithContext(ctx).Save(&postModel).Error; err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" { // 23505 is the SQLSTATE for unique_violation
@@ -150,8 +151,8 @@ func (r *PostRepository) Update(post entity.Post) error {
 	return nil
 }
 
-func (r *PostRepository) Delete(id uint) error {
-	if err := r.db.Delete(&model.Post{}, id).Error; err != nil {
+func (r *PostRepository) Delete(ctx context.Context, id uint) error {
+	if err := r.db.WithContext(ctx).Delete(&model.Post{}, id).Error; err != nil {
 		return fmt.Errorf("post_repository.Delete: %w", err)
 	}
 

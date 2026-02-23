@@ -28,12 +28,12 @@ func NewPostServiceWithMedia(repo core.PostRepository, media *MediaService) *Pos
 	return &PostService{repo: repo, media: media}
 }
 
-func (s *PostService) DraftPost(id uint) error {
+func (s *PostService) DraftPost(ctx context.Context, id uint) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *PostService) CreatePost(post entity.Post) error {
+func (s *PostService) CreatePost(ctx context.Context, post entity.Post) error {
 	// 进行业务逻辑验证 (Entity 自身校验)
 	if err := post.CheckValidity(); err != nil {
 		return fmt.Errorf("文章数据校验失败: %w", err)
@@ -45,33 +45,44 @@ func (s *PostService) CreatePost(post entity.Post) error {
 		return fmt.Errorf("标题无法生成有效的URL标识符")
 	}
 
-	finalSlug, err := s.generateUniqueSlug(generatedSlug)
+	finalSlug, err := s.generateUniqueSlug(ctx, generatedSlug)
 	if err != nil {
 		return err // 无法生成唯一 Slug
 	}
 
 	post.Slug = finalSlug
 
-	created, err := s.repo.Create(post)
+	created, err := s.repo.Create(ctx, post)
 	if err != nil {
 		// 封装错误
 		return fmt.Errorf("保存文章失败: %w", err)
 	}
 
-	// Sync media references best-effort.
+	// Sync media references.
 	if s.media != nil {
-		_ = s.media.SyncPostReferences(context.Background(), created.ID, created.Content, created.Cover)
+		// If sync fails, we must rollback the post creation to maintain consistency
+		// because we don't have a distributed transaction manager here.
+		if err := s.media.SyncPostReferences(ctx, created.ID, created.Content, created.Cover); err != nil {
+			// Rollback: delete the created post
+			deleteErr := s.repo.Delete(ctx, created.ID)
+			if deleteErr != nil {
+				// Both sync and rollback failed. This is a critical error.
+				// In a real system, we might log this to a special audit log or alert system.
+				return fmt.Errorf("media sync failed: %v; ROLLBACK FAILED: %v", err, deleteErr)
+			}
+			return fmt.Errorf("media sync failed (post rolled back): %w", err)
+		}
 	}
 	return nil
 }
 
-func (s *PostService) generateUniqueSlug(initialSlug string) (string, error) {
+func (s *PostService) generateUniqueSlug(ctx context.Context, initialSlug string) (string, error) {
 	currentSlug := initialSlug
 	counter := 0
 	maxAttempts := 100 // 最大尝试次数
 
 	for {
-		exists, err := s.repo.IsSlugExists(currentSlug)
+		exists, err := s.repo.IsSlugExists(ctx, currentSlug)
 		if err != nil {
 			return "", fmt.Errorf("检查Slug唯一性失败: %w", err)
 		}
@@ -89,9 +100,9 @@ func (s *PostService) generateUniqueSlug(initialSlug string) (string, error) {
 	}
 }
 
-func (s *PostService) UpdatePost(id uint, updatedEntity entity.Post) error {
+func (s *PostService) UpdatePost(ctx context.Context, id uint, updatedEntity entity.Post) error {
 	// 获取现有 Entity
-	existingEntity, err := s.repo.GetByID(id)
+	existingEntity, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		// 错误检查 (假设 core.ErrNotFound 已定义)
 		return fmt.Errorf("更新失败，文章不存在: %w", err)
@@ -108,13 +119,18 @@ func (s *PostService) UpdatePost(id uint, updatedEntity entity.Post) error {
 	}
 
 	// 调用 Repository 执行更新
-	err = s.repo.Update(existingEntity)
+	err = s.repo.Update(ctx, existingEntity)
 	if err != nil {
 		return fmt.Errorf("更新文章失败: %w", err)
 	}
 
 	if s.media != nil {
-		_ = s.media.SyncPostReferences(context.Background(), id, existingEntity.Content, existingEntity.Cover)
+		// For update, we probably don't want to rollback the whole update if sync fails,
+		// but it's arguable. The user specific concerns were about Create.
+		// For now, let's just surface the error significantly.
+		if err := s.media.SyncPostReferences(ctx, id, existingEntity.Content, existingEntity.Cover); err != nil {
+			return fmt.Errorf("文章更新成功 but 媒体引用同步失败: %w", err)
+		}
 	}
 
 	return nil
@@ -123,8 +139,8 @@ func (s *PostService) UpdatePost(id uint, updatedEntity entity.Post) error {
 // --- Read Operations ---
 
 // 补充：根据 ID 获取文章
-func (s *PostService) GetPostByID(id uint) (entity.Post, error) {
-	post, err := s.repo.GetByID(id)
+func (s *PostService) GetPostByID(ctx context.Context, id uint) (entity.Post, error) {
+	post, err := s.repo.GetByID(ctx, id)
 
 	// 检查核心层抛出的契约错误
 	//if errors.Is(err, core.ErrNotFound) {
@@ -138,10 +154,10 @@ func (s *PostService) GetPostByID(id uint) (entity.Post, error) {
 }
 
 // 补充：获取所有文章列表
-func (s *PostService) GetAllPosts() ([]entity.Post, error) {
+func (s *PostService) GetAllPosts(ctx context.Context) ([]entity.Post, error) {
 	// 业务逻辑 (例如：分页参数处理、权限筛选等) 可以在这里添加
 
-	posts, err := s.repo.GetAll()
+	posts, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("获取所有文章列表失败: %w", err)
 	}
@@ -150,9 +166,9 @@ func (s *PostService) GetAllPosts() ([]entity.Post, error) {
 
 // --- Status Operations ---
 
-func (s *PostService) PublishPost(id uint) error {
+func (s *PostService) PublishPost(ctx context.Context, id uint) error {
 	// 1. 获取 Entity
-	post, err := s.repo.GetByID(id)
+	post, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("发布失败，文章不存在: %w", err)
 	}
@@ -163,7 +179,7 @@ func (s *PostService) PublishPost(id uint) error {
 	}
 
 	// 3. Service 协调：将已修改的 Entity 传递给 Repo 持久化
-	err = s.repo.Update(post)
+	err = s.repo.Update(ctx, post)
 	if err != nil {
 		return fmt.Errorf("更新发布状态失败: %w", err)
 	}
@@ -174,10 +190,10 @@ func (s *PostService) PublishPost(id uint) error {
 // --- Delete Operations ---
 
 // 补充：删除文章
-func (s *PostService) DeletePost(id uint) error {
+func (s *PostService) DeletePost(ctx context.Context, id uint) error {
 	// 可以在这里添加业务逻辑 (例如：权限检查、存档/软删除逻辑)
 
-	err := s.repo.Delete(id)
+	err := s.repo.Delete(ctx, id)
 
 	// 检查核心层抛出的契约错误
 	//if errors.Is(err, core.ErrNotFound) {

@@ -4,8 +4,11 @@ import (
 	"KaldalisCMS/internal/api/middleware" // <-- New Import
 	"KaldalisCMS/internal/api/v1/dto"
 	"KaldalisCMS/internal/core"
+	"context" // Added
+	"errors"  // Added
 	"net/http"
 	"strconv"
+	"time" // 引入 time 包
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,8 +31,16 @@ func NewPostAPI(service core.PostService) *PostAPI {
 //}
 
 func (api *PostAPI) GetPosts(c *gin.Context) {
-	posts, err := api.service.GetAllPosts()
+	// 读取操作通常较快，设置 5 秒超时
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	posts, err := api.service.GetAllPosts(ctx)
 	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Get posts timed out"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -43,8 +54,16 @@ func (api *PostAPI) GetPostByID(c *gin.Context) {
 		return
 	}
 
-	post, err := api.service.GetPostByID(uint(id))
+	// 读取详情操作，设置 5 秒超时
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	post, err := api.service.GetPostByID(ctx, uint(id))
 	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Get post timed out"})
+			return
+		}
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
@@ -68,7 +87,17 @@ func (api *PostAPI) CreatePost(c *gin.Context) {
 	// 业务逻辑处理
 	newPost := createReq.ToEntity(userID)
 
-	if err := api.service.CreatePost(*newPost); err != nil {
+	// 设置超时时间：例如 10 秒
+	// 注意：媒体同步可能涉及文件操作或复杂的解析，给足够的时间
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	if err := api.service.CreatePost(ctx, *newPost); err != nil {
+		// 检查是否是超时错误
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Create post timed out"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -90,8 +119,16 @@ func (api *PostAPI) UpdatePost(c *gin.Context) {
 	}
 	updatedPartialPost := req.ToEntity()
 
-	err = api.service.UpdatePost(uint(id), updatedPartialPost)
+	// 同样为更新操作设置超时
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	err = api.service.UpdatePost(ctx, uint(id), updatedPartialPost)
 	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Update post timed out"})
+			return
+		}
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
@@ -105,8 +142,16 @@ func (api *PostAPI) DeletePost(c *gin.Context) {
 		return
 	}
 
-	err = api.service.DeletePost(uint(id))
+	// 删除操作可能涉及级联，设置 10 秒超时
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	err = api.service.DeletePost(ctx, uint(id))
 	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Delete post timed out"})
+			return
+		}
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
