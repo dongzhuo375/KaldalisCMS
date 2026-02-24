@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -33,6 +34,7 @@ func mediaModelToEntity(m model.MediaAsset) entity.MediaAsset {
 		Url:          m.Url,
 		Width:        m.Width,
 		Height:       m.Height,
+		Status:       entity.MediaStatus(m.Status),
 	}
 }
 
@@ -53,6 +55,7 @@ func mediaEntityToModel(e entity.MediaAsset) model.MediaAsset {
 		Url:          e.Url,
 		Width:        e.Width,
 		Height:       e.Height,
+		Status:       int(e.Status),
 	}
 }
 
@@ -93,7 +96,8 @@ func (r *MediaRepository) GetByID(ctx context.Context, id uint) (entity.MediaAss
 
 func (r *MediaRepository) List(ctx context.Context, ownerUserID *uint, offset, limit int, q string) ([]entity.MediaAsset, int64, error) {
 	var ms []model.MediaAsset
-	query := r.db.WithContext(ctx).Model(&model.MediaAsset{})
+	// Only list UPLOADED assets by default, hide PENDING/FAILED from normal users
+	query := r.db.WithContext(ctx).Model(&model.MediaAsset{}).Where("status = ?", 1) // 1 = UPLOADED
 	if ownerUserID != nil {
 		query = query.Where("owner_user_id = ?", *ownerUserID)
 	}
@@ -123,10 +127,53 @@ func (r *MediaRepository) List(ctx context.Context, ownerUserID *uint, offset, l
 }
 
 func (r *MediaRepository) Delete(ctx context.Context, id uint) error {
+	// GORM Default is Soft Delete if model has DeletedAt
 	if err := r.db.WithContext(ctx).Delete(&model.MediaAsset{}, id).Error; err != nil {
 		return fmt.Errorf("media_repository.Delete: %w", err)
 	}
 	return nil
+}
+
+func (r *MediaRepository) DeletePhysical(ctx context.Context, id uint) error {
+	// Hard delete (Unscoped)
+	if err := r.db.WithContext(ctx).Unscoped().Delete(&model.MediaAsset{}, id).Error; err != nil {
+		return fmt.Errorf("media_repository.DeletePhysical: %w", err)
+	}
+	return nil
+}
+
+func (r *MediaRepository) UpdateStatus(ctx context.Context, id uint, status entity.MediaStatus) error {
+	if err := r.db.WithContext(ctx).Model(&model.MediaAsset{}).Where("id = ?", id).Update("status", int(status)).Error; err != nil {
+		return fmt.Errorf("media_repository.UpdateStatus: %w", err)
+	}
+	return nil
+}
+
+func (r *MediaRepository) ListPendingOlderThan(ctx context.Context, cutoff time.Time, limit int) ([]entity.MediaAsset, error) {
+	var ms []model.MediaAsset
+	// Status 0: PENDING
+	if err := r.db.WithContext(ctx).Where("status = ? AND created_at < ?", 0, cutoff).Limit(limit).Find(&ms).Error; err != nil {
+		return nil, fmt.Errorf("media_repository.ListPendingOlderThan: %w", err)
+	}
+	out := make([]entity.MediaAsset, 0, len(ms))
+	for _, m := range ms {
+		out = append(out, mediaModelToEntity(m))
+	}
+	return out, nil
+}
+
+func (r *MediaRepository) ListSoftDeletedOlderThan(ctx context.Context, cutoff time.Time, limit int) ([]entity.MediaAsset, error) {
+	var ms []model.MediaAsset
+	// Find records where deleted_at IS NOT NULL (soft deleted)
+	// We use Unscoped() to include soft-deleted records in the query
+	if err := r.db.WithContext(ctx).Unscoped().Where("deleted_at IS NOT NULL AND deleted_at < ?", cutoff).Limit(limit).Find(&ms).Error; err != nil {
+		return nil, fmt.Errorf("media_repository.ListSoftDeletedOlderThan: %w", err)
+	}
+	out := make([]entity.MediaAsset, 0, len(ms))
+	for _, m := range ms {
+		out = append(out, mediaModelToEntity(m))
+	}
+	return out, nil
 }
 
 func (r *MediaRepository) CountReferences(ctx context.Context, assetID uint) (int64, error) {

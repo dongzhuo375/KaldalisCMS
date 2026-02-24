@@ -42,4 +42,7 @@ type MediaAsset struct {
 	// Optional image metadata.
 	Width  *int `json:"width"`
 	Height *int `json:"height"`
+
+	// Status tracks the lifecycle of the asset (0: PENDING, 1: UPLOADED, 2: FAILED)
+	Status int `gorm:"default:0;not null;index" json:"status"`
 }

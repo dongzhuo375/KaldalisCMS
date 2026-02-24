@@ -6,13 +6,13 @@ import (
 )
 
 type PostService interface {
-	GetAllPosts() ([]entity.Post, error)
-	GetPostByID(id uint) (entity.Post, error)
-	CreatePost(post entity.Post) error
-	UpdatePost(id uint, post entity.Post) error
-	DeletePost(id uint) error
-	PublishPost(id uint) error
-	DraftPost(id uint) error
+	GetAllPosts(ctx context.Context) ([]entity.Post, error)
+	GetPostByID(ctx context.Context, id uint) (entity.Post, error)
+	CreatePost(ctx context.Context, post entity.Post) error
+	UpdatePost(ctx context.Context, id uint, post entity.Post) error
+	DeletePost(ctx context.Context, id uint) error
+	PublishPost(ctx context.Context, id uint) error
+	DraftPost(ctx context.Context, id uint) error
 }
 
 type UserService interface {
