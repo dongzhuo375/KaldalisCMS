@@ -19,6 +19,7 @@ type MediaAssetResponse struct {
 	Url          string    `json:"url"`
 	Width        *int      `json:"width"`
 	Height       *int      `json:"height"`
+	Status       int       `json:"status"`
 }
 
 type MediaListResponse struct {
@@ -43,6 +44,7 @@ func ToMediaAssetResponse(a entity.MediaAsset) MediaAssetResponse {
 		Url:          a.Url,
 		Width:        a.Width,
 		Height:       a.Height,
+		Status:       int(a.Status),
 	}
 }
 

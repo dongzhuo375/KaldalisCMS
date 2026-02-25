@@ -200,27 +200,7 @@
 
 ---
 
-## 媒体库（Media Library）当前实现要点
+## 相关实现点与 TODO
 
-- 公共访问：`/media/a/{assetID}/{stored_name}`（静态目录映射到 `MEDIA_UPLOAD_DIR`，默认 `./data/uploads`）
-- 物理路径：`{MEDIA_UPLOAD_DIR}/a/{assetID}/{stored_name}`
-- 列表权限：admin 看全站；普通用户只看自己的资源。
-- 删除权限：普通用户“只能删自己上传的”；否则返回 `core.ErrPermission`（API 映射 403）。
-- 删除硬限制：被帖子引用（post_assets）则禁止删除（409）。
-- 引用同步：Post Create/Update 解析 Markdown 中的媒体 URL，写入 post_assets。
-- API：
-  - `POST   /api/v1/media`
-  - `GET    /api/v1/media`
-  - `DELETE /api/v1/media/:id`
-  - `GET    /api/v1/posts/:id/media`
-
----
-
-## TODO（当前）
-
-1. （可选/增强）统一错误响应格式：例如 `{ code, message, details }`，并为常见错误建立规范化 code。
-2. （可选/增强）为媒体库增加“批量删除/批量查询”接口，并保持 owner 权限与引用硬限制一致。
-3. （可选/增强）为 media_assets 增加 SHA256 去重策略（同用户/全站可选）与重复上传处理策略。
-4. （可选/增强）增加后台运维接口：扫描上传目录与数据库记录的一致性（孤儿文件/孤儿记录）。
-5. （前端待做）实现帖子编辑器中的媒体选择/插入体验（本次暂不施工）。
-6.  实现tag 的数据库相关操作（model/repo/service/api）[已实现]，并在帖子编辑中支持标签关联（前端待做）。
+- 媒体库实现要点：见 `docs/IMPLEMENTATION_NOTES.md`
+- Roadmap/TODO：见 `docs/TODO.md`
