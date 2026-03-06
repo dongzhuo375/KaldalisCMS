@@ -32,31 +32,30 @@ func NewSetupService(save func(string, int, string, string, string) error, reloa
 	return &SetupService{SaveConfigFunc: save, ReloadFunc: reload}
 }
 
-// reIdentifier 用于基础的标识符校验，防止 SQL 注入
 var reIdentifier = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 
-func (s *SetupService) Install(cfg SetupConfig) error {
-	// --- 1. 数据库自动拨备 (Provisioning) ---
-	// 先连到默认的 postgres 管理库，检查并创建目标数据库
+// ValidateDatabase 仅执行：连管理库 -> 检查并建库 -> 连目标库 -> Ping 探测。
+// 它不保存配置，也不重启系统，纯粹用于预检。
+func (s *SetupService) ValidateDatabase(host string, port int, user, pass, dbname string) error {
+	// 1. 连管理库
 	adminDSN := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=postgres sslmode=disable TimeZone=Asia/Shanghai",
-		cfg.DbHost, cfg.DbPort, cfg.DbUser, cfg.DbPass)
+		host, port, user, pass)
 
 	adminDB, err := gorm.Open(postgres.Open(adminDSN), &gorm.Config{})
 	if err != nil {
-		return fmt.Errorf("无法连接到 Postgres 管理库 (请检查账号密码或主机): %w", err)
+		return fmt.Errorf("无法连接到数据库服务 (请检查账号密码或主机): %w", err)
 	}
 
-	// 确保目标数据库名合法
-	if !reIdentifier.MatchString(cfg.DbName) {
-		return fmt.Errorf("无效的数据库名: %s (仅限字母数字下划线)", cfg.DbName)
+	// 2. 校验库名
+	if !reIdentifier.MatchString(dbname) {
+		return fmt.Errorf("无效的数据库名: %s (仅限字母数字下划线)", dbname)
 	}
 
-	// 检查库是否存在
+	// 3. 检查并自动建库
 	var exists int
-	adminDB.Raw("SELECT 1 FROM pg_database WHERE datname = ?", cfg.DbName).Scan(&exists)
+	adminDB.Raw("SELECT 1 FROM pg_database WHERE datname = ?", dbname).Scan(&exists)
 	if exists == 0 {
-		// CREATE DATABASE 不支持参数化查询，所以必须用上面的正则校验过
-		if err := adminDB.Exec(fmt.Sprintf("CREATE DATABASE %s", cfg.DbName)).Error; err != nil {
+		if err := adminDB.Exec(fmt.Sprintf("CREATE DATABASE %s", dbname)).Error; err != nil {
 			return fmt.Errorf("自动创建数据库失败: %w", err)
 		}
 	}
@@ -66,16 +65,15 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 		sqlDB.Close()
 	}
 
-	// --- 2. 正式连接业务库 ---
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable TimeZone=Asia/Shanghai",
-		cfg.DbHost, cfg.DbPort, cfg.DbUser, cfg.DbPass, cfg.DbName)
+	// 4. 正式连目标库探活
+	targetDSN := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable TimeZone=Asia/Shanghai",
+		host, port, user, pass, dbname)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(targetDSN), &gorm.Config{})
 	if err != nil {
-		return fmt.Errorf("连接业务数据库失败: %w", err)
+		return fmt.Errorf("目标数据库连接失败: %w", err)
 	}
 
-	// 严谨探测连接是否真的可用
 	sqlDB, err := db.DB()
 	if err != nil {
 		return fmt.Errorf("获取底层连接池失败: %w", err)
@@ -83,16 +81,35 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 	if err := sqlDB.Ping(); err != nil {
 		return fmt.Errorf("数据库 Ping 探测失败: %w", err)
 	}
+	sqlDB.Close()
 
-	// --- 3. 数据库迁移 (Migrate) ---
-	if err := db.AutoMigrate(&model.User{}, &model.Category{}, &model.Tag{}, &model.Post{}, &model.SystemSetting{}); err != nil {
+	return nil
+}
+
+func (s *SetupService) Install(cfg SetupConfig) error {
+	// 复用预检逻辑
+	if err := s.ValidateDatabase(cfg.DbHost, cfg.DbPort, cfg.DbUser, cfg.DbPass, cfg.DbName); err != nil {
+		return err
+	}
+
+	// 连接并开始安装
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable TimeZone=Asia/Shanghai",
+		cfg.DbHost, cfg.DbPort, cfg.DbUser, cfg.DbPass, cfg.DbName)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return err
+	}
+
+	// 数据库迁移
+	if err := db.AutoMigrate(&model.User{}, &model.Category{}, &model.Tag{}, &model.Post{}, &model.SystemSetting{}, &model.MediaAsset{}, &model.PostAsset{}); err != nil {
 		return fmt.Errorf("数据库迁移失败: %w", err)
 	}
 
-	// --- 4. 创建超级管理员 ---
+	// 创建管理员
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminPass), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("密码加密失败: %w", err)
+		return err
 	}
 
 	admin := model.User{
@@ -108,11 +125,11 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 	db.Model(&model.User{}).Where("username = ?", admin.Username).Count(&count)
 	if count == 0 {
 		if err := db.Create(&admin).Error; err != nil {
-			return fmt.Errorf("创建管理员账号失败: %w", err)
+			return fmt.Errorf("创建管理员失败: %w", err)
 		}
 	}
 
-	// --- 5. 写入安装标记与站点名 ---
+	// 标记安装成功
 	now := time.Now()
 	setting := model.SystemSetting{
 		ID:          1,
@@ -120,22 +137,20 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 		SiteName:    cfg.SiteName,
 		InstalledAt: &now,
 	}
-	// 使用 Save 确保根据 ID 1 更新或创建记录
 	if err := db.Save(&setting).Error; err != nil {
-		return fmt.Errorf("更新系统设置失败: %w", err)
+		return fmt.Errorf("保存系统设置失败: %w", err)
 	}
 
-	// --- 6. 持久化配置文件 ---
+	// 保存配置
 	if s.SaveConfigFunc != nil {
 		if err := s.SaveConfigFunc(cfg.DbHost, cfg.DbPort, cfg.DbUser, cfg.DbPass, cfg.DbName); err != nil {
-			return fmt.Errorf("持久化配置文件失败: %w", err)
+			return fmt.Errorf("持久化配置失败: %w", err)
 		}
 	}
 
-	// --- 7. 触发热重启 ---
+	// 触发重启
 	if s.ReloadFunc != nil {
 		go func() {
-			// 给响应返回留出一点时间
 			time.Sleep(1 * time.Second)
 			s.ReloadFunc()
 		}()

@@ -21,12 +21,34 @@ func (api *SetupAPI) RegisterRoutes(r *gin.RouterGroup) {
 	{
 		system.GET("/status", api.Status)
 		system.POST("/setup", api.Setup)
+		system.POST("/check-db", api.CheckDB) // 新增：预检接口
 	}
 }
 
 func (api *SetupAPI) Status(c *gin.Context) {
-	// In Setup Mode, system is by definition NOT installed.
 	c.JSON(http.StatusOK, dto.SystemStatusResponse{Installed: false})
+}
+
+func (api *SetupAPI) CheckDB(c *gin.Context) {
+	var req struct {
+		Host string `json:"host" binding:"required"`
+		Port int    `json:"port" binding:"required"`
+		User string `json:"user" binding:"required"`
+		Pass string `json:"pass"`
+		Name string `json:"name" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数不完整"})
+		return
+	}
+
+	if err := api.svc.ValidateDatabase(req.Host, req.Port, req.User, req.Pass, req.Name); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "数据库连接测试通过"})
 }
 
 func (api *SetupAPI) Setup(c *gin.Context) {
@@ -53,5 +75,5 @@ func (api *SetupAPI) Setup(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Setup completed. System is restarting..."})
+	c.JSON(http.StatusOK, gin.H{"message": "安装成功，系统重启中..."})
 }
