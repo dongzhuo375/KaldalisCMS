@@ -2,6 +2,44 @@
 
 本文记录**已落地且代码中可追溯**的关键实现点。每条尽量附带“对应文件/函数”，方便维护与排查。
 
+## 系统初始化与安装模式（Setup Mode）- [2026-03-06 新增]
+
+### 自动模式切换与安装探测
+系统启动时会进行“自感知”检查。如果满足以下任一条件，系统将自动进入 **SETUP MODE**（安装向导模式），仅暴露安装相关的 API：
+- 数据库连接失败（配置缺失或错误）。
+- 数据库连接成功，但 `system_settings` 表不存在或 `installed` 字段为 `false`。
+
+代表文件：
+- `cmd/server/main.go` (`BootstrapApp` 探测逻辑)
+
+### 数据库自动拨备 (Auto-Provisioning)
+在安装阶段，系统具备自动创建数据库的能力。用户只需提供 Postgres 实例的管理员账密：
+1. 先连接到默认的 `postgres` 管理库。
+2. 校验目标数据库名（正则校验防止注入）。
+3. 如果目标库不存在，自动执行 `CREATE DATABASE`。
+4. 随后再切换到目标库执行 `AutoMigrate`。
+
+代表文件：
+- `internal/service/setup_service.go` (`ValidateDatabase`)
+
+### 数据库预检机制 (Pre-flight Check)
+前端 Step 1 引入了强制预检。后端提供专门的 `check-db` 接口进行“探路”测试，确保地基稳固后才允许进入后续安装步骤。该接口为幂等操作，不修改任何物理配置。
+
+代表文件：
+- `internal/api/v1/setup.go` (`CheckDB`)
+- `web/src/app/[locale]/setup/page.tsx` (前端测试按钮逻辑)
+
+### 增量配置持久化
+安装成功后，系统会更新 `config.yaml`。采用 **Patch（补丁）更新模式**：
+- 仅修改 `database` 节点下的字段。
+- 使用 `viper.WriteConfigAs` 确保即使初始状态无文件也能生成新文件。
+- 保留文件中已有的其他配置（如 `jwt`, `media` 等），不执行覆写。
+
+代表文件：
+- `cmd/server/config.go` (`SaveDatabaseConfig`)
+
+---
+
 ## 媒体库（Media Library）
 
 ### 公共访问路径与物理存储
@@ -54,4 +92,3 @@
 代表文件：
 - `internal/service/post_service.go`（发帖/更新 -> 同步引用）
 - `internal/service/media_service.go`（`SyncPostReferences` 与引用写入逻辑）
-
