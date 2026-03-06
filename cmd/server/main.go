@@ -3,13 +3,14 @@ package main
 import (
 	"KaldalisCMS/internal/infra/auth"
 	"KaldalisCMS/internal/infra/model"
-	"KaldalisCMS/internal/infra/repository/postgres"
+	repository "KaldalisCMS/internal/infra/repository/postgres"
 	"KaldalisCMS/internal/router"
 	"errors"
 	"log"
 	"net/http"
 	"sync"
 
+	"github.com/casbin/casbin/v2"
 	"gorm.io/gorm"
 )
 
@@ -110,7 +111,7 @@ func SwitchToSetupMode() {
 	log.Println("!!! 系统当前处于 [安装模式] (SETUP MODE) !!!")
 }
 
-func setupPolicies(enforcer *auth.Enforcer) {
+func setupPolicies(enforcer *casbin.Enforcer) {
 	// 管理员权限
 	enforcer.AddPolicy("admin", "/api/v1/posts", "POST")
 	enforcer.AddPolicy("admin", "/api/v1/posts/:id", "PUT")
