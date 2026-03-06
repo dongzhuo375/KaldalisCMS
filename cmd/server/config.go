@@ -4,6 +4,7 @@ import (
 	"KaldalisCMS/internal/infra/auth"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -36,35 +37,27 @@ var AppConfig Config
 // InitConfig initializes and loads the configuration
 func InitConfig() {
 	v := viper.GetViper()
-	v.SetConfigName("config")        // name of config file (without extension)
-	v.SetConfigType("yaml")          // type of the config file
-	v.AddConfigPath("./cmd/configs") // path to look for the config file in
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath("./cmd/configs")
 
-	// Optional: set default values
-	v.SetDefault("database.host", "localhost")
-	v.SetDefault("database.port", 5432)
-	v.SetDefault("database.user", "your_user")
-	v.SetDefault("database.password", "your_password")
-	v.SetDefault("database.dbname", "kaldalis_cms")
+	// --- 1. 移除数据库默认值 ---
+	// 为了让系统在没有配置时能正确进入 SETUP MODE，我们不再为数据库设置默认值。
+	// 只有 SSLMode 和 TimeZone 这种可选参数保留默认。
 	v.SetDefault("database.sslmode", "disable")
 	v.SetDefault("database.timezone", "Asia/Shanghai")
 
-	// Media defaults (project-root relative by default)
+	// Media 默认值保持
 	v.SetDefault("media.upload_dir", filepath.FromSlash("./data/uploads"))
 	v.SetDefault("media.max_upload_size_mb", int64(50))
-	v.SetDefault("media.public_base_url", "") // if empty, API returns relative URLs like /media/...
 	v.SetDefault("media.max_filename_bytes", 180)
 
 	// Read config file
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found; ignore error if desired
-			log.Println("Config file not found, using defaults and environment variables.")
-			// Create empty config file if not exists so WriteConfig works?
-			// viper.SafeWriteConfig() might be needed if file doesn't exist.
+			log.Println("未找到配置文件，将使用环境或等待初始化安装。")
 		} else {
-			// Config file was found but another error was produced
-			log.Fatalf("Fatal error config file: %s \n", err)
+			log.Fatalf("读取配置文件出错: %s \n", err)
 		}
 	}
 
@@ -72,43 +65,66 @@ func InitConfig() {
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	// Unmarshal the config into the AppConfig struct
+	// Unmarshal into struct
 	if err := v.Unmarshal(&AppConfig); err != nil {
-		log.Fatalf("Unable to decode into struct, %v", err)
+		log.Fatalf("无法解析配置到结构体: %v", err)
 	}
 
-	// auth配置
+	// 进一步细化 Auth 配置（如 JWT Secret 等）
 	refinedAuth, err := auth.LoadConfig(v)
 	if err != nil {
-		log.Fatalf("Failed to refine auth config: %v", err)
+		log.Printf("Auth 配置初始化警告 (可能尚未安装): %v", err)
+	} else {
+		AppConfig.Auth = *refinedAuth
 	}
-	AppConfig.Auth = *refinedAuth
 
-	log.Println("Configuration loaded successfully.")
+	log.Println("配置加载流程结束。")
 }
 
-// GetDatabaseDSN constructs the DSN from the loaded configuration
 func GetDatabaseDSN() string {
 	db := AppConfig.Database
+	// 如果关键字段为空，返回空 DSN 或报错，让连接失败触发 SETUP MODE
+	if db.Host == "" || db.User == "" || db.DBName == "" {
+		return ""
+	}
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
 		db.Host, db.Port, db.User, db.Password, db.DBName, db.SSLMode, db.TimeZone)
 }
 
-// SaveDatabaseConfig updates the database configuration and writes it to the file
+// SaveDatabaseConfig 仅更新数据库部分，保留现有的 jwt, media 等配置
 func SaveDatabaseConfig(host string, port int, user, pass, dbname string) error {
 	v := viper.GetViper()
+
+	// 1. 更新数据库相关字段
 	v.Set("database.host", host)
 	v.Set("database.port", port)
 	v.Set("database.user", user)
 	v.Set("database.password", pass)
 	v.Set("database.dbname", dbname)
 
-	// Update the in-memory struct as well
+	// 更新内存中的 AppConfig，确保热重启时拿的是最新的
 	AppConfig.Database.Host = host
 	AppConfig.Database.Port = port
 	AppConfig.Database.User = user
 	AppConfig.Database.Password = pass
 	AppConfig.Database.DBName = dbname
 
-	return v.WriteConfig()
+	// 2. 确保配置目录存在
+	configPath := "./cmd/configs/config.yaml"
+	configDir := filepath.Dir(configPath)
+	if _, err := os.Stat(configDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(configDir, 0755); err != nil {
+			return fmt.Errorf("创建配置目录失败: %w", err)
+		}
+	}
+
+	// 3. 写入文件
+	// 使用 WriteConfigAs 而不是 WriteConfig，因为初始安装时可能文件根本不存在。
+	// Viper 会把当前内存里已有的所有信息（包括之前读取到的 jwt, media）一并写回。
+	if err := v.WriteConfigAs(configPath); err != nil {
+		return fmt.Errorf("写入配置文件失败: %w", err)
+	}
+
+	log.Printf("配置已成功更新至 %s", configPath)
+	return nil
 }
