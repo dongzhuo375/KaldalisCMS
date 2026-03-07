@@ -47,10 +47,12 @@ func InitConfig() {
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Println("[CONFIG] 未找到配置文件。")
+			log.Println("[CONFIG] 未找到配置文件，将使用默认值并准备进入 Setup 模式。")
 		} else {
 			log.Fatalf("[CONFIG] 读取失败: %s \n", err)
 		}
+	} else {
+		log.Printf("[CONFIG] 成功加载配置文件: %s", v.ConfigFileUsed())
 	}
 
 	v.AutomaticEnv()
@@ -59,6 +61,14 @@ func InitConfig() {
 	if err := v.Unmarshal(&AppConfig); err != nil {
 		log.Fatalf("[CONFIG] 解析失败: %v", err)
 	}
+
+	// 增加脱敏调试日志
+	hasPass := "否"
+	if AppConfig.Database.Password != "" {
+		hasPass = "是 (长度:" + fmt.Sprint(len(AppConfig.Database.Password)) + ")"
+	}
+	log.Printf("[CONFIG] 数据库配置加载完毕 -> Host: %s, DB: %s, User: %s, 是否含密码: %s", 
+		AppConfig.Database.Host, AppConfig.Database.DBName, AppConfig.Database.User, hasPass)
 
 	// 初始化 Auth
 	refinedAuth, err := auth.LoadConfig(v)

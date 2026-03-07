@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/casbin/casbin/v2"
 	"gorm.io/gorm"
 )
 
@@ -82,9 +81,6 @@ func BootstrapApp() error {
 		ModelPath: "cmd/configs/casbin_model.conf",
 	})
 
-	// 初始化策略 (如果不存在)
-	setupPolicies(enforcer)
-
 	// --- 启动应用路由 ---
 	r := router.NewAppRouter(db, AppConfig.Auth, enforcer)
 
@@ -109,22 +105,4 @@ func SwitchToSetupMode() {
 
 	routerManager.Switch(r)
 	log.Println("!!! 系统当前处于 [安装模式] (SETUP MODE) !!!")
-}
-
-func setupPolicies(enforcer *casbin.Enforcer) {
-	// 管理员权限
-	enforcer.AddPolicy("admin", "/api/v1/posts", "POST")
-	enforcer.AddPolicy("admin", "/api/v1/posts/:id", "PUT")
-	enforcer.AddPolicy("admin", "/api/v1/posts/:id", "DELETE")
-	enforcer.AddPolicy("admin", "/api/v1/media", "POST")
-	enforcer.AddPolicy("admin", "/api/v1/media", "GET")
-	enforcer.AddPolicy("admin", "/api/v1/media/:id", "DELETE")
-	enforcer.AddPolicy("admin", "/api/v1/posts/:id/media", "GET")
-
-	// 普通用户与访客权限
-	enforcer.AddPolicy("anonymous", "/api/v1/posts", "GET")
-	enforcer.AddPolicy("user", "/api/v1/posts", "GET")
-	enforcer.AddPolicy("user", "/api/v1/media", "POST")
-	enforcer.AddPolicy("user", "/api/v1/media", "GET")
-	enforcer.AddPolicy("user", "/api/v1/posts/:id/media", "GET")
 }

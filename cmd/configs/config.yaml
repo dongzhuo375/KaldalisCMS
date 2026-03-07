@@ -1,7 +1,7 @@
 database:
-    dbname: ab
+    dbname: kaldalis_cms
     host: localhost
-    password: "123456"
+    password: "2341"
     port: 5432
     sslmode: disable
     timezone: Asia/Shanghai

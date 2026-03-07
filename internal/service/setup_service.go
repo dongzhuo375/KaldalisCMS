@@ -3,9 +3,12 @@ package service
 import (
 	"KaldalisCMS/internal/infra/model"
 	"fmt"
+	"log"
 	"regexp"
 	"time"
 
+	"github.com/casbin/casbin/v2"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -26,10 +29,16 @@ type SetupConfig struct {
 type SetupService struct {
 	SaveConfigFunc func(host string, port int, user, pass, dbname string) error
 	ReloadFunc     func() error
+	Enforcer       *casbin.Enforcer // 用于初始化权限
 }
 
 func NewSetupService(save func(string, int, string, string, string) error, reload func() error) *SetupService {
 	return &SetupService{SaveConfigFunc: save, ReloadFunc: reload}
+}
+
+// SetEnforcer 允许在安装开始前动态注入 Enforcer
+func (s *SetupService) SetEnforcer(enforcer *casbin.Enforcer) {
+	s.Enforcer = enforcer
 }
 
 var reIdentifier = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
@@ -163,6 +172,28 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 	}
 	if err := db.Save(&setting).Error; err != nil {
 		return fmt.Errorf("系统设置持久化失败: %w", err)
+	}
+
+	// --- 权限初始化 (Casbin) ---
+	// 初始化 GORM 适配器并加载模型配置
+	adapter, _ := gormadapter.NewAdapterByDB(db)
+	enforcer, err := casbin.NewEnforcer("cmd/configs/casbin_model.conf", adapter)
+	if err == nil {
+		enforcer.EnableAutoSave(true)
+
+		// 1. 定义超级管理员角色 (super_admin) 的权限：拥有所有 API 的所有操作权限
+		enforcer.AddPolicy("super_admin", "/api/v1/*", "*")
+
+		// 2. 定义访客角色 (anonymous) 的权限：仅允许查看文章列表和详情
+		enforcer.AddPolicy("anonymous", "/api/v1/posts", "GET")
+		enforcer.AddPolicy("anonymous", "/api/v1/posts/:id", "GET")
+
+		// 3. 将当前创建的管理员账号绑定到 super_admin 角色
+		enforcer.AddGroupingPolicy(cfg.AdminUser, "super_admin")
+
+		log.Printf("[SETUP] 初始 Casbin 权限策略已成功注入数据库 (Admin: %s -> super_admin)", cfg.AdminUser)
+	} else {
+		log.Printf("[WARN] 权限策略初始化失败 (可能是配置文件缺失): %v", err)
 	}
 
 	// 保存配置文件
