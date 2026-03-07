@@ -24,6 +24,10 @@ type SetupConfig struct {
 	AdminUser  string
 	AdminPass  string
 	AdminEmail string
+
+	// 权限配置标志
+	AllowAnonymousRead bool
+	AdminFullAccess    bool
 }
 
 type SetupService struct {
@@ -181,17 +185,23 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 	if err == nil {
 		enforcer.EnableAutoSave(true)
 
-		// 1. 定义超级管理员角色 (super_admin) 的权限：拥有所有 API 的所有操作权限
-		enforcer.AddPolicy("super_admin", "/api/v1/*", "*")
+		// 1. 如果开启了管理员全能权限，为 super_admin 分配通配符策略
+		if cfg.AdminFullAccess {
+			enforcer.AddPolicy("super_admin", "/api/v1/*", "*")
+			log.Printf("[SETUP] 已为超级管理员角色分配全量 API 权限")
+		}
 
-		// 2. 定义访客角色 (anonymous) 的权限：仅允许查看文章列表和详情
-		enforcer.AddPolicy("anonymous", "/api/v1/posts", "GET")
-		enforcer.AddPolicy("anonymous", "/api/v1/posts/:id", "GET")
+		// 2. 如果开启了访客阅读，分配基础 GET 权限
+		if cfg.AllowAnonymousRead {
+			enforcer.AddPolicy("anonymous", "/api/v1/posts", "GET")
+			enforcer.AddPolicy("anonymous", "/api/v1/posts/:id", "GET")
+			log.Printf("[SETUP] 已开启访客匿名阅读权限策略")
+		}
 
 		// 3. 将当前创建的管理员账号绑定到 super_admin 角色
 		enforcer.AddGroupingPolicy(cfg.AdminUser, "super_admin")
 
-		log.Printf("[SETUP] 初始 Casbin 权限策略已成功注入数据库 (Admin: %s -> super_admin)", cfg.AdminUser)
+		log.Printf("[SETUP] 初始 Casbin 策略处理完成 (Admin: %s -> super_admin)", cfg.AdminUser)
 	} else {
 		log.Printf("[WARN] 权限策略初始化失败 (可能是配置文件缺失): %v", err)
 	}

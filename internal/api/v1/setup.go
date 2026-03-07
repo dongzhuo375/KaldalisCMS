@@ -59,17 +59,18 @@ func (api *SetupAPI) Setup(c *gin.Context) {
 	}
 
 	cfg := service.SetupConfig{
-		DbHost:     req.DbHost,
-		DbPort:     req.DbPort,
-		DbUser:     req.DbUser,
-		DbPass:     req.DbPass,
-		DbName:     req.DbName,
-		SiteName:   req.SiteName,
-		AdminUser:  req.AdminUsername,
-		AdminPass:  req.AdminPassword,
-		AdminEmail: req.AdminEmail,
+		DbHost:             req.DbHost,
+		DbPort:             req.DbPort,
+		DbUser:             req.DbUser,
+		DbPass:             req.DbPass,
+		DbName:             req.DbName,
+		SiteName:           req.SiteName,
+		AdminUser:          req.AdminUsername,
+		AdminPass:          req.AdminPassword,
+		AdminEmail:         req.AdminEmail,
+		AllowAnonymousRead: req.AllowAnonymousRead,
+		AdminFullAccess:    req.AdminFullAccess,
 	}
-
 	if err := api.svc.Install(cfg); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
