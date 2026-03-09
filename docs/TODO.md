@@ -18,7 +18,7 @@
 - 重启后策略保持一致；
 - 有最小文档说明如何变更策略。
 
-### P0-2) 生产级 Session/Cookie/CSRF 安全配置收口
+### P0-2) 生产级 Session/Cookie/CSRF 安全配置收口   **[2026-03-09 完成]**
 
 目标：确保登录态在生产环境符合最小安全要求。
 
@@ -28,24 +28,12 @@
 - `internal/api/middleware/auth.go`
 
 完成标准（DoD）：
+- **[2026-03-09 完成]** 已将 Cookie 策略升级为 Strict/Lax，添加了弱密钥检测，并完善了文档。
 - Cookie: `HttpOnly`、`Secure`（https）、`SameSite` 策略明确；
 - 密钥/盐来自环境变量或配置，禁止默认弱值；
 - CSRF 校验在受保护写接口一致生效，并有前端对接说明。
 
-### P0-3) Setup 流程健壮性 (已完成 - 2026-03-06)
-
-目标：没有 `cmd/configs/config.yaml` 或数据库未初始化时也能成功完成 Setup 写入 DB 配置并重启到 App Mode。
-
-范围（代表文件）：
-- `cmd/server/config.go`（`InitConfig` / `SaveDatabaseConfig`）
-- `internal/api/v1/setup.go`、`internal/service/setup_service.go`
-
-完成标准（DoD）：
-- **[已落地]** 自动创建数据库逻辑；
-- **[已落地]** 前端分步预检（Test Connection）机制；
-- **[已落地]** 增量保存配置并触发热重启。
-
-### P0-4) `/media` 静态目录暴露收敛
+### P0-4) `/media` 静态目录暴露收敛 **[2026-03-09 完成]**
 
 目标：避免 uploadDir 下非媒体文件被意外暴露。
 

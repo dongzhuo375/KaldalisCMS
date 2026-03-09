@@ -34,8 +34,9 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *
 	publicBaseURL := os.Getenv("MEDIA_PUBLIC_BASE_URL")
 	maxFilenameBytes := os.Getenv("MEDIA_MAX_FILENAME_BYTES")
 
-	// /media maps to uploadDir; assets are stored under uploadDir/a/{id}/{stored_name}
-	r.Static("/media", uploadDir)
+	// /media/a maps to uploadDir/a; assets are stored under uploadDir/a/{id}/{stored_name}
+	// We only expose the "a" subdirectory to prevent accidental exposure of other files in uploadDir (e.g. logs/backups/etc)
+	r.Static("/media/a", filepath.Join(uploadDir, "a"))
 
 	// --- Media ---
 	mediaRepo := repository.NewMediaRepository(db)
