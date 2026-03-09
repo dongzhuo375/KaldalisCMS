@@ -18,4 +18,10 @@ type SystemSetupRequest struct {
 	AdminUsername string `json:"admin_username" binding:"required,min=1,max=50"`
 	AdminEmail    string `json:"admin_email" binding:"required,email,max=255"`
 	AdminPassword string `json:"admin_password" binding:"required,min=8,max=72"`
+
+	// Permissions Config (Fine-grained)
+	AllowAnonymousRead bool `json:"allow_anonymous_read"`
+	AdminFullAccess    bool `json:"admin_full_access"`
+	AdminCanDelete     bool `json:"admin_can_delete"`
+	UserCanUpload      bool `json:"user_can_upload"`
 }

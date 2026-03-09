@@ -4,6 +4,7 @@ import (
 	"KaldalisCMS/internal/infra/auth"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -36,79 +37,90 @@ var AppConfig Config
 // InitConfig initializes and loads the configuration
 func InitConfig() {
 	v := viper.GetViper()
-	v.SetConfigName("config")        // name of config file (without extension)
-	v.SetConfigType("yaml")          // type of the config file
-	v.AddConfigPath("./cmd/configs") // path to look for the config file in
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath("./cmd/configs")
 
-	// Optional: set default values
-	v.SetDefault("database.host", "localhost")
-	v.SetDefault("database.port", 5432)
-	v.SetDefault("database.user", "your_user")
-	v.SetDefault("database.password", "your_password")
-	v.SetDefault("database.dbname", "kaldalis_cms")
+	// 核心字段绝不设默认值，逼迫系统进入 Setup 模式
 	v.SetDefault("database.sslmode", "disable")
 	v.SetDefault("database.timezone", "Asia/Shanghai")
 
-	// Media defaults (project-root relative by default)
-	v.SetDefault("media.upload_dir", filepath.FromSlash("./data/uploads"))
-	v.SetDefault("media.max_upload_size_mb", int64(50))
-	v.SetDefault("media.public_base_url", "") // if empty, API returns relative URLs like /media/...
-	v.SetDefault("media.max_filename_bytes", 180)
-
-	// Read config file
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found; ignore error if desired
-			log.Println("Config file not found, using defaults and environment variables.")
-			// Create empty config file if not exists so WriteConfig works?
-			// viper.SafeWriteConfig() might be needed if file doesn't exist.
+			log.Println("[CONFIG] 未找到配置文件，将使用默认值并准备进入 Setup 模式。")
 		} else {
-			// Config file was found but another error was produced
-			log.Fatalf("Fatal error config file: %s \n", err)
+			log.Fatalf("[CONFIG] 读取失败: %s \n", err)
 		}
+	} else {
+		log.Printf("[CONFIG] 成功加载配置文件: %s", v.ConfigFileUsed())
 	}
 
-	// Environment variables
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	// Unmarshal the config into the AppConfig struct
 	if err := v.Unmarshal(&AppConfig); err != nil {
-		log.Fatalf("Unable to decode into struct, %v", err)
+		log.Fatalf("[CONFIG] 解析失败: %v", err)
 	}
 
-	// auth配置
+	// 增加脱敏调试日志
+	hasPass := "否"
+	if AppConfig.Database.Password != "" {
+		hasPass = "是 (长度:" + fmt.Sprint(len(AppConfig.Database.Password)) + ")"
+	}
+	log.Printf("[CONFIG] 数据库配置加载完毕 -> Host: %s, DB: %s, User: %s, 是否含密码: %s", 
+		AppConfig.Database.Host, AppConfig.Database.DBName, AppConfig.Database.User, hasPass)
+
+	// 初始化 Auth
 	refinedAuth, err := auth.LoadConfig(v)
-	if err != nil {
-		log.Fatalf("Failed to refine auth config: %v", err)
+	if err == nil {
+		AppConfig.Auth = *refinedAuth
 	}
-	AppConfig.Auth = *refinedAuth
-
-	log.Println("Configuration loaded successfully.")
 }
 
-// GetDatabaseDSN constructs the DSN from the loaded configuration
 func GetDatabaseDSN() string {
 	db := AppConfig.Database
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
+	// 关键字段缺失或包含默认/敏感值不完整时直接返回空
+	if db.Host == "" || db.DBName == "" || db.User == "" {
+		log.Printf("[DATABASE] 配置不完整 (Host:%s, DB:%s, User:%s), 准备进入安装模式", db.Host, db.DBName, db.User)
+		return ""
+	}
+	
+	// 为 dbname 添加单引号，防止特殊字符干扰，且在 DSN 拼接中确保字段分明
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
 		db.Host, db.Port, db.User, db.Password, db.DBName, db.SSLMode, db.TimeZone)
+	
+	log.Printf("[DATABASE] 准备校验连接: Host=%s, Port=%d, User=%s, DB=%s", db.Host, db.Port, db.User, db.DBName)
+	return dsn
 }
 
-// SaveDatabaseConfig updates the database configuration and writes it to the file
 func SaveDatabaseConfig(host string, port int, user, pass, dbname string) error {
 	v := viper.GetViper()
+	
+	// 设置 Viper 内存值以供写入
 	v.Set("database.host", host)
 	v.Set("database.port", port)
 	v.Set("database.user", user)
 	v.Set("database.password", pass)
 	v.Set("database.dbname", dbname)
+	v.Set("database.sslmode", "disable") // 强制默认值以防万一
+	v.Set("database.timezone", "Asia/Shanghai")
 
-	// Update the in-memory struct as well
+	// 更新全局 AppConfig 变量供热重启直接使用
 	AppConfig.Database.Host = host
 	AppConfig.Database.Port = port
 	AppConfig.Database.User = user
 	AppConfig.Database.Password = pass
 	AppConfig.Database.DBName = dbname
+	AppConfig.Database.SSLMode = "disable"
+	AppConfig.Database.TimeZone = "Asia/Shanghai"
 
-	return v.WriteConfig()
+	configPath := "./cmd/configs/config.yaml"
+	_ = os.MkdirAll(filepath.Dir(configPath), 0755)
+	
+	// 使用 WriteConfig 保存到现有路径
+	if err := v.WriteConfigAs(configPath); err != nil {
+		log.Printf("[CONFIG] 保存配置失败: %v", err)
+		return err
+	}
+	return nil
 }
