@@ -25,6 +25,8 @@ type Config struct {
 	Auth auth.Config
 
 	Media struct {
+		// UploadDir 是所有媒体文件的根目录。
+		// 路由层仅暴露 UploadDir/a 子目录（对应 /media/a），UploadDir 根目录下的其他文件不会被公开访问。
 		UploadDir        string `mapstructure:"upload_dir"`
 		MaxUploadSizeMB  int64  `mapstructure:"max_upload_size_mb"`
 		PublicBaseURL    string `mapstructure:"public_base_url"`
@@ -67,13 +69,21 @@ func InitConfig() {
 	if AppConfig.Database.Password != "" {
 		hasPass = "是 (长度:" + fmt.Sprint(len(AppConfig.Database.Password)) + ")"
 	}
-	log.Printf("[CONFIG] 数据库配置加载完毕 -> Host: %s, DB: %s, User: %s, 是否含密码: %s", 
+	log.Printf("[CONFIG] 数据库配置加载完毕 -> Host: %s, DB: %s, User: %s, 是否含密码: %s",
 		AppConfig.Database.Host, AppConfig.Database.DBName, AppConfig.Database.User, hasPass)
 
 	// 初始化 Auth
 	refinedAuth, err := auth.LoadConfig(v)
 	if err == nil {
 		AppConfig.Auth = *refinedAuth
+		//检查是否使用了默认的弱密钥
+		defaultSecret := "AL3uaHdBI/zK/t0zfeXrFKb/7LOP8LECxp51j7pOo9PP7Ok99JceBQ8k4AZYlOE7tM8sV/55hPq/8I3WdzJi1w=="
+		if string(AppConfig.Auth.Secret) == defaultSecret {
+			log.Println("[SECURITY WARNING] 您正在使用默认的 JWT Secret，生产环境请务必通过环境变量 JWT_SECRET 修改！")
+		}
+		if len(AppConfig.Auth.Secret) < 32 {
+			log.Println("[SECURITY WARNING] JWT Secret 长度不足 32 字节，建议使用更长的密钥。")
+		}
 	}
 }
 
@@ -84,18 +94,18 @@ func GetDatabaseDSN() string {
 		log.Printf("[DATABASE] 配置不完整 (Host:%s, DB:%s, User:%s), 准备进入安装模式", db.Host, db.DBName, db.User)
 		return ""
 	}
-	
+
 	// 为 dbname 添加单引号，防止特殊字符干扰，且在 DSN 拼接中确保字段分明
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
 		db.Host, db.Port, db.User, db.Password, db.DBName, db.SSLMode, db.TimeZone)
-	
+
 	log.Printf("[DATABASE] 准备校验连接: Host=%s, Port=%d, User=%s, DB=%s", db.Host, db.Port, db.User, db.DBName)
 	return dsn
 }
 
 func SaveDatabaseConfig(host string, port int, user, pass, dbname string) error {
 	v := viper.GetViper()
-	
+
 	// 设置 Viper 内存值以供写入
 	v.Set("database.host", host)
 	v.Set("database.port", port)
@@ -116,7 +126,7 @@ func SaveDatabaseConfig(host string, port int, user, pass, dbname string) error 
 
 	configPath := "./cmd/configs/config.yaml"
 	_ = os.MkdirAll(filepath.Dir(configPath), 0755)
-	
+
 	// 使用 WriteConfig 保存到现有路径
 	if err := v.WriteConfigAs(configPath); err != nil {
 		log.Printf("[CONFIG] 保存配置失败: %v", err)

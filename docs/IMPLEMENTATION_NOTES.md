@@ -72,8 +72,8 @@
 
 - 清理“超过 1 小时仍为 PENDING 的记录”，执行物理删除（先删文件、再硬删 DB）。
 - 删除采用“软删除优先、异步最终清理”：API 删除只设 `deleted_at`；GC 扫描“软删除超过 1 小时”的记录执行物理删除：
-  1) 先删除文件（失败则返回，下一轮 GC 重试）
-  2) 再对 DB 做硬删除（`Unscoped()`）
+    1) 先删除文件（失败则返回，下一轮 GC 重试）
+    2) 再对 DB 做硬删除（`Unscoped()`）
 
 代表文件：
 - `internal/router/router.go`（ticker/定时任务启动）
@@ -84,11 +84,53 @@
 - Post Create/Update 会解析 Markdown 内容/封面 URL 并同步 `post_assets`（`PostService` 调用 `MediaService.SyncPostReferences`）。
 - 引用同步是 **best-effort**：同步失败只记录日志，不影响发帖/更新成功（不会回滚 Post）。
 - 具备 **超时保护**：
-  - `CreatePost`：`context.WithTimeout(请求ctx, 10s)`
-  - `UpdatePost`：`context.WithTimeout(context.Background(), 5s)`（独立于请求 ctx，避免请求取消导致同步完全跳过）
+    - `CreatePost`：`context.WithTimeout(请求ctx, 10s)`
+    - `UpdatePost`：`context.WithTimeout(context.Background(), 5s)`（独立于请求 ctx，避免请求取消导致同步完全跳过）
 
 > 正则说明：用于从 Markdown/URL 中提取 assetID 的正则为 `reAssetURL = /media/a/(\d+)/[^)\s]+`，只要 URL 路径中包含 `/media/a/{id}/...`（即使有 CDN 域名）即可提取 ID；若未来调整 URL 结构，需要同步更新该正则。
 
 代表文件：
 - `internal/service/post_service.go`（发帖/更新 -> 同步引用）
 - `internal/service/media_service.go`（`SyncPostReferences` 与引用写入逻辑）
+
+---
+
+## 安全机制（Auth & Security）
+
+### CSRF 保护与前后端对接
+本系统采用 **Stateless CSRF**（Double Submit Cookie）与指纹绑定相结合的方案。
+
+#### 后端行为：
+1. **登录成功时 (EstablishSession)**：
+    - 生成 uuid 作为 `kaldalis_csrf` Cookie（HTTPOnly=false，前端可读）。
+    - 同时将该 uuid 计算 HMAC 哈希后，存入 JWT Payload (`csrf_h`)。
+    - 这实现了 CSRF Token 与当前登录 Session 的强绑定。
+
+2. **请求校验 (Middleware: CSRFCheck)**：
+    - 仅针对受保护的 **写操作接口**（POST/PUT/DELETE /posts, /media...）生效。
+    - 读取 Header `X-CSRF-Token`。
+    - 读取 Cookie `kaldalis_csrf`。
+    - 校验 1：Header 值必须等于 Cookie 值（防跨域伪造）。
+    - 校验 2：Header 值计算哈希后必须等于 JWT 中的 `csrf_h`（防 Session 劫持）。
+
+#### 前端对接指南：
+所有写操作请求必须携带 `X-CSRF-Token` 头，值需从 Cookie `kaldalis_csrf` 中读取。
+参考实现：`web/src/lib/api.ts` (Axios Interceptor 自动注入)。
+
+代表文件：
+- `internal/infra/auth/session.go` (`EstablishSession/ValidateCSRF`)
+- `internal/api/middleware/auth.go` (`CSRFCheck`)
+- `web/src/lib/api.ts` (前端请求拦截器)
+
+---
+
+## 媒体库安全策略 - [2026-03-09 新增]
+
+### 目录暴露收敛 (Directory Exposure Convergence)
+为防止 `uploadDir` 根目录下的敏感文件（如备份、日志等）被误暴露，我们在路由层实际上仅公开了 `uploadDir/a` (assets) 子目录。
+
+- **实施文件**: `internal/router/router.go`
+- **原逻辑**: `r.Static("/media", uploadDir)` -> 暴露整个目录。
+- **现逻辑**: `r.Static("/media/a", filepath.Join(uploadDir, "a"))` -> 仅暴露媒体资产目录。
+
+这意味着所有上传的媒体文件 URL 均形如 `/media/a/{id}/{filename}`。若未来需新增公开目录（如 `avatars/`），需显式在 Router 中注册。
