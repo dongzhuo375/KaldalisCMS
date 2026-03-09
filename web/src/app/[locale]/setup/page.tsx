@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Rocket, 
@@ -22,7 +23,10 @@ import {
   ArrowRight,
   ArrowLeft,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  ShieldAlert,
+  Users,
+  UserPlus
 } from "lucide-react";
 import FluidBackground from "@/components/site/fluid-background";
 import api from "@/lib/api";
@@ -53,7 +57,12 @@ export default function SetupPage() {
     adminUsername: "",
     adminEmail: "",
     adminPassword: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    // Fine-grained Permissions
+    adminFullAccess: true,
+    adminCanDelete: true,
+    userCanUpload: true,
+    allowAnonymousRead: true
   });
 
   // 当数据库相关配置改变时，重置校验状态
@@ -128,7 +137,11 @@ export default function SetupPage() {
         site_name: formData.siteName,
         admin_username: formData.adminUsername,
         admin_email: formData.adminEmail,
-        admin_password: formData.adminPassword
+        admin_password: formData.adminPassword,
+        admin_full_access: formData.adminFullAccess,
+        admin_can_delete: formData.adminCanDelete,
+        user_can_upload: formData.userCanUpload,
+        allow_anonymous_read: formData.allowAnonymousRead
       });
       setSuccess(true);
     } catch (err: any) {
@@ -198,7 +211,7 @@ export default function SetupPage() {
             <CardDescription className="text-lg">
               {step === 1 && "Configure your PostgreSQL connection"}
               {step === 2 && "Create the master administrator account"}
-              {step === 3 && "Almost there! Name your new site"}
+              {step === 3 && "Almost there! Site name & RBAC roles"}
             </CardDescription>
           </CardHeader>
 
@@ -328,9 +341,92 @@ export default function SetupPage() {
                     </div>
                   </div>
 
+                  {/* Fine-grained RBAC Configuration Section */}
+                  <div className="space-y-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-indigo-600">RBAC Fine-Grained Roles</h4>
+                    </div>
+                    
+                    {/* Level 1: Super Admin (The User being created) */}
+                    <div className="flex items-start space-x-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+                      <Checkbox 
+                        id="adminFullAccess" 
+                        checked={formData.adminFullAccess}
+                        onCheckedChange={(checked) => setFormData({...formData, adminFullAccess: !!checked})}
+                        className="mt-1"
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label htmlFor="adminFullAccess" className="text-sm font-semibold cursor-pointer flex items-center gap-1.5">
+                          <Rocket className="h-3 w-3" /> Master Super-Admin
+                        </Label>
+                        <p className="text-[10px] text-slate-500">
+                          Grant this master account wildcard access (/*) to all system resources.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Level 2: Staff/Admins */}
+                    <div className="flex items-start space-x-3 pt-1">
+                      <Checkbox 
+                        id="adminCanDelete" 
+                        checked={formData.adminCanDelete}
+                        onCheckedChange={(checked) => setFormData({...formData, adminCanDelete: !!checked})}
+                        className="mt-1"
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label htmlFor="adminCanDelete" className="text-sm font-semibold cursor-pointer flex items-center gap-1.5">
+                          <Users className="h-3 w-3" /> Staff Delete Power
+                        </Label>
+                        <p className="text-[10px] text-slate-500">
+                          Allow users with "Admin" role to delete posts, media, and tags.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Level 3: Registered Users */}
+                    <div className="flex items-start space-x-3">
+                      <Checkbox 
+                        id="userCanUpload" 
+                        checked={formData.userCanUpload}
+                        onCheckedChange={(checked) => setFormData({...formData, userCanUpload: !!checked})}
+                        className="mt-1"
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label htmlFor="userCanUpload" className="text-sm font-semibold cursor-pointer flex items-center gap-1.5">
+                          <UserPlus className="h-3 w-3" /> User Media Upload
+                        </Label>
+                        <p className="text-[10px] text-slate-500">
+                          Allow "User" role to upload files to the media library.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Level 4: Anonymous Visitors */}
+                    <div className="flex items-start space-x-3">
+                      <Checkbox 
+                        id="allowAnonymousRead" 
+                        checked={formData.allowAnonymousRead}
+                        onCheckedChange={(checked) => setFormData({...formData, allowAnonymousRead: !!checked})}
+                        className="mt-1"
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label htmlFor="allowAnonymousRead" className="text-sm font-semibold cursor-pointer flex items-center gap-1.5">
+                          <Globe className="h-3 w-3" /> Public Guest Access
+                        </Label>
+                        <p className="text-[10px] text-slate-500">
+                          Allow unauthenticated visitors to view published content.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="bg-indigo-600/5 border border-indigo-600/10 rounded-xl p-4 text-xs text-slate-500 space-y-2">
-                    <p className="font-bold text-indigo-600 uppercase">Ready to Install</p>
-                    <p>By clicking the button below, we will initialize the database schema, create your account, and set up the system configuration.</p>
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="h-3 w-3 text-indigo-600" />
+                      <p className="font-bold text-indigo-600 uppercase">Initialization Notice</p>
+                    </div>
+                    <p>Submitting this form will establish your RBAC hierarchy. Roles will be persisted in the Casbin engine for runtime authorization.</p>
                   </div>
 
                   <div className="flex gap-4">

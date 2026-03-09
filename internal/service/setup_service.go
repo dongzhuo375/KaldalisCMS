@@ -25,9 +25,11 @@ type SetupConfig struct {
 	AdminPass  string
 	AdminEmail string
 
-	// 权限配置标志
+	// 细粒度权限配置标志
 	AllowAnonymousRead bool
 	AdminFullAccess    bool
+	AdminCanDelete     bool
+	UserCanUpload      bool
 }
 
 type SetupService struct {
@@ -178,32 +180,64 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 		return fmt.Errorf("系统设置持久化失败: %w", err)
 	}
 
-	// --- 权限初始化 (Casbin) ---
-	// 初始化 GORM 适配器并加载模型配置
+	// --- 权限初始化 (Casbin RBAC 细粒度模板) ---
 	adapter, _ := gormadapter.NewAdapterByDB(db)
 	enforcer, err := casbin.NewEnforcer("cmd/configs/casbin_model.conf", adapter)
 	if err == nil {
 		enforcer.EnableAutoSave(true)
 
-		// 1. 如果开启了管理员全能权限，为 super_admin 分配通配符策略
+		// 1. [Role: super_admin] - 建站者专享
 		if cfg.AdminFullAccess {
 			enforcer.AddPolicy("super_admin", "/api/v1/*", "*")
-			log.Printf("[SETUP] 已为超级管理员角色分配全量 API 权限")
 		}
 
-		// 2. 如果开启了访客阅读，分配基础 GET 权限
+		// 2. [Role: admin] - 内容管理员
+		adminRules := [][]string{
+			{"admin", "/api/v1/posts", "POST"},
+			{"admin", "/api/v1/posts/:id", "PUT"},
+			{"admin", "/api/v1/media", "POST"},
+			{"admin", "/api/v1/tags", "POST"},
+			{"admin", "/api/v1/tags/:id", "PUT"},
+			{"admin", "/api/v1/categories", "POST"},
+			{"admin", "/api/v1/categories/:id", "PUT"},
+		}
+		enforcer.AddPolicies(adminRules)
+		
+		if cfg.AdminCanDelete {
+			enforcer.AddPolicy("admin", "/api/v1/posts/:id", "DELETE")
+			enforcer.AddPolicy("admin", "/api/v1/media/:id", "DELETE")
+			enforcer.AddPolicy("admin", "/api/v1/tags/:id", "DELETE")
+			enforcer.AddPolicy("admin", "/api/v1/categories/:id", "DELETE")
+		}
+
+		// 3. [Role: user] - 普通注册用户
+		userRules := [][]string{
+			{"user", "/api/v1/posts", "GET"},
+			{"user", "/api/v1/posts/:id", "GET"},
+			{"user", "/api/v1/media", "GET"},
+		}
+		enforcer.AddPolicies(userRules)
+		
+		if cfg.UserCanUpload {
+			enforcer.AddPolicy("user", "/api/v1/media", "POST")
+		}
+
+		// 4. [Role: anonymous] - 匿名访客
 		if cfg.AllowAnonymousRead {
 			enforcer.AddPolicy("anonymous", "/api/v1/posts", "GET")
 			enforcer.AddPolicy("anonymous", "/api/v1/posts/:id", "GET")
-			log.Printf("[SETUP] 已开启访客匿名阅读权限策略")
 		}
 
-		// 3. 将当前创建的管理员账号绑定到 super_admin 角色
+		// 5. [Inheritance] - 角色继承
+		enforcer.AddGroupingPolicy("admin", "user")
+		enforcer.AddGroupingPolicy("super_admin", "admin")
+
+		// 6. [Binding] - 绑定建站者
 		enforcer.AddGroupingPolicy(cfg.AdminUser, "super_admin")
 
-		log.Printf("[SETUP] 初始 Casbin 策略处理完成 (Admin: %s -> super_admin)", cfg.AdminUser)
+		log.Printf("[SETUP] 细粒度 RBAC 体系注入完成 (AdminDelete:%v, UserUpload:%v)", cfg.AdminCanDelete, cfg.UserCanUpload)
 	} else {
-		log.Printf("[WARN] 权限策略初始化失败 (可能是配置文件缺失): %v", err)
+		log.Printf("[WARN] 权限策略初始化失败: %v", err)
 	}
 
 	// 保存配置文件
