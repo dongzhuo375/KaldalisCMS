@@ -7,10 +7,15 @@ import (
 )
 
 const (
-	StatusDraft     = 0 // 草稿
-	StatusPublished = 1 // 已发布
+	// StatusDraft represents both a newly created draft and a post that has been taken offline.
+	// The minimal workflow does not distinguish between "never published" and "unpublished" yet.
+	StatusDraft = 0
+	// StatusPublished marks content that is safe to expose on public read endpoints.
+	StatusPublished = 1
 )
 
+// Post is the core publishing aggregate shared across service, repository, and API layers.
+// Visibility is derived from Status rather than from routing or caller identity.
 type Post struct {
 	ID         uint
 	CreatedAt  time.Time
@@ -20,11 +25,22 @@ type Post struct {
 	Content    string
 	Cover      string
 	AuthorID   uint
-	Author     User // 这里可能需要根据实际情况调整
+	Author     User
 	CategoryID *uint
-	Category   Category // 这里可能需要根据实际情况调整
-	Tags       []Tag    // 这里可能需要根据实际情况调整
-	Status     int      // 文章状态
+	Category   Category
+	Tags       []Tag
+	Status     int // Draft or Published
+}
+
+// PostPatch models the editable subset of a post for management updates.
+// Nil pointer fields mean "leave the current value unchanged".
+// For Tags, nil means "do not touch tags", while an empty slice means "replace with empty".
+type PostPatch struct {
+	Title      *string
+	Content    *string
+	Cover      *string
+	CategoryID *uint
+	Tags       []Tag
 }
 
 // Category 结构体，简化版
@@ -62,23 +78,22 @@ func (p *Post) Publish() error {
 		return errors.New("文章已是发布状态，无法重复发布")
 	}
 
-	// 发布前的业务规则校验
 	if err := p.CheckValidity(); err != nil {
 		return fmt.Errorf("文章发布失败，校验未通过: %w", err)
 	}
 
-	// 状态流转
 	p.Status = StatusPublished
 	p.UpdatedAt = time.Now()
 
 	return nil
 }
 
-// Draft 设置文章状态为草稿
+// Draft 将文章切回草稿状态，用于“下线”已发布内容。
 func (p *Post) Draft() error {
 	if p.Status == StatusDraft {
 		return errors.New("文章已是草稿状态")
 	}
 	p.Status = StatusDraft
+	p.UpdatedAt = time.Now()
 	return nil
 }

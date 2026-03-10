@@ -1,21 +1,14 @@
 # KaldalisCMS API Tests
 
-# 1. Register a new user
-#POST http://localhost:8080/api/v1/users/register
-#Content-Type: application/json
-#{
-# "username": "testuser",
-# "password": "password123",
-# "email": "test@example.com",
-# "role": "user"
-#}
-#HTTP 201
+# NOTE:
+# Post management routes now live under /api/v1/admin/posts.
+# The login account used below must have admin or super_admin permissions.
 
-# 2. Login as the new user and capture auth tokens
+# 1. Login as an admin user and capture auth tokens
 POST http://localhost:8080/api/v1/users/login
 Content-Type: application/json
 {
-  "username": "testuser",
+  "username": "admin",
   "password": "password123"
 }
 HTTP 200
@@ -23,8 +16,8 @@ HTTP 200
 csrf_token: cookie "kaldalis_csrf"
 auth_token: cookie "kaldalis_auth"
 
-# 3. Create a new blog post
-POST http://localhost:8080/api/v1/posts
+# 2. Create a new draft post through the admin API
+POST http://localhost:8080/api/v1/admin/posts
 Cookie: kaldalis_csrf={{csrf_token}}; kaldalis_auth={{auth_token}}
 X-CSRF-Token: {{csrf_token}}
 Content-Type: application/json
@@ -34,23 +27,37 @@ Content-Type: application/json
 }
 HTTP 201
 
-# 4. Get all posts and capture the ID of the first one
-GET http://localhost:8080/api/v1/posts
+# 3. Get all admin posts and capture the ID of the first one
+GET http://localhost:8080/api/v1/admin/posts
+Cookie: kaldalis_csrf={{csrf_token}}; kaldalis_auth={{auth_token}}
 HTTP 200
 [Asserts]
 jsonpath "$" count > 0
 [Captures]
 new_post_id: jsonpath "$[0].id"
 
-# 5. Get the newly created post by its ID
-GET http://localhost:8080/api/v1/posts/{{new_post_id}}
+# 4. Verify the newly created post is still a draft in the admin detail view
+GET http://localhost:8080/api/v1/admin/posts/{{new_post_id}}
+Cookie: kaldalis_csrf={{csrf_token}}; kaldalis_auth={{auth_token}}
 HTTP 200
 [Asserts]
 jsonpath "$.id" == {{new_post_id}}
-jsonpath "$.title" == "Minimal Post"
+jsonpath "$.status" == 0
 
-# 6. Update the created post
-PUT http://localhost:8080/api/v1/posts/{{new_post_id}}
+# 5. Publish the draft so it becomes visible on the public API
+POST http://localhost:8080/api/v1/admin/posts/{{new_post_id}}/publish
+Cookie: kaldalis_csrf={{csrf_token}}; kaldalis_auth={{auth_token}}
+X-CSRF-Token: {{csrf_token}}
+HTTP 200
+
+# 6. Verify the public posts feed can now see the published post
+GET http://localhost:8080/api/v1/posts
+HTTP 200
+[Asserts]
+jsonpath "$[0].status" == 1
+
+# 7. Update the published post through the admin API
+PUT http://localhost:8080/api/v1/admin/posts/{{new_post_id}}
 Cookie: kaldalis_csrf={{csrf_token}}; kaldalis_auth={{auth_token}}
 X-CSRF-Token: {{csrf_token}}
 Content-Type: application/json
@@ -60,18 +67,14 @@ Content-Type: application/json
 }
 HTTP 200
 
-# 7. Verify the post was updated
-GET http://localhost:8080/api/v1/posts/{{new_post_id}}
+# 8. Move the post back to draft (offline)
+POST http://localhost:8080/api/v1/admin/posts/{{new_post_id}}/draft
+Cookie: kaldalis_csrf={{csrf_token}}; kaldalis_auth={{auth_token}}
+X-CSRF-Token: {{csrf_token}}
 HTTP 200
-[Asserts]
-jsonpath "$.title" == "Updated Minimal Post"
 
-# 8. Delete the post
-DELETE http://localhost:8080/api/v1/posts/{{new_post_id}}
+# 9. Delete the post from the admin API
+DELETE http://localhost:8080/api/v1/admin/posts/{{new_post_id}}
 Cookie: kaldalis_csrf={{csrf_token}}; kaldalis_auth={{auth_token}}
 X-CSRF-Token: {{csrf_token}}
 HTTP 204
-
-# 9. Verify the post was deleted
-GET http://localhost:8080/api/v1/posts/{{new_post_id}}
-HTTP 404

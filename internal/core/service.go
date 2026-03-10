@@ -5,14 +5,20 @@ import (
 	"context"
 )
 
+// PostService describes the article publishing use cases exposed to delivery layers.
+// Public and management concerns are split explicitly so HTTP handlers do not need to infer
+// visibility rules from route naming alone.
 type PostService interface {
-	GetAllPosts(ctx context.Context) ([]entity.Post, error)
-	GetPostByID(ctx context.Context, id uint) (entity.Post, error)
-	CreatePost(ctx context.Context, post entity.Post) error
-	UpdatePost(ctx context.Context, id uint, post entity.Post) error
-	DeletePost(ctx context.Context, id uint) error
-	PublishPost(ctx context.Context, id uint) error
-	DraftPost(ctx context.Context, id uint) error
+	ListPublicPosts(ctx context.Context) ([]entity.Post, error)
+	GetPublicPostByID(ctx context.Context, id uint) (entity.Post, error)
+
+	ListAdminPosts(ctx context.Context, actorUserID uint, actorRole string) ([]entity.Post, error)
+	GetAdminPostByID(ctx context.Context, id uint, actorUserID uint, actorRole string) (entity.Post, error)
+	CreateAdminPost(ctx context.Context, actorUserID uint, actorRole string, post entity.Post) error
+	UpdateAdminPost(ctx context.Context, id uint, patch entity.PostPatch, actorUserID uint, actorRole string) error
+	DeleteAdminPost(ctx context.Context, id uint, actorRole string) error
+	PublishAdminPost(ctx context.Context, id uint, actorRole string) error
+	MovePostToDraft(ctx context.Context, id uint, actorRole string) error
 }
 
 type UserService interface {

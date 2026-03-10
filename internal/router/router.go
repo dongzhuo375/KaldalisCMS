@@ -9,6 +9,7 @@ import (
 	"KaldalisCMS/internal/utils"
 
 	"context"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -18,14 +19,68 @@ import (
 	"gorm.io/gorm"
 )
 
-// NewAppRouter initializes the router for the fully functional application
+// ensurePostWorkflowPolicies backfills the post-management policies required by
+// the current application build. It intentionally seeds two complementary policy sets:
+//   - route policies used by the HTTP authorization middleware
+//   - capability policies used by the service-layer post authorizer
+
+// The ensurePostWorkflowPolicies function silently seeds policies during application startup without checking if they already exist.
+// The AddPolicies method on line 68 may fail if policies already exist (depending on Casbin configuration),
+// but the error is only logged as a warning. Consider checking for existing policies first, or documenting that this function is idempotent and safe to call on every startup.
+func ensurePostWorkflowPolicies(enforcer *casbin.Enforcer) {
+	if enforcer == nil {
+		return
+	}
+
+	rules := [][]string{
+		{"user", "/api/v1/admin/posts", "GET"},
+		{"user", "/api/v1/admin/posts", "POST"},
+		{"user", "/api/v1/admin/posts/:id", "GET"},
+		{"user", "/api/v1/admin/posts/:id", "PUT"},
+		{"user", "post:draft", "create"},
+		{"user", "post:draft", "list:own"},
+		{"user", "post:draft", "read:own"},
+		{"user", "post:draft", "update:own"},
+		{"admin", "/api/v1/admin/posts", "GET"},
+		{"admin", "/api/v1/admin/posts", "POST"},
+		{"admin", "/api/v1/admin/posts/:id", "GET"},
+		{"admin", "/api/v1/admin/posts/:id", "PUT"},
+		{"admin", "/api/v1/admin/posts/:id", "DELETE"},
+		{"admin", "/api/v1/admin/posts/:id/publish", "POST"},
+		{"admin", "/api/v1/admin/posts/:id/draft", "POST"},
+		{"admin", "post", "list:any"},
+		{"admin", "post", "read:any"},
+		{"admin", "post", "update:any"},
+		{"admin", "post", "publish"},
+		{"admin", "post", "unpublish"},
+		{"admin", "post", "delete"},
+		{"super_admin", "/api/v1/admin/posts", "GET"},
+		{"super_admin", "/api/v1/admin/posts", "POST"},
+		{"super_admin", "/api/v1/admin/posts/:id", "GET"},
+		{"super_admin", "/api/v1/admin/posts/:id", "PUT"},
+		{"super_admin", "/api/v1/admin/posts/:id", "DELETE"},
+		{"super_admin", "/api/v1/admin/posts/:id/publish", "POST"},
+		{"super_admin", "/api/v1/admin/posts/:id/draft", "POST"},
+		{"super_admin", "post", "list:any"},
+		{"super_admin", "post", "read:any"},
+		{"super_admin", "post", "update:any"},
+		{"super_admin", "post", "publish"},
+		{"super_admin", "post", "unpublish"},
+		{"super_admin", "post", "delete"},
+	}
+
+	if _, err := enforcer.AddPolicies(rules); err != nil {
+		log.Printf("[WARN] failed to ensure post workflow policies: %v", err)
+	}
+}
+
+// NewAppRouter initializes the router for the fully functional application.
+// Public content delivery and admin management are registered under different paths so
+// callers can reason about visibility and authorization from the URL contract alone.
 func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *gin.Engine {
 	r := gin.Default()
-
-	// Add a simple CORS middleware
 	r.Use(apimw.CORSMiddleware())
 
-	// --- Static media (public) ---
 	uploadDir := os.Getenv("MEDIA_UPLOAD_DIR")
 	if uploadDir == "" {
 		uploadDir = filepath.FromSlash("./data/uploads")
@@ -34,15 +89,10 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *
 	publicBaseURL := os.Getenv("MEDIA_PUBLIC_BASE_URL")
 	maxFilenameBytes := os.Getenv("MEDIA_MAX_FILENAME_BYTES")
 
-	// /media/a maps to uploadDir/a; assets are stored under uploadDir/a/{id}/{stored_name}
-	// We only expose the "a" subdirectory to prevent accidental exposure of other files in uploadDir (e.g. logs/backups/etc)
 	r.Static("/media/a", filepath.Join(uploadDir, "a"))
 
-	// --- Media ---
 	mediaRepo := repository.NewMediaRepository(db)
-	mediaCfg := service.MediaConfig{
-		UploadDir: uploadDir,
-	}
+	mediaCfg := service.MediaConfig{UploadDir: uploadDir}
 	if v := utils.ParseInt64(maxUploadMB); v > 0 {
 		mediaCfg.MaxUploadSizeMB = v
 	} else {
@@ -57,71 +107,62 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *
 	mediaSvc := service.NewMediaService(mediaRepo, mediaCfg)
 	mediaAPI := v1.NewMediaAPI(mediaSvc, mediaRepo)
 
-	// Dependency Injection for Post
-
 	postRepo := repository.NewPostRepository(db)
-
-	// Use NewPostServiceWithMedia to enable media synchronization
-	postService := service.NewPostServiceWithMedia(postRepo, mediaSvc)
-	postAPI := v1.NewPostAPI(postService)
+	postAuthorizer := auth.NewCasbinPostAuthorizer(enforcer)
+	postService := service.NewPostServiceWithMedia(postRepo, mediaSvc, postAuthorizer)
+	publicPostAPI := v1.NewPublicPostAPI(postService)
+	adminPostAPI := v1.NewAdminPostAPI(postService)
+	ensurePostWorkflowPolicies(enforcer)
 
 	userRepo := repository.NewUserRepository(db)
 	userService := service.NewUserService(userRepo)
 	sessionMgr := auth.NewSessionManager(authCfg)
 	userAPI := v1.NewUserAPI(userService, sessionMgr)
 
-	// --- System init/setup ---
 	systemRepo := repository.NewSystemRepository(db)
 	systemService := service.NewSystemService(db, systemRepo, userService)
 	systemAPI := v1.NewSystemAPI(systemService)
 
-	// --- Background Jobs ---
-	// Start the background cleanup job for stale pending media.
-	// This runs every hour to remove files and DB records that failed during upload.
 	go func() {
 		utils.RunTicker(1*time.Hour, func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
 			if err := mediaSvc.CleanupStaleMedia(ctx); err != nil {
-				// In production, use a proper logger
 				println("Error cleaning up media:", err.Error())
 			}
 		})
 	}()
 
 	apiV1 := r.Group("/api/v1")
+	apiV1.Use(apimw.OptionalAuth(sessionMgr))
 	{
-		apiV1.Use(apimw.OptionalAuth(sessionMgr))
-
-		// --- 公开路由 ---
-		// 用户登录注册
 		userAPI.RegisterRoutes(apiV1)
-
-		// 系统状态与初始化
 		systemAPI.RegisterRoutes(apiV1)
 
-		// 文章只读接口
-		apiV1.GET("/posts", postAPI.GetPosts)
-		apiV1.GET("/posts/:id", postAPI.GetPostByID)
+		// Public post endpoints are permanently read-only and only expose published content.
+		apiV1.GET("/posts", publicPostAPI.GetPosts)
+		apiV1.GET("/posts/:id", publicPostAPI.GetPostByID)
 
-		// --- 受保护路由组 ---
 		protected := apiV1.Group("/")
-
-		// 先检查是否登录，再检查 CSRF，最后检查权限
 		protected.Use(apimw.RequireAuth())
 		protected.Use(apimw.Authorize(enforcer))
 		protected.Use(apimw.CSRFCheck(sessionMgr))
-
 		{
-			// 需要认证的 User 操作
 			protected.POST("/users/logout", userAPI.Logout)
 
-			// 需要认证的 Post 操作
-			protected.POST("/posts", postAPI.CreatePost)
-			protected.PUT("/posts/:id", postAPI.UpdatePost)
-			protected.DELETE("/posts/:id", postAPI.DeletePost)
+			// Management post endpoints stay under /api/v1/admin/posts to keep draft visibility
+			// and write operations separate from the public content contract. Casbin still guards
+			// route entry here, while the service layer asks a Casbin-backed authorizer for the
+			// finer-grained post capabilities needed to resolve own-draft vs any-post access.
+			adminPosts := protected.Group("/admin")
+			adminPosts.GET("/posts", adminPostAPI.GetPosts)
+			adminPosts.GET("/posts/:id", adminPostAPI.GetPostByID)
+			adminPosts.POST("/posts", adminPostAPI.CreatePost)
+			adminPosts.PUT("/posts/:id", adminPostAPI.UpdatePost)
+			adminPosts.POST("/posts/:id/publish", adminPostAPI.PublishPost)
+			adminPosts.POST("/posts/:id/draft", adminPostAPI.DraftPost)
+			adminPosts.DELETE("/posts/:id", adminPostAPI.DeletePost)
 
-			// 需要认证的 Media 操作
 			mediaAPI.RegisterRoutes(protected)
 		}
 	}
@@ -129,19 +170,16 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *
 	return r
 }
 
-// NewSetupRouter initializes the router for the setup mode, hiding service instantiation from main
+// NewSetupRouter initializes the router for the setup mode, hiding service instantiation from main.
 func NewSetupRouter(save func(string, int, string, string, string) error, reload func() error) *gin.Engine {
 	r := gin.Default()
 	r.Use(apimw.CORSMiddleware())
 
-	// Service instantiation is now hidden inside router
 	setupSvc := service.NewSetupService(save, reload)
 	setupAPI := v1.NewSetupAPI(setupSvc)
 
 	apiV1 := r.Group("/api/v1")
-	{
-		setupAPI.RegisterRoutes(apiV1)
-	}
+	setupAPI.RegisterRoutes(apiV1)
 
 	return r
 }

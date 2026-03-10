@@ -58,7 +58,7 @@ func (s *SetupService) ValidateDatabase(host string, port int, user, pass, dbnam
 	// --- 1. 尝试直接连接目标库 (第一优先级) ---
 	targetDSN := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable TimeZone=Asia/Shanghai",
 		host, port, user, pass, dbname)
-	
+
 	fmt.Printf("[SETUP] 正在验证目标数据库: %s\n", dbname)
 	db, err := gorm.Open(postgres.Open(targetDSN), &gorm.Config{})
 	if err == nil {
@@ -67,7 +67,7 @@ func (s *SetupService) ValidateDatabase(host string, port int, user, pass, dbnam
 			sqlDB.Close()
 			if err == nil {
 				fmt.Printf("[SETUP] 目标数据库 [%s] 已存在且可连接，跳过创建流程。\n", dbname)
-				return nil 
+				return nil
 			}
 		}
 	}
@@ -81,7 +81,7 @@ func (s *SetupService) ValidateDatabase(host string, port int, user, pass, dbnam
 		fmt.Printf("[SETUP] 尝试通过管理库 [%s] 进行自动创建...\n", adminName)
 		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable TimeZone=Asia/Shanghai",
 			host, port, user, pass, adminName)
-		
+
 		adminDB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err == nil {
 			break
@@ -192,32 +192,53 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 		}
 
 		// 2. [Role: admin] - 内容管理员
+		// 后台文章管理统一走 /api/v1/admin/posts，公共 /posts 只承担已发布内容分发。
 		adminRules := [][]string{
-			{"admin", "/api/v1/posts", "POST"},
-			{"admin", "/api/v1/posts/:id", "PUT"},
+			{"admin", "/api/v1/admin/posts", "GET"},
+			{"admin", "/api/v1/admin/posts", "POST"},
+			{"admin", "/api/v1/admin/posts/:id", "GET"},
+			{"admin", "/api/v1/admin/posts/:id", "PUT"},
+			{"admin", "/api/v1/admin/posts/:id/publish", "POST"},
+			{"admin", "/api/v1/admin/posts/:id/draft", "POST"},
+			{"admin", "post", "list:any"},
+			{"admin", "post", "read:any"},
+			{"admin", "post", "update:any"},
+			{"admin", "post", "publish"},
+			{"admin", "post", "unpublish"},
+			{"admin", "post", "delete"},
 			{"admin", "/api/v1/media", "POST"},
 			{"admin", "/api/v1/tags", "POST"},
 			{"admin", "/api/v1/tags/:id", "PUT"},
 			{"admin", "/api/v1/categories", "POST"},
 			{"admin", "/api/v1/categories/:id", "PUT"},
 		}
+		//理想状态为初始化建站时载入的权限策略，实际上在router存在时就会自动加载到内存（我看未必），所以这里的AddPolicy更多是为了确保安装流程的完整性和可预见性。
 		enforcer.AddPolicies(adminRules)
-		
+
 		if cfg.AdminCanDelete {
-			enforcer.AddPolicy("admin", "/api/v1/posts/:id", "DELETE")
+			enforcer.AddPolicy("admin", "/api/v1/admin/posts/:id", "DELETE")
 			enforcer.AddPolicy("admin", "/api/v1/media/:id", "DELETE")
 			enforcer.AddPolicy("admin", "/api/v1/tags/:id", "DELETE")
 			enforcer.AddPolicy("admin", "/api/v1/categories/:id", "DELETE")
 		}
 
 		// 3. [Role: user] - 普通注册用户
+		// 用户可进入文章后台管理自己的草稿，但最终的数据范围仍由服务层限制为“仅本人 Draft”。
 		userRules := [][]string{
 			{"user", "/api/v1/posts", "GET"},
 			{"user", "/api/v1/posts/:id", "GET"},
+			{"user", "/api/v1/admin/posts", "GET"},
+			{"user", "/api/v1/admin/posts", "POST"},
+			{"user", "/api/v1/admin/posts/:id", "GET"},
+			{"user", "/api/v1/admin/posts/:id", "PUT"},
+			{"user", "post:draft", "create"},
+			{"user", "post:draft", "list:own"},
+			{"user", "post:draft", "read:own"},
+			{"user", "post:draft", "update:own"},
 			{"user", "/api/v1/media", "GET"},
 		}
 		enforcer.AddPolicies(userRules)
-		
+
 		if cfg.UserCanUpload {
 			enforcer.AddPolicy("user", "/api/v1/media", "POST")
 		}

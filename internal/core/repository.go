@@ -8,10 +8,14 @@ import (
 
 type PostRepository interface {
 	GetByID(ctx context.Context, id uint) (entity.Post, error)
+	GetPublishedByID(ctx context.Context, id uint) (entity.Post, error)
+	GetDraftByIDAndAuthor(ctx context.Context, id uint, authorID uint) (entity.Post, error)
 	Create(ctx context.Context, post entity.Post) (entity.Post, error)
 	Update(ctx context.Context, post entity.Post) error
 	Delete(ctx context.Context, id uint) error
 	GetAll(ctx context.Context) ([]entity.Post, error)
+	GetPublished(ctx context.Context) ([]entity.Post, error)
+	GetDraftsByAuthor(ctx context.Context, authorID uint) ([]entity.Post, error)
 	IsSlugExists(ctx context.Context, slug string) (bool, error)
 }
 

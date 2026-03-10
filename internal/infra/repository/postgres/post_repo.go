@@ -75,8 +75,22 @@ func postToModel(e entity.Post) model.Post {
 	}
 }
 
+func postToEntities(postModels []model.Post) []entity.Post {
+	postEntities := make([]entity.Post, len(postModels))
+	for i, pm := range postModels {
+		postEntities[i] = postToEntity(pm)
+	}
+	return postEntities
+}
+
 type PostRepository struct {
 	db *gorm.DB
+}
+
+// scopedQuery applies the eager-loading required by both public delivery and management views.
+// Keeping the preload policy here avoids repeating relation wiring across repository methods.
+func (r *PostRepository) scopedQuery(ctx context.Context) *gorm.DB {
+	return r.db.WithContext(ctx).Preload("Author").Preload("Category").Preload("Tags")
 }
 
 func (r *PostRepository) IsSlugExists(ctx context.Context, slug string) (bool, error) {
@@ -98,23 +112,61 @@ func NewPostRepository(db *gorm.DB) *PostRepository {
 
 func (r *PostRepository) GetAll(ctx context.Context) ([]entity.Post, error) {
 	var postModels []model.Post
-	if err := r.db.WithContext(ctx).Preload("Author").Preload("Category").Preload("Tags").Find(&postModels).Error; err != nil {
+	if err := r.scopedQuery(ctx).Find(&postModels).Error; err != nil {
 		return nil, fmt.Errorf("post_repository.GetAll: %w", err)
 	}
-	var postEntities []entity.Post
-	for _, pm := range postModels {
-		postEntities = append(postEntities, postToEntity(pm))
+	return postToEntities(postModels), nil
+}
+
+func (r *PostRepository) GetPublished(ctx context.Context) ([]entity.Post, error) {
+	var postModels []model.Post
+	if err := r.scopedQuery(ctx).Where("status = ?", entity.StatusPublished).Find(&postModels).Error; err != nil {
+		return nil, fmt.Errorf("post_repository.GetPublished: %w", err)
 	}
-	return postEntities, nil
+	return postToEntities(postModels), nil
 }
 
 func (r *PostRepository) GetByID(ctx context.Context, id uint) (entity.Post, error) {
 	var postModel model.Post
-	if err := r.db.WithContext(ctx).Preload("Author").Preload("Category").Preload("Tags").First(&postModel, id).Error; err != nil {
+	if err := r.scopedQuery(ctx).First(&postModel, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return entity.Post{}, core.ErrNotFound
 		}
 		return entity.Post{}, fmt.Errorf("post_repository.GetByID: %w", err)
+	}
+	return postToEntity(postModel), nil
+}
+
+func (r *PostRepository) GetPublishedByID(ctx context.Context, id uint) (entity.Post, error) {
+	var postModel model.Post
+	if err := r.scopedQuery(ctx).Where("id = ? AND status = ?", id, entity.StatusPublished).First(&postModel).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return entity.Post{}, core.ErrNotFound
+		}
+		return entity.Post{}, fmt.Errorf("post_repository.GetPublishedByID: %w", err)
+	}
+	return postToEntity(postModel), nil
+}
+
+func (r *PostRepository) GetDraftsByAuthor(ctx context.Context, authorID uint) ([]entity.Post, error) {
+	var postModels []model.Post
+	if err := r.scopedQuery(ctx).
+		Where("author_id = ? AND status = ?", authorID, entity.StatusDraft).
+		Find(&postModels).Error; err != nil {
+		return nil, fmt.Errorf("post_repository.GetDraftsByAuthor: %w", err)
+	}
+	return postToEntities(postModels), nil
+}
+
+func (r *PostRepository) GetDraftByIDAndAuthor(ctx context.Context, id uint, authorID uint) (entity.Post, error) {
+	var postModel model.Post
+	if err := r.scopedQuery(ctx).
+		Where("id = ? AND author_id = ? AND status = ?", id, authorID, entity.StatusDraft).
+		First(&postModel).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return entity.Post{}, core.ErrNotFound
+		}
+		return entity.Post{}, fmt.Errorf("post_repository.GetDraftByIDAndAuthor: %w", err)
 	}
 	return postToEntity(postModel), nil
 }

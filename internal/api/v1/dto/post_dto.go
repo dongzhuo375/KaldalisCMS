@@ -15,18 +15,17 @@ type CreatePostRequest struct {
 }
 
 // ToEntity converts a CreatePostRequest DTO to an entity.Post.
-// It requires the authorID to be passed as it's not part of the request body.
-func (r *CreatePostRequest) ToEntity(authorID uint) *entity.Post {
+// Author ownership is assigned by the service layer from the authenticated actor,
+// not trusted from the request binding layer.
+func (r *CreatePostRequest) ToEntity() *entity.Post {
 	post := &entity.Post{
 		Title:      r.Title,
 		Content:    r.Content,
 		Cover:      r.Cover,
 		CategoryID: r.CategoryID,
-		AuthorID:   authorID,           // <-- Add AuthorID
 		Status:     entity.StatusDraft, // 默认创建为草稿
 	}
 	if r.Tags != nil {
-		// Post.Tags 的元素类型在 entity 包内是 Tag（同包类型），不需要用 entity.Tag 显式限定。
 		post.Tags = make([]entity.Tag, 0, len(r.Tags))
 		for _, tagID := range r.Tags {
 			post.Tags = append(post.Tags, entity.Tag{ID: tagID})
@@ -42,7 +41,10 @@ type UpdatePostRequest struct {
 	Cover      *string `json:"cover" binding:"omitempty,max=255"`
 	CategoryID *uint   `json:"category_id"`
 	Tags       []uint  `json:"tags"`
-	Status     *int    `json:"status"`
+	// Status 由专用发布工作流接口管理：
+	// POST /admin/posts/:id/publish 与 POST /admin/posts/:id/draft。
+	// 这里保留字段兼容旧调用方，但 ToEntity 会显式忽略它。
+	Status *int `json:"status"`
 }
 
 // ToEntity creates and returns a new entity.Post from the UpdatePostRequest.
@@ -68,10 +70,37 @@ func (r *UpdatePostRequest) ToEntity() entity.Post {
 			post.Tags = append(post.Tags, entity.Tag{ID: tagID})
 		}
 	}
-	if r.Status != nil {
-		post.Status = *r.Status
-	}
+	// 状态切换必须走专用后台工作流接口，避免普通更新绕过业务约束。
 	return post
+}
+
+// ToPatch converts the update DTO into a domain patch object.
+// This keeps HTTP pointer semantics out of the service signature while preserving
+// the distinction between omitted and explicitly provided scalar fields.
+func (r *UpdatePostRequest) ToPatch() entity.PostPatch {
+	patch := entity.PostPatch{
+		Title:      r.Title,
+		Content:    r.Content,
+		Cover:      r.Cover,
+		CategoryID: r.CategoryID,
+	}
+	if r.Tags != nil {
+		patch.Tags = tagsFromIDs(r.Tags)
+	}
+	return patch
+}
+
+// tagsFromIDs converts a slice of tag IDs to a slice of entity.Tag.
+// It centralizes the mapping logic to avoid duplication between DTO methods.
+func tagsFromIDs(ids []uint) []entity.Tag {
+	if ids == nil {
+		return nil
+	}
+	tags := make([]entity.Tag, 0, len(ids))
+	for _, id := range ids {
+		tags = append(tags, entity.Tag{ID: id})
+	}
+	return tags
 }
 
 // --- 以下是建议新增和修改的部分 ---
