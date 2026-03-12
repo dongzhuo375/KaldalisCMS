@@ -83,3 +83,13 @@ func GetUserID(c *gin.Context) (uint, bool) {
 	uid, ok := val.(uint)
 	return uid, ok
 }
+
+func GetUserRole(c *gin.Context) (string, bool) {
+	val, exists := c.Get(ctxUserRoleKey)
+	if !exists {
+		return "", false
+	}
+
+	role, ok := val.(string)
+	return role, ok
+}

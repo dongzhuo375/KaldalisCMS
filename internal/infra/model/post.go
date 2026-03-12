@@ -2,6 +2,7 @@ package model
 
 import (
 	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -26,15 +27,17 @@ type Post struct {
 	// 5. 封面图：存 URL，允许为空
 	Cover string `json:"cover"`
 
-	// 6. 状态：0=草稿, 1=发布, 2=归档
-	// 给个默认值 0 (草稿)
-	Status int `gorm:"default:0" json:"status"`
+	// 6. 状态：0=草稿/下线, 1=已发布。
+	// 公共读取与作者草稿查询都会基于该字段过滤，并参与 author+status 复合索引。
+	//这个索引是为了支持 GetDraftsByAuthor 中使用的 “按作者获取草稿” 查询模式
+	Status int `gorm:"not null;default:0;index:idx_posts_author_status,priority:2" json:"status"`
 
 	// --- 关联关系 ---
 
 	// 作者 (必填)
-	AuthorID uint `gorm:"not null" json:"author_id"`
-	
+	// 作者后台会频繁按 (author_id, status=draft) 检索自己的草稿，因此加入复合索引。
+	AuthorID uint `gorm:"not null;index:idx_posts_author_status,priority:1" json:"author_id"`
+
 	Author User `gorm:"foreignKey:AuthorID" json:"author,omitempty"`
 
 	// 分类 (选填，使用指针 *uint 允许存 NULL)

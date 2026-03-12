@@ -10,69 +10,127 @@ import (
 	"github.com/gosimple/slug"
 
 	"KaldalisCMS/internal/core"
-	"KaldalisCMS/internal/core/entity" // Service 只能使用 Entity
+	"KaldalisCMS/internal/core/entity"
 )
 
+// PostService orchestrates the article publishing workflow.
+// It deliberately exposes separate public and management entry points so callers do not
+// have to understand which statuses are externally visible.
 type PostService struct {
-	repo core.PostRepository
+	repo       core.PostRepository
+	authorizer core.PostAuthorizer
 	// media is optional; when nil, reference sync is skipped.
 	media *MediaService
 }
 
-func NewPostService(repo core.PostRepository) *PostService {
-	return &PostService{
-		repo: repo,
+func NewPostService(repo core.PostRepository, authorizer core.PostAuthorizer) *PostService {
+	return &PostService{repo: repo, authorizer: authorizer}
+}
+
+// NewPostServiceWithMedia wires optional collaborators used by the post workflow.
+// Authorization is delegated to the injected authorizer so service code never hard-codes role names.
+func NewPostServiceWithMedia(repo core.PostRepository, media *MediaService, authorizer core.PostAuthorizer) *PostService {
+	return &PostService{repo: repo, media: media, authorizer: authorizer}
+}
+
+// ListPublicPosts returns only published posts.
+// Public delivery layers must never call a method that exposes drafts implicitly.
+func (s *PostService) ListPublicPosts(ctx context.Context) ([]entity.Post, error) {
+	posts, err := s.repo.GetPublished(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("获取已发布文章列表失败: %w", err)
 	}
+	return posts, nil
 }
 
-// NewPostServiceWithMedia wires an optional MediaService to keep post_assets in sync.
-func NewPostServiceWithMedia(repo core.PostRepository, media *MediaService) *PostService {
-	return &PostService{repo: repo, media: media}
+// GetPublicPostByID returns a single published post for anonymous/public readers.
+func (s *PostService) GetPublicPostByID(ctx context.Context, id uint) (entity.Post, error) {
+	post, err := s.repo.GetPublishedByID(ctx, id)
+	if err != nil {
+		return entity.Post{}, fmt.Errorf("获取已发布文章失败: %w", err)
+	}
+	return post, nil
 }
 
-func (s *PostService) DraftPost(ctx context.Context, id uint) error {
-	//TODO implement me
-	panic("implement me")
+// ListAdminPosts returns the management view of posts for the acting user.
+// Capability checks decide whether the caller gets the global moderation view or only owner-scoped drafts.
+func (s *PostService) ListAdminPosts(ctx context.Context, actorUserID uint, actorRole string) ([]entity.Post, error) {
+	canListAny, err := s.hasPostPermission(ctx, actorRole, core.PostPermissionListAnyPost)
+	if err != nil {
+		return nil, err
+	}
+	if canListAny {
+		posts, err := s.repo.GetAll(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("获取所有文章列表失败: %w", err)
+		}
+		return posts, nil
+	}
+
+	if actorUserID == 0 {
+		return nil, core.ErrPermission
+	}
+	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionListOwnDrafts); err != nil {
+		return nil, err
+	}
+
+	posts, err := s.repo.GetDraftsByAuthor(ctx, actorUserID)
+	if err != nil {
+		return nil, fmt.Errorf("获取作者草稿列表失败: %w", err)
+	}
+	return posts, nil
 }
 
-func (s *PostService) CreatePost(ctx context.Context, post entity.Post) error {
-	// 进行业务逻辑验证 (Entity 自身校验)
+// GetAdminPostByID returns a single manageable post for the acting user.
+// Authors can only access their own draft records; admins can access any post.
+func (s *PostService) GetAdminPostByID(ctx context.Context, id uint, actorUserID uint, actorRole string) (entity.Post, error) {
+	post, err := s.loadManageablePost(ctx, id, actorUserID, actorRole)
+	if err != nil {
+		return entity.Post{}, err
+	}
+	return post, nil
+}
+
+// CreateAdminPost persists a new post as Draft.
+// The authenticated actor is always recorded as the author to keep ownership trustworthy.
+func (s *PostService) CreateAdminPost(ctx context.Context, actorUserID uint, actorRole string, post entity.Post) error {
+	if actorUserID == 0 {
+		return core.ErrPermission
+	}
+	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionCreateOwnDraft); err != nil {
+		return err
+	}
+
+	post.AuthorID = actorUserID
+	post.Status = entity.StatusDraft
+
 	if err := post.CheckValidity(); err != nil {
 		return fmt.Errorf("文章数据校验失败: %w", err)
 	}
 
 	generatedSlug := slug.Make(post.Title)
-
 	if generatedSlug == "" {
 		return fmt.Errorf("标题无法生成有效的URL标识符")
 	}
 
 	finalSlug, err := s.generateUniqueSlug(ctx, generatedSlug)
 	if err != nil {
-		return err // 无法生成唯一 Slug
+		return err
 	}
 
 	post.Slug = finalSlug
 
 	created, err := s.repo.Create(ctx, post)
 	if err != nil {
-		// 封装错误
 		return fmt.Errorf("保存文章失败: %w", err)
 	}
 
-	// Sync media references.
 	if s.media != nil {
-		// Use a separate context with timeout for media sync to ensure it doesn't hang indefinitely.
-		// We don't want to block the user too long, but we also want reliability.
-		syncCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // 10s should be enough for parsing and DB updates
+		syncCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
 		if err := s.media.SyncPostReferences(syncCtx, created.ID, created.Content, created.Cover); err != nil {
-			// Still do not rollback, but log explicitly.
-			// In a real system, we'd emit a metric or push to a retry queue here.
 			log.Printf("[ERROR] Post created (ID: %d) but failed to sync media references: %v", created.ID, err)
-			// Return a warning if possible, but standard error return is nil.
-			// We consider the post creation successful as the content is saved.
 		}
 	}
 	return nil
@@ -81,7 +139,7 @@ func (s *PostService) CreatePost(ctx context.Context, post entity.Post) error {
 func (s *PostService) generateUniqueSlug(ctx context.Context, initialSlug string) (string, error) {
 	currentSlug := initialSlug
 	counter := 0
-	maxAttempts := 100 // 最大尝试次数
+	maxAttempts := 100
 
 	for {
 		exists, err := s.repo.IsSlugExists(ctx, currentSlug)
@@ -102,32 +160,40 @@ func (s *PostService) generateUniqueSlug(ctx context.Context, initialSlug string
 	}
 }
 
-func (s *PostService) UpdatePost(ctx context.Context, id uint, updatedEntity entity.Post) error {
-	// 获取现有 Entity
-	existingEntity, err := s.repo.GetByID(ctx, id)
+// UpdateAdminPost updates editable post content fields within the caller's management scope.
+// Status transitions are intentionally excluded here and must go through dedicated workflow methods.
+func (s *PostService) UpdateAdminPost(ctx context.Context, id uint, patch entity.PostPatch, actorUserID uint, actorRole string) error {
+	existingEntity, err := s.loadUpdatablePost(ctx, id, actorUserID, actorRole)
 	if err != nil {
-		// 错误检查 (假设 core.ErrNotFound 已定义)
-		return fmt.Errorf("更新失败，文章不存在: %w", err)
+		return err
 	}
 
-	// 状态合并
-	existingEntity.Title = updatedEntity.Title
-	existingEntity.Content = updatedEntity.Content
+	if patch.Title != nil {
+		existingEntity.Title = *patch.Title
+	}
+	if patch.Content != nil {
+		existingEntity.Content = *patch.Content
+	}
+	if patch.Cover != nil {
+		existingEntity.Cover = *patch.Cover
+	}
+	if patch.CategoryID != nil {
+		existingEntity.CategoryID = patch.CategoryID
+	}
+	if patch.Tags != nil {
+		existingEntity.Tags = patch.Tags
+	}
 	existingEntity.ID = id
 
-	// Entity 检查自身完整性
 	if err := existingEntity.CheckValidity(); err != nil {
 		return fmt.Errorf("更新后的数据校验失败: %w", err)
 	}
 
-	// 调用 Repository 执行更新
-	err = s.repo.Update(ctx, existingEntity)
-	if err != nil {
+	if err := s.repo.Update(ctx, existingEntity); err != nil {
 		return fmt.Errorf("更新文章失败: %w", err)
 	}
 
 	if s.media != nil {
-		// Use independent context to ensure sync completes even if request context is cancelled
 		syncCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
@@ -139,71 +205,132 @@ func (s *PostService) UpdatePost(ctx context.Context, id uint, updatedEntity ent
 	return nil
 }
 
-// --- Read Operations ---
-
-// 补充：根据 ID 获取文章
-func (s *PostService) GetPostByID(ctx context.Context, id uint) (entity.Post, error) {
-	post, err := s.repo.GetByID(ctx, id)
-
-	// 检查核心层抛出的契约错误
-	//if errors.Is(err, core.ErrNotFound) {
-	//	// 转换为 Service 层的语义错误或直接返回封装错误
-	//	return entity.Post{}, fmt.Errorf("文章查找失败: %w", err)
-	//}
-	if err != nil {
-		return entity.Post{}, fmt.Errorf("获取文章失败: %w", err)
+// PublishAdminPost performs the Draft -> Published transition.
+// Authorization is delegated to the workflow authorizer rather than hard-coded role checks.
+func (s *PostService) PublishAdminPost(ctx context.Context, id uint, actorRole string) error {
+	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionPublishPost); err != nil {
+		return err
 	}
-	return post, nil
-}
 
-// 补充：获取所有文章列表
-func (s *PostService) GetAllPosts(ctx context.Context) ([]entity.Post, error) {
-	// 业务逻辑 (例如：分页参数处理、权限筛选等) 可以在这里添加
-
-	posts, err := s.repo.GetAll(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("获取所有文章列表失败: %w", err)
-	}
-	return posts, nil
-}
-
-// --- Status Operations ---
-
-func (s *PostService) PublishPost(ctx context.Context, id uint) error {
-	// 1. 获取 Entity
 	post, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("发布失败，文章不存在: %w", err)
 	}
 
-	// 2. 调用 Entity 的核心业务行为 (状态流转)
 	if err := post.Publish(); err != nil {
 		return fmt.Errorf("发布文章失败: %w", err)
 	}
 
-	// 3. Service 协调：将已修改的 Entity 传递给 Repo 持久化
-	err = s.repo.Update(ctx, post)
-	if err != nil {
+	if err := s.repo.Update(ctx, post); err != nil {
 		return fmt.Errorf("更新发布状态失败: %w", err)
 	}
 
 	return nil
 }
 
-// --- Delete Operations ---
+// MovePostToDraft performs the minimal "offline" step by moving a post back to Draft.
+func (s *PostService) MovePostToDraft(ctx context.Context, id uint, actorRole string) error {
+	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionUnpublishPost); err != nil {
+		return err
+	}
 
-// 补充：删除文章
-func (s *PostService) DeletePost(ctx context.Context, id uint) error {
-	// 可以在这里添加业务逻辑 (例如：权限检查、存档/软删除逻辑)
-
-	err := s.repo.Delete(ctx, id)
-
-	// 检查核心层抛出的契约错误
-	//if errors.Is(err, core.ErrNotFound) {
-	//	return fmt.Errorf("删除失败，文章不存在: %w", err)
-	//}
+	post, err := s.repo.GetByID(ctx, id)
 	if err != nil {
+		return fmt.Errorf("下线失败，文章不存在: %w", err)
+	}
+
+	if err := post.Draft(); err != nil {
+		return fmt.Errorf("下线文章失败: %w", err)
+	}
+
+	if err := s.repo.Update(ctx, post); err != nil {
+		return fmt.Errorf("更新草稿状态失败: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteAdminPost permanently removes a post record.
+func (s *PostService) DeleteAdminPost(ctx context.Context, id uint, actorRole string) error {
+	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionDeletePost); err != nil {
+		return err
+	}
+	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("删除文章失败: %w", err)
 	}
 	return nil
+}
+
+func (s *PostService) loadManageablePost(ctx context.Context, id uint, actorUserID uint, actorRole string) (entity.Post, error) {
+	canReadAny, err := s.hasPostPermission(ctx, actorRole, core.PostPermissionReadAnyPost)
+	if err != nil {
+		return entity.Post{}, err
+	}
+	if canReadAny {
+		post, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return entity.Post{}, fmt.Errorf("获取文章失败: %w", err)
+		}
+		return post, nil
+	}
+
+	if actorUserID == 0 {
+		return entity.Post{}, core.ErrPermission
+	}
+	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionReadOwnDraft); err != nil {
+		return entity.Post{}, err
+	}
+
+	post, err := s.repo.GetDraftByIDAndAuthor(ctx, id, actorUserID)
+	if err != nil {
+		return entity.Post{}, fmt.Errorf("获取作者草稿失败: %w", err)
+	}
+	return post, nil
+}
+
+func (s *PostService) loadUpdatablePost(ctx context.Context, id uint, actorUserID uint, actorRole string) (entity.Post, error) {
+	canUpdateAny, err := s.hasPostPermission(ctx, actorRole, core.PostPermissionUpdateAnyPost)
+	if err != nil {
+		return entity.Post{}, err
+	}
+	if canUpdateAny {
+		post, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return entity.Post{}, fmt.Errorf("获取文章失败: %w", err)
+		}
+		return post, nil
+	}
+
+	if actorUserID == 0 {
+		return entity.Post{}, core.ErrPermission
+	}
+	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionUpdateOwnDraft); err != nil {
+		return entity.Post{}, err
+	}
+
+	post, err := s.repo.GetDraftByIDAndAuthor(ctx, id, actorUserID)
+	if err != nil {
+		return entity.Post{}, fmt.Errorf("获取作者草稿失败: %w", err)
+	}
+	return post, nil
+}
+
+func (s *PostService) authorizePostAction(ctx context.Context, actorRole string, permission core.PostPermission) error {
+	if s.authorizer == nil {
+		return core.ErrPermission
+	}
+	if err := s.authorizer.AuthorizePostAction(ctx, actorRole, permission); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *PostService) hasPostPermission(ctx context.Context, actorRole string, permission core.PostPermission) (bool, error) {
+	if err := s.authorizePostAction(ctx, actorRole, permission); err != nil {
+		if errors.Is(err, core.ErrPermission) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

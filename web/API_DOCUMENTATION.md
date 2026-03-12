@@ -30,7 +30,7 @@ For all state-changing requests (POST, PUT, DELETE), you **must** include the CS
 
 **Example:**
 ```http
-POST /api/v1/posts HTTP/1.1
+POST /api/v1/admin/posts HTTP/1.1
 Cookie: access_token=...; csrf_token=abc123...
 X-CSRF-Token: abc123...
 ```
@@ -115,48 +115,30 @@ Logs out the user and clears the session cookies. Requires authentication.
 
 ## Posts API
 
-The Posts API provides endpoints for managing blog posts.
+The post API is split into two contracts:
 
-### `GET /posts`
+1. **Public content API** under `/posts`
+   - Read-only
+   - Returns only `Published` content
+2. **Admin content API** under `/admin/posts`
+   - Requires authentication, authorization, and CSRF protection
+   - `user` may create Draft posts
+   - `admin` / `super_admin` can read drafts and perform publish/offline workflow transitions
 
-Retrieves a list of all posts. Public endpoint.
+### Public API
+
+#### `GET /posts`
+
+Returns the public post feed. This endpoint only includes posts whose `status` is `1` (`Published`).
 
 **Responses:**
 
-- `200 OK`: A list of posts.
-  ```json
-  [
-    {
-      "id": 1,
-      "title": "My First Post",
-      "slug": "my-first-post",
-      "content": "This is the content of my first post.",
-      "cover": "/path/to/cover.jpg",
-      "status": 1,
-      "author": {
-        "id": 1,
-        "username": "author_name"
-      },
-      "category": {
-        "id": 1,
-        "name": "Tech"
-      },
-      "tags": [
-        {
-          "id": 1,
-          "name": "Golang"
-        }
-      ],
-      "created_at": "2023-10-27T10:00:00Z",
-      "updated_at": "2023-10-27T10:00:00Z"
-    }
-  ]
-  ```
+- `200 OK`: A list of published posts.
 - `500 Internal Server Error`: Server error.
 
-### `GET /posts/:id`
+#### `GET /posts/:id`
 
-Retrieves a single post by its ID. Public endpoint.
+Returns a single published post.
 
 **URL Parameters:**
 
@@ -164,39 +146,33 @@ Retrieves a single post by its ID. Public endpoint.
 
 **Responses:**
 
-- `200 OK`: The requested post.
-  ```json
-  {
-    "id": 1,
-    "title": "My First Post",
-    "slug": "my-first-post",
-    "content": "This is the content of my first post.",
-    "cover": "/path/to/cover.jpg",
-    "status": 1,
-    "author": {
-      "id": 1,
-      "username": "author_name"
-    },
-    "category": {
-      "id": 1,
-      "name": "Tech"
-    },
-    "tags": [
-      {
-        "id": 1,
-        "name": "Golang"
-      }
-    ],
-    "created_at": "2023-10-27T10:00:00Z",
-    "updated_at": "2023-10-27T10:00:00Z"
-  }
-  ```
+- `200 OK`: The requested published post.
 - `400 Bad Request`: Invalid post ID.
-- `404 Not Found`: Post not found.
+- `404 Not Found`: Post not found or not published.
 
-### `POST /posts`
+### Admin API
 
-Creates a new post. (Authentication required, CSRF token required)
+All admin post routes are prefixed with `/api/v1/admin/posts` and require:
+
+- a valid authenticated session
+- a valid `X-CSRF-Token` header for state-changing requests
+- route-specific role permissions
+
+#### `GET /admin/posts`
+
+Returns all posts, including drafts and published content, for management interfaces.
+
+#### `GET /admin/posts/:id`
+
+Returns a single post regardless of status for editing and moderation.
+
+#### `POST /admin/posts`
+
+Creates a new post.
+
+**Permission:** authenticated `user`, `admin`, and `super_admin` roles may create drafts here.
+
+**Important workflow rule:** newly created posts are always stored as `Draft`, even if the client tries to send another status.
 
 **Request Body:**
 
@@ -215,16 +191,12 @@ Creates a new post. (Authentication required, CSRF token required)
 - `201 Created`: Post created successfully.
 - `400 Bad Request`: Invalid request body.
 - `401 Unauthorized`: User not logged in.
-- `403 Forbidden`: CSRF token invalid or missing.
+- `403 Forbidden`: CSRF token invalid/missing or role lacks permission.
 - `500 Internal Server Error`: Server error.
 
-### `PUT /posts/:id`
+#### `PUT /admin/posts/:id`
 
-Updates an existing post. (Authentication required, CSRF token required)
-
-**URL Parameters:**
-
-- `id` (integer, required): The ID of the post to update.
+Updates editable post content fields.
 
 **Request Body:**
 
@@ -234,31 +206,42 @@ Updates an existing post. (Authentication required, CSRF token required)
   "content": "Updated content.",
   "cover": "/path/to/new-cover.jpg",
   "category_id": 2,
-  "tags": [1, 4],
-  "status": 1
+  "tags": [1, 4]
 }
 ```
 
+**Notes:**
+
+- `status` is not changed by this endpoint.
+- Publication state must be changed through the dedicated workflow endpoints below.
+
+#### `POST /admin/posts/:id/publish`
+
+Transitions a post from `Draft` to `Published`.
+
+**Permission:** only `admin` and `super_admin` can publish.
+
 **Responses:**
 
-- `200 OK`: Post updated successfully.
-- `400 Bad Request`: Invalid post ID or request body.
+- `200 OK`: Post published successfully.
+- `400 Bad Request`: Invalid transition or invalid post ID.
 - `401 Unauthorized`: User not logged in.
-- `403 Forbidden`: CSRF token invalid or missing.
+- `403 Forbidden`: CSRF token invalid/missing or role lacks permission.
 - `404 Not Found`: Post not found.
 
-### `DELETE /posts/:id`
+#### `POST /admin/posts/:id/draft`
 
-Deletes a post. (Authentication required, CSRF token required)
+Moves a post back to `Draft`.
 
-**URL Parameters:**
+This is the minimal "offline" action in the current workflow.
 
-- `id` (integer, required): The ID of the post to delete.
+#### `DELETE /admin/posts/:id`
+
+Deletes a post.
 
 **Responses:**
 
 - `204 No Content`: Post deleted successfully.
-- `400 Bad Request`: Invalid post ID.
 - `401 Unauthorized`: User not logged in.
-- `403 Forbidden`: CSRF token invalid or missing.
+- `403 Forbidden`: CSRF token invalid/missing or role lacks permission.
 - `404 Not Found`: Post not found.
