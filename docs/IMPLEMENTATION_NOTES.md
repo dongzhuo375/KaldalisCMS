@@ -120,7 +120,7 @@
 代表文件：
 - `internal/infra/auth/session.go` (`EstablishSession/ValidateCSRF`)
 - `internal/api/middleware/auth.go` (`CSRFCheck`)
-- `web/src/lib/api.ts` (前端请求拦截器)
+- `web/src/lib/api.ts` ( 前端请求拦截器)
 
 ---
 
@@ -134,3 +134,60 @@
 - **现逻辑**: `r.Static("/media/a", filepath.Join(uploadDir, "a"))` -> 仅暴露媒体资产目录。
 
 这意味着所有上传的媒体文件 URL 均形如 `/media/a/{id}/{filename}`。若未来需新增公开目录（如 `avatars/`），需显式在 Router 中注册。
+
+---
+
+## API 文档分层与构建策略 - [2026-03-13 新增]
+
+### 分层职责
+
+- 注释层（接口契约源）：`internal/api/v1/*.go` 与 `internal/api/v1/dto/*.go`
+  - 在 Handler 上维护 `@Summary/@Router/@Param/@Success/@Failure`。
+  - DTO 作为 API contract，供 Swag 扫描生成 schema。
+- 产物层（生成文档）：`internal/docs/`
+  - `docs.go`（注册 swagger 文档）
+  - `swagger.json` / `swagger.yaml`（生成产物）
+- 路由集成层（文档胶水层）：`internal/router/`
+  - `swagger_options.go`：文档开关与元信息配置对象
+  - `swagger_routes_enabled.go`：`//go:build swagger`，挂载 UI 与 OpenAPI3 JSON
+  - `swagger_routes_disabled.go`：`//go:build !swagger`，空实现（生产可剔除）
+- 应用装配层：`cmd/server/main.go` + `cmd/server/config.go`
+  - 从配置注入 `SwaggerOptions`，并在 `NewAppRouter/NewSetupRouter` 统一注册。
+
+### 运行时开关（config + env）
+
+配置源：`cmd/configs/config.yaml`
+
+```yaml
+swagger:
+  enabled: false
+  path: /swagger
+  title: KaldalisCMS API
+  version: dev
+  description: KaldalisCMS backend API documentation
+```
+
+支持环境变量覆盖（Viper 自动映射）：
+
+- `SWAGGER_ENABLED`
+- `SWAGGER_PATH`
+- `SWAGGER_TITLE`
+- `SWAGGER_VERSION`
+- `SWAGGER_DESCRIPTION`
+
+### 编译标签策略（开发/生产分离）
+
+- 开发/测试文档能力：使用 `-tags swagger` 构建，包含 `gin-swagger/swaggo` 集成与文档路由。
+- 生产最小二进制：默认不带 `swagger` 标签构建，Swagger 相关代码不参与编译与链接。
+
+### 对外文档路由
+
+- Swagger UI：`<swagger.path>`（默认 `/swagger`）
+- OpenAPI 3 JSON：`<swagger.path>-openapi3.json`（默认 `/swagger-openapi3.json`）
+
+### 文档刷新命令
+
+```powershell
+Set-Location -Path D:\project\KaldalisCMS
+go generate -tags swagger ./internal/docs
+```
