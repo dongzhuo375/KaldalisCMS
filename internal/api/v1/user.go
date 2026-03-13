@@ -32,6 +32,16 @@ func (api *UserAPI) RegisterRoutes(router *gin.RouterGroup) {
 }
 
 // Register handles new user registration.
+// @Summary Register user
+// @Description Create a normal user account.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param body body dto.UserRegisterRequest true "register payload"
+// @Success 201 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /users/register [post]
 func (api *UserAPI) Register(c *gin.Context) {
 	var req dto.UserRegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -55,13 +65,22 @@ func (api *UserAPI) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
 }
 
+// Login authenticates user credentials and creates session cookies.
+// @Summary Login
+// @Description Authenticate and establish a cookie-based session.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param body body dto.UserLoginRequest true "login payload"
+// @Success 200 {object} dto.LoginResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /users/login [post]
 func (a *UserAPI) Login(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	var req struct {
-		Username string `json:"username" binding:"required"`
-		Password string `json:"password" binding:"required"`
-	}
+	var req dto.UserLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -79,18 +98,28 @@ func (a *UserAPI) Login(c *gin.Context) {
 	// 动态计算过期时间
 	expiresAt := time.Now().Add(a.sm.GetTTL())
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Login successful",
-		"user": gin.H{
-			"id":       user.ID,
-			"username": user.Username,
-			"email":    user.Email,
-			"role":     user.Role,
+	c.JSON(http.StatusOK, dto.LoginResponse{
+		Message: "Login successful",
+		User: dto.LoginUserResponse{
+			ID:       user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+			Role:     user.Role,
 		},
-		"expires_at": expiresAt.Format(time.RFC3339), // 可改为从 manager 读取
+		ExpiresAt: expiresAt.Format(time.RFC3339),
 	})
 }
 
+// Logout clears the current cookie-based session.
+// @Summary Logout
+// @Description Destroy the current session cookies.
+// @Tags auth
+// @Produce json
+// @Success 200 {object} dto.MessageResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /users/logout [post]
 func (a *UserAPI) Logout(c *gin.Context) {
 	// Logout 通过 service 层触发副作用
 	//a.service.Logout() 暂时无逻辑

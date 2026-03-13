@@ -33,6 +33,14 @@ func parsePostID(c *gin.Context) (uint, bool) {
 }
 
 // GetPosts returns only published posts for public consumers.
+// @Summary List published posts
+// @Description Public read-only endpoint for published content.
+// @Tags posts
+// @Produce json
+// @Success 200 {array} dto.PostResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Router /posts [get]
 func (api *PublicPostAPI) GetPosts(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
@@ -52,6 +60,16 @@ func (api *PublicPostAPI) GetPosts(c *gin.Context) {
 
 // GetPostByID returns a single published post.
 // Drafts are intentionally invisible on this endpoint to avoid leaking unpublished content.
+// @Summary Get published post
+// @Description Public endpoint that returns one published post by numeric ID.
+// @Tags posts
+// @Produce json
+// @Param id path int true "post id"
+// @Success 200 {object} dto.PostResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Router /posts/{id} [get]
 func (api *PublicPostAPI) GetPostByID(c *gin.Context) {
 	id, ok := parsePostID(c)
 	if !ok {

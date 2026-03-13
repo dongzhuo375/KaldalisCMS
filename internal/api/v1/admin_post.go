@@ -29,6 +29,18 @@ func NewAdminPostAPI(service core.PostService) *AdminPostAPI {
 
 // GetPosts returns the management list for the current actor.
 // Admins receive the full set, while regular users only receive their own drafts.
+// @Summary List manageable posts
+// @Description Returns admin list for current actor scope (own drafts or all posts).
+// @Tags admin-posts
+// @Produce json
+// @Success 200 {array} dto.PostResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /admin/posts [get]
 func (api *AdminPostAPI) GetPosts(c *gin.Context) {
 	actorUserID, actorRole, ok := getPostActor(c)
 	if !ok {
@@ -89,6 +101,21 @@ func (api *AdminPostAPI) GetPostByID(c *gin.Context) {
 
 // CreatePost creates a new management post.
 // The service layer always persists it as Draft and binds ownership to the authenticated actor.
+// @Summary Create post draft
+// @Description Create a new draft post under admin workflow.
+// @Tags admin-posts
+// @Accept json
+// @Produce json
+// @Param body body dto.CreatePostRequest true "create post payload"
+// @Success 201 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /admin/posts [post]
 func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 	var createReq dto.CreatePostRequest
 	if err := c.ShouldBindJSON(&createReq); err != nil {
