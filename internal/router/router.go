@@ -77,9 +77,10 @@ func ensurePostWorkflowPolicies(enforcer *casbin.Enforcer) {
 // NewAppRouter initializes the router for the fully functional application.
 // Public content delivery and admin management are registered under different paths so
 // callers can reason about visibility and authorization from the URL contract alone.
-func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *gin.Engine {
+func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, swaggerOpts SwaggerOptions) *gin.Engine {
 	r := gin.Default()
 	r.Use(apimw.CORSMiddleware())
+	registerSwaggerRoutes(r, swaggerOpts)
 
 	uploadDir := os.Getenv("MEDIA_UPLOAD_DIR")
 	if uploadDir == "" {
@@ -171,9 +172,10 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer) *
 }
 
 // NewSetupRouter initializes the router for the setup mode, hiding service instantiation from main.
-func NewSetupRouter(save func(string, int, string, string, string) error, reload func() error) *gin.Engine {
+func NewSetupRouter(save func(string, int, string, string, string) error, reload func() error, swaggerOpts SwaggerOptions) *gin.Engine {
 	r := gin.Default()
 	r.Use(apimw.CORSMiddleware())
+	registerSwaggerRoutes(r, swaggerOpts)
 
 	setupSvc := service.NewSetupService(save, reload)
 	setupAPI := v1.NewSetupAPI(setupSvc)

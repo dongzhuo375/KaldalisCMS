@@ -14,6 +14,8 @@
 │   │   ├── api/
 │   │   │   ├── v1/
 │   │   │   │   ├── post.go               # 文章管理 API [已实现]
+│   │   │   │   ├── admin_post.go         # 后台文章管理 API [已实现]
+│   │   │   │   ├── setup.go              # 安装模式 API [已实现]
 │   │   │   │   ├── user.go               # 用户管理 API [已实现]
 │   │   │   │   ├── system.go             # 系统管理 API [已实现]
 │   │   │   │   ├── media.go              # 媒体库 API [已实现]
@@ -25,7 +27,10 @@
 │   │   │   │       ├── user_dto.go       # [已实现]
 │   │   │   │       ├── system_dto.go     # [已实现]
 │   │   │   │       ├── tag_dto.go        # [已实现]
-│   │   │   │       └── media_dto.go      # 媒体 DTO（显式 API contract）[已实现]
+│   │   │   │       ├── media_dto.go      # 媒体 DTO（显式 API contract）[已实现]
+│   │   │   │       ├── auth_dto.go       # 认证 DTO（登录响应/请求）[已实现]
+│   │   │   │       ├── setup_dto.go      # 安装流程 DTO（DB 预检请求）[已实现]
+│   │   │   │       └── common_dto.go     # 通用响应 DTO（error/message）[已实现]
 │   │   │   └── middleware/
 │   │   │       ├── auth.go               # Cookie/JWT/CSRF 认证 [已实现]
 │   │   │       ├── casbin.go             # Casbin 权限中间件 [已实现]
@@ -36,7 +41,15 @@
 │   │   │
 │   │   ├── router/
 │   │   │   ├── router.go                 # 路由配置/依赖注入 [已实现]
-│   │   │   └── env_parse.go              # env 解析（已迁移到 internal/utils/env.go，保留占位）[已实现]
+│   │   │   ├── env_parse.go              # env 解析（已迁移到 internal/utils/env.go，保留占位）[已实现]
+│   │   │   ├── swagger_options.go        # Swagger 运行时选项 [已实现]
+│   │   │   ├── swagger_routes_enabled.go # Swagger 路由注册（swagger 标签）[已实现]
+│   │   │   └── swagger_routes_disabled.go # Swagger 空实现（非 swagger 构建）[已实现]
+│   │   │
+│   │   ├── docs/                         # Swagger/OpenAPI 生成产物 [已实现]
+│   │   │   ├── docs.go
+│   │   │   ├── swagger.json
+│   │   │   └── swagger.yaml
 │   │   │
 │   │   ├── core/
 │   │   │   ├── entity/
@@ -203,4 +216,5 @@
 ## 相关实现点与 TODO
 
 - 媒体库实现要点：见 `docs/IMPLEMENTATION_NOTES.md`
+- API 文档分层与构建策略：见 `docs/IMPLEMENTATION_NOTES.md`
 - Roadmap/TODO：见 `docs/TODO.md`

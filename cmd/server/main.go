@@ -13,6 +13,17 @@ import (
 	"gorm.io/gorm"
 )
 
+// @title KaldalisCMS API
+// @version dev
+// @description KaldalisCMS backend API documentation.
+// @BasePath /api/v1
+// @securityDefinitions.apikey CookieAuth
+// @in cookie
+// @name kaldalis_auth
+// @securityDefinitions.apikey CSRFToken
+// @in header
+// @name X-CSRF-Token
+
 // RouterManager acts as a dynamic proxy for the active http.Handler
 type RouterManager struct {
 	mu      sync.RWMutex
@@ -81,8 +92,16 @@ func BootstrapApp() error {
 		ModelPath: "cmd/configs/casbin_model.conf",
 	})
 
+	swaggerOpts := router.SwaggerOptions{
+		Enabled:     AppConfig.Swagger.Enabled,
+		Path:        AppConfig.Swagger.Path,
+		Title:       AppConfig.Swagger.Title,
+		Version:     AppConfig.Swagger.Version,
+		Description: AppConfig.Swagger.Description,
+	}
+
 	// --- 启动应用路由 ---
-	r := router.NewAppRouter(db, AppConfig.Auth, enforcer)
+	r := router.NewAppRouter(db, AppConfig.Auth, enforcer, swaggerOpts)
 
 	routerManager.Switch(r)
 	log.Printf("系统正常运行中 [业务模式] (APP MODE) - 站点名称: %s", setting.SiteName)
@@ -90,6 +109,14 @@ func BootstrapApp() error {
 }
 
 func SwitchToSetupMode() {
+	swaggerOpts := router.SwaggerOptions{
+		Enabled:     AppConfig.Swagger.Enabled,
+		Path:        AppConfig.Swagger.Path,
+		Title:       AppConfig.Swagger.Title,
+		Version:     AppConfig.Swagger.Version,
+		Description: AppConfig.Swagger.Description,
+	}
+
 	r := router.NewSetupRouter(
 		SaveDatabaseConfig,
 		func() error {
@@ -101,6 +128,7 @@ func SwitchToSetupMode() {
 			log.Println("热重启成功，系统已进入业务模式!")
 			return nil
 		},
+		swaggerOpts,
 	)
 
 	routerManager.Switch(r)

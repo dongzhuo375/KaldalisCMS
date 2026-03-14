@@ -32,6 +32,14 @@ type Config struct {
 		PublicBaseURL    string `mapstructure:"public_base_url"`
 		MaxFilenameBytes int    `mapstructure:"max_filename_bytes"`
 	} `mapstructure:"media"`
+
+	Swagger struct {
+		Enabled     bool   `mapstructure:"enabled"`
+		Path        string `mapstructure:"path"`
+		Title       string `mapstructure:"title"`
+		Version     string `mapstructure:"version"`
+		Description string `mapstructure:"description"`
+	} `mapstructure:"swagger"`
 }
 
 var AppConfig Config
@@ -46,6 +54,11 @@ func InitConfig() {
 	// 核心字段绝不设默认值，逼迫系统进入 Setup 模式
 	v.SetDefault("database.sslmode", "disable")
 	v.SetDefault("database.timezone", "Asia/Shanghai")
+	v.SetDefault("swagger.enabled", false)
+	v.SetDefault("swagger.path", "/swagger")
+	v.SetDefault("swagger.title", "KaldalisCMS API")
+	v.SetDefault("swagger.version", "dev")
+	v.SetDefault("swagger.description", "KaldalisCMS backend API documentation")
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {

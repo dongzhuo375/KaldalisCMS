@@ -20,3 +20,9 @@ media:
   max_upload_size_mb: 50
   public_base_url: ""
   upload_dir: ./data/uploads
+swagger:
+  enabled: false
+  path: /swagger
+  title: KaldalisCMS API
+  version: dev
+  description: KaldalisCMS backend API documentation

@@ -25,19 +25,30 @@ func (api *SetupAPI) RegisterRoutes(r *gin.RouterGroup) {
 	}
 }
 
+// Status returns setup mode status.
+// @Summary Setup status
+// @Description Returns installation status in setup mode.
+// @Tags setup
+// @Produce json
+// @Success 200 {object} dto.SystemStatusResponse
+// @Router /system/status [get]
 func (api *SetupAPI) Status(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.SystemStatusResponse{Installed: false})
 }
 
+// CheckDB validates database connectivity before installation.
+// @Summary Check database connection
+// @Description Validate DB connection using setup credentials.
+// @Tags setup
+// @Accept json
+// @Produce json
+// @Param body body dto.CheckDBRequest true "database connection payload"
+// @Success 200 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 503 {object} dto.ErrorResponse
+// @Router /system/check-db [post]
 func (api *SetupAPI) CheckDB(c *gin.Context) {
-	var req struct {
-		Host string `json:"host" binding:"required"`
-		Port int    `json:"port" binding:"required"`
-		User string `json:"user" binding:"required"`
-		Pass string `json:"pass"`
-		Name string `json:"name" binding:"required"`
-	}
-
+	var req dto.CheckDBRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数不完整"})
 		return
@@ -51,6 +62,17 @@ func (api *SetupAPI) CheckDB(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "数据库连接测试通过"})
 }
 
+// Setup runs first-time installation workflow.
+// @Summary Install system
+// @Description Persist setup config and initialize system data.
+// @Tags setup
+// @Accept json
+// @Produce json
+// @Param body body dto.SystemSetupRequest true "setup payload"
+// @Success 200 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /system/setup [post]
 func (api *SetupAPI) Setup(c *gin.Context) {
 	var req dto.SystemSetupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

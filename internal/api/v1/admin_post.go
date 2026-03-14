@@ -29,6 +29,18 @@ func NewAdminPostAPI(service core.PostService) *AdminPostAPI {
 
 // GetPosts returns the management list for the current actor.
 // Admins receive the full set, while regular users only receive their own drafts.
+// @Summary List manageable posts
+// @Description Returns admin list for current actor scope (own drafts or all posts).
+// @Tags admin-posts
+// @Produce json
+// @Success 200 {array} dto.PostResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /admin/posts [get]
 func (api *AdminPostAPI) GetPosts(c *gin.Context) {
 	actorUserID, actorRole, ok := getPostActor(c)
 	if !ok {
@@ -56,6 +68,20 @@ func (api *AdminPostAPI) GetPosts(c *gin.Context) {
 }
 
 // GetPostByID returns a single manageable post for the current actor.
+// @Summary Get manageable post by ID
+// @Description Returns one post visible to current actor scope in admin workflow.
+// @Tags admin-posts
+// @Produce json
+// @Param id path int true "post id"
+// @Success 200 {object} dto.PostResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /admin/posts/{id} [get]
 func (api *AdminPostAPI) GetPostByID(c *gin.Context) {
 	id, ok := parsePostID(c)
 	if !ok {
@@ -89,6 +115,21 @@ func (api *AdminPostAPI) GetPostByID(c *gin.Context) {
 
 // CreatePost creates a new management post.
 // The service layer always persists it as Draft and binds ownership to the authenticated actor.
+// @Summary Create post draft
+// @Description Create a new draft post under admin workflow.
+// @Tags admin-posts
+// @Accept json
+// @Produce json
+// @Param body body dto.CreatePostRequest true "create post payload"
+// @Success 201 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /admin/posts [post]
 func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 	var createReq dto.CreatePostRequest
 	if err := c.ShouldBindJSON(&createReq); err != nil {
@@ -118,6 +159,22 @@ func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 
 // UpdatePost updates editable post content fields.
 // Publication status is intentionally excluded and managed by dedicated workflow endpoints.
+// @Summary Update post draft fields
+// @Description Update editable fields for one post in admin workflow.
+// @Tags admin-posts
+// @Accept json
+// @Produce json
+// @Param id path int true "post id"
+// @Param body body dto.UpdatePostRequest true "update post payload"
+// @Success 200 {object} interface{}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /admin/posts/{id} [put]
 func (api *AdminPostAPI) UpdatePost(c *gin.Context) {
 	id, ok := parsePostID(c)
 	if !ok {
@@ -151,6 +208,20 @@ func (api *AdminPostAPI) UpdatePost(c *gin.Context) {
 }
 
 // PublishPost transitions a post from Draft to Published.
+// @Summary Publish post
+// @Description Transition a draft post to published status.
+// @Tags admin-posts
+// @Produce json
+// @Param id path int true "post id"
+// @Success 200 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /admin/posts/{id}/publish [post]
 func (api *AdminPostAPI) PublishPost(c *gin.Context) {
 	id, ok := parsePostID(c)
 	if !ok {
@@ -178,6 +249,20 @@ func (api *AdminPostAPI) PublishPost(c *gin.Context) {
 }
 
 // DraftPost performs the minimal offline action by moving a post back to Draft.
+// @Summary Move post to draft
+// @Description Transition a published post back to draft status.
+// @Tags admin-posts
+// @Produce json
+// @Param id path int true "post id"
+// @Success 200 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /admin/posts/{id}/draft [post]
 func (api *AdminPostAPI) DraftPost(c *gin.Context) {
 	id, ok := parsePostID(c)
 	if !ok {
@@ -205,6 +290,20 @@ func (api *AdminPostAPI) DraftPost(c *gin.Context) {
 }
 
 // DeletePost removes a post from the system.
+// @Summary Delete post
+// @Description Permanently delete one post under admin workflow authorization.
+// @Tags admin-posts
+// @Produce json
+// @Param id path int true "post id"
+// @Success 204 {string} string "No Content"
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 504 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /admin/posts/{id} [delete]
 func (api *AdminPostAPI) DeletePost(c *gin.Context) {
 	id, ok := parsePostID(c)
 	if !ok {
