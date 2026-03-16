@@ -129,6 +129,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -251,7 +257,9 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
-                        "schema": {}
+                        "schema": {
+                            "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.MessageResponse"
+                        }
                     },
                     "400": {
                         "description": "Bad Request",
@@ -273,6 +281,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.ErrorResponse"
                         }
@@ -312,10 +326,10 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.MessageResponse"
                         }
                     },
                     "400": {
@@ -338,6 +352,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.ErrorResponse"
                         }
@@ -409,6 +429,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.ErrorResponse"
+                        }
+                    },
                     "504": {
                         "description": "Gateway Timeout",
                         "schema": {
@@ -472,6 +498,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/KaldalisCMS_internal_api_v1_dto.ErrorResponse"
                         }
@@ -893,7 +925,14 @@ const docTemplate = `{
         "KaldalisCMS_internal_api_v1_dto.ErrorResponse": {
             "type": "object",
             "properties": {
-                "error": {
+                "code": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "message": {
                     "type": "string"
                 }
             }

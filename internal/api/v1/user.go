@@ -45,7 +45,7 @@ func (api *UserAPI) RegisterRoutes(router *gin.RouterGroup) {
 func (api *UserAPI) Register(c *gin.Context) {
 	var req dto.UserRegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
@@ -58,11 +58,11 @@ func (api *UserAPI) Register(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	if err := api.service.CreateUser(ctx, newUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorByCore(c, err, http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
+	respondMessage(c, http.StatusCreated, "user created successfully")
 }
 
 // Login authenticates user credentials and creates session cookies.
@@ -82,20 +82,19 @@ func (a *UserAPI) Login(c *gin.Context) {
 
 	var req dto.UserLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 	user, err := a.service.Login(ctx, req.Username, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		respondErrorByCore(c, err, http.StatusUnauthorized, nil)
 		return
 	}
 	if err := a.sm.EstablishSession(c.Writer, user.ID, user.Role); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "登录状态创建失败"})
+		respondInternalError(c)
 		return
 	}
 
-	// 动态计算过期时间
 	expiresAt := time.Now().Add(a.sm.GetTTL())
 
 	c.JSON(http.StatusOK, dto.LoginResponse{
@@ -124,5 +123,5 @@ func (a *UserAPI) Logout(c *gin.Context) {
 	// Logout 通过 service 层触发副作用
 	//a.service.Logout() 暂时无逻辑
 	a.sm.DestroySession(c.Writer)
-	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
+	respondMessage(c, http.StatusOK, "logged out")
 }

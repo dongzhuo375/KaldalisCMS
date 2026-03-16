@@ -26,7 +26,7 @@ func NewPublicPostAPI(service core.PostService) *PublicPostAPI {
 func parsePostID(c *gin.Context) (uint, bool) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid post ID"})
+		respondValidationError(c, "invalid post id", map[string]any{"id": c.Param("id")})
 		return 0, false
 	}
 	return uint(id), true
@@ -48,10 +48,10 @@ func (api *PublicPostAPI) GetPosts(c *gin.Context) {
 	posts, err := api.service.ListPublicPosts(ctx)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Get posts timed out"})
+			respondTimeoutError(c, "list posts timed out")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondInternalError(c)
 		return
 	}
 
@@ -82,10 +82,10 @@ func (api *PublicPostAPI) GetPostByID(c *gin.Context) {
 	post, err := api.service.GetPublicPostByID(ctx, id)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Get post timed out"})
+			respondTimeoutError(c, "get post timed out")
 			return
 		}
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		respondErrorByCore(c, err, http.StatusNotFound, nil)
 		return
 	}
 

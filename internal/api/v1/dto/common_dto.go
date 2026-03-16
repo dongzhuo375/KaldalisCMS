@@ -2,7 +2,9 @@ package dto
 
 // ErrorResponse is a uniform API error envelope.
 type ErrorResponse struct {
-	Error string `json:"error"`
+	Code    string         `json:"code"`
+	Message string         `json:"message"`
+	Details map[string]any `json:"details,omitempty"`
 }
 
 // MessageResponse is a generic API success envelope.

@@ -53,14 +53,10 @@ func (api *AdminPostAPI) GetPosts(c *gin.Context) {
 	posts, err := api.service.ListAdminPosts(ctx, actorUserID, actorRole)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Get admin posts timed out"})
+			respondTimeoutError(c, "list admin posts timed out")
 			return
 		}
-		if errors.Is(err, core.ErrPermission) {
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondPostWorkflowError(c, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -99,14 +95,10 @@ func (api *AdminPostAPI) GetPostByID(c *gin.Context) {
 	post, err := api.service.GetAdminPostByID(ctx, id, actorUserID, actorRole)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Get admin post timed out"})
+			respondTimeoutError(c, "get admin post timed out")
 			return
 		}
-		if errors.Is(err, core.ErrPermission) {
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		respondPostWorkflowError(c, err, http.StatusNotFound)
 		return
 	}
 
@@ -125,6 +117,7 @@ func (api *AdminPostAPI) GetPostByID(c *gin.Context) {
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 401 {object} dto.ErrorResponse
 // @Failure 403 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Security CookieAuth
@@ -133,7 +126,7 @@ func (api *AdminPostAPI) GetPostByID(c *gin.Context) {
 func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 	var createReq dto.CreatePostRequest
 	if err := c.ShouldBindJSON(&createReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
@@ -147,14 +140,14 @@ func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 
 	if err := api.service.CreateAdminPost(ctx, actorUserID, actorRole, *createReq.ToEntity()); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Create post timed out"})
+			respondTimeoutError(c, "create post timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Post created successfully"})
+	respondMessage(c, http.StatusCreated, "post created successfully")
 }
 
 // UpdatePost updates editable post content fields.
@@ -166,11 +159,12 @@ func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 // @Produce json
 // @Param id path int true "post id"
 // @Param body body dto.UpdatePostRequest true "update post payload"
-// @Success 200 {object} interface{}
+// @Success 200 {object} dto.MessageResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 401 {object} dto.ErrorResponse
 // @Failure 403 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken
@@ -188,7 +182,7 @@ func (api *AdminPostAPI) UpdatePost(c *gin.Context) {
 
 	var req dto.UpdatePostRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
@@ -197,14 +191,14 @@ func (api *AdminPostAPI) UpdatePost(c *gin.Context) {
 
 	if err := api.service.UpdateAdminPost(ctx, id, req.ToPatch(), actorUserID, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Update post timed out"})
+			respondTimeoutError(c, "update post timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusNotFound)
 		return
 	}
 
-	c.JSON(http.StatusOK, nil)
+	respondMessage(c, http.StatusOK, "updated")
 }
 
 // PublishPost transitions a post from Draft to Published.
@@ -218,6 +212,7 @@ func (api *AdminPostAPI) UpdatePost(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse
 // @Failure 403 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken
@@ -238,14 +233,14 @@ func (api *AdminPostAPI) PublishPost(c *gin.Context) {
 
 	if err := api.service.PublishAdminPost(ctx, id, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Publish post timed out"})
+			respondTimeoutError(c, "publish post timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusBadRequest)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Post published successfully"})
+	respondMessage(c, http.StatusOK, "post published successfully")
 }
 
 // DraftPost performs the minimal offline action by moving a post back to Draft.
@@ -259,6 +254,7 @@ func (api *AdminPostAPI) PublishPost(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse
 // @Failure 403 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken
@@ -279,14 +275,14 @@ func (api *AdminPostAPI) DraftPost(c *gin.Context) {
 
 	if err := api.service.MovePostToDraft(ctx, id, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Unpublish post timed out"})
+			respondTimeoutError(c, "move post to draft timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusBadRequest)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Post moved to draft successfully"})
+	respondMessage(c, http.StatusOK, "post moved to draft successfully")
 }
 
 // DeletePost removes a post from the system.
@@ -295,11 +291,12 @@ func (api *AdminPostAPI) DraftPost(c *gin.Context) {
 // @Tags admin-posts
 // @Produce json
 // @Param id path int true "post id"
-// @Success 204 {string} string "No Content"
+// @Success 200 {object} dto.MessageResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 401 {object} dto.ErrorResponse
 // @Failure 403 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken
@@ -320,26 +317,26 @@ func (api *AdminPostAPI) DeletePost(c *gin.Context) {
 
 	if err := api.service.DeleteAdminPost(ctx, id, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Delete post timed out"})
+			respondTimeoutError(c, "delete post timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusNotFound)
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	respondMessage(c, http.StatusOK, "deleted")
 }
 
 func getPostActor(c *gin.Context) (uint, string, bool) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: user ID not found in context"})
+		respondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
 		return 0, "", false
 	}
 
 	role, ok := middleware.GetUserRole(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: user role not found in context"})
+		respondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
 		return 0, "", false
 	}
 
@@ -348,13 +345,8 @@ func getPostActor(c *gin.Context) (uint, string, bool) {
 
 func respondPostWorkflowError(c *gin.Context, err error, defaultStatus int) {
 	status := defaultStatus
-	switch {
-	case errors.Is(err, core.ErrPermission):
-		status = http.StatusForbidden
-	case errors.Is(err, core.ErrNotFound):
-		status = http.StatusNotFound
-	case errors.Is(err, core.ErrInvalidInput):
-		status = http.StatusBadRequest
+	if errors.Is(err, core.ErrInternalError) {
+		status = http.StatusInternalServerError
 	}
-	c.JSON(status, gin.H{"error": err.Error()})
+	respondErrorByCore(c, err, status, nil)
 }
