@@ -3,6 +3,7 @@ package service
 import (
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
+	repository "KaldalisCMS/internal/infra/repository/postgres"
 	"context"
 	"errors"
 	"fmt"
@@ -48,10 +49,10 @@ func NewMediaService(repo core.MediaRepository, cfg MediaConfig) *MediaService {
 }
 
 var (
-	ErrUploadTooLarge   = errors.New("upload too large")
-	ErrUnsupportedType  = errors.New("unsupported file type")
-	ErrAssetReferenced  = errors.New("asset is referenced by posts")
-	ErrInvalidAssetName = errors.New("invalid asset name")
+	ErrUploadTooLarge   = fmt.Errorf("%w: upload too large", core.ErrInvalidInput)
+	ErrUnsupportedType  = fmt.Errorf("%w: unsupported file type", core.ErrInvalidInput)
+	ErrAssetReferenced  = fmt.Errorf("%w: asset is referenced by posts", core.ErrConflict)
+	ErrInvalidAssetName = fmt.Errorf("%w: invalid asset name", core.ErrInvalidInput)
 )
 
 // CreateAssetFromUpload persists metadata and stores file under:
@@ -206,6 +207,9 @@ func (s *MediaService) List(ctx context.Context, requesterRole string, requester
 func (s *MediaService) DeleteAs(ctx context.Context, requesterRole string, requesterUserID uint, assetID uint) error {
 	asset, err := s.repo.GetByID(ctx, assetID)
 	if err != nil {
+		if errors.Is(err, repository.ErrMediaNotFound) {
+			return core.ErrNotFound
+		}
 		return err
 	}
 	if requesterRole != "admin" && asset.OwnerUserID != requesterUserID {
@@ -218,6 +222,9 @@ func (s *MediaService) DeleteAs(ctx context.Context, requesterRole string, reque
 func (s *MediaService) Delete(ctx context.Context, assetID uint) error {
 	asset, err := s.repo.GetByID(ctx, assetID)
 	if err != nil {
+		if errors.Is(err, repository.ErrMediaNotFound) {
+			return core.ErrNotFound
+		}
 		return err
 	}
 	return s.deleteByAsset(ctx, asset)

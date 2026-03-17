@@ -31,6 +31,21 @@ func (api *MediaAPI) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/posts/:id/media", api.ListPostMedia)
 }
 
+// Upload stores one media file owned by current user.
+// @Summary Upload media asset
+// @Description Upload one file and create a media asset record.
+// @Tags media
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "media file"
+// @Success 201 {object} dto.MediaUploadResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 413 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /media [post]
 func (api *MediaAPI) Upload(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -59,9 +74,23 @@ func (api *MediaAPI) Upload(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"asset": dto.ToMediaAssetResponse(asset)})
+	c.JSON(http.StatusCreated, dto.MediaUploadResponse{Asset: dto.ToMediaAssetResponse(asset)})
 }
 
+// List returns media assets visible to current actor.
+// @Summary List media assets
+// @Description List media assets for current user scope with pagination and query filter.
+// @Tags media
+// @Produce json
+// @Param page query int false "page number" default(1)
+// @Param page_size query int false "page size" default(20)
+// @Param q query string false "search keyword"
+// @Success 200 {object} dto.MediaListResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /media [get]
 func (api *MediaAPI) List(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -83,6 +112,22 @@ func (api *MediaAPI) List(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.MediaListResponse{Items: dto.ToMediaAssetResponses(assets), Total: total, Page: page, PageSize: pageSize})
 }
 
+// Delete removes one media asset by id.
+// @Summary Delete media asset
+// @Description Delete one media asset if caller has permission and asset is not referenced.
+// @Tags media
+// @Produce json
+// @Param id path int true "media asset id"
+// @Success 200 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
+// @Router /media/{id} [delete]
 func (api *MediaAPI) Delete(c *gin.Context) {
 	id64, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -104,7 +149,7 @@ func (api *MediaAPI) Delete(c *gin.Context) {
 			cnt, _ := api.repo.CountReferences(c.Request.Context(), uint(id64))
 			respondError(c, http.StatusConflict, core.CodeConflict, "asset is referenced", map[string]any{"references": cnt})
 			return
-		case errors.Is(err, repository.ErrMediaNotFound):
+		case errors.Is(err, core.ErrNotFound):
 			respondError(c, http.StatusNotFound, core.CodeNotFound, "resource not found", nil)
 			return
 		case errors.Is(err, core.ErrPermission):
@@ -118,6 +163,17 @@ func (api *MediaAPI) Delete(c *gin.Context) {
 	respondMessage(c, http.StatusOK, "deleted")
 }
 
+// ListPostMedia lists assets referenced by one post.
+// @Summary List post media references
+// @Description List media assets referenced by one post, optionally filtered by purpose.
+// @Tags media
+// @Produce json
+// @Param id path int true "post id"
+// @Param purpose query string false "reference purpose: content|cover"
+// @Success 200 {object} dto.MediaItemsResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /posts/{id}/media [get]
 func (api *MediaAPI) ListPostMedia(c *gin.Context) {
 	id64, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -135,5 +191,5 @@ func (api *MediaAPI) ListPostMedia(c *gin.Context) {
 		respondInternalError(c)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": dto.ToMediaAssetResponses(assets)})
+	c.JSON(http.StatusOK, dto.MediaItemsResponse{Items: dto.ToMediaAssetResponses(assets)})
 }

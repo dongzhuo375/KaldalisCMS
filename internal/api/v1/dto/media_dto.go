@@ -29,6 +29,16 @@ type MediaListResponse struct {
 	PageSize int                  `json:"page_size"`
 }
 
+// MediaUploadResponse wraps a created media asset.
+type MediaUploadResponse struct {
+	Asset MediaAssetResponse `json:"asset"`
+}
+
+// MediaItemsResponse wraps a list of media assets.
+type MediaItemsResponse struct {
+	Items []MediaAssetResponse `json:"items"`
+}
+
 func ToMediaAssetResponse(a entity.MediaAsset) MediaAssetResponse {
 	return MediaAssetResponse{
 		ID:           a.ID,

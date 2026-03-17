@@ -15,6 +15,14 @@ const (
 	ctxUserRoleKey = "kaldalis_user_role" // 新增: 用于在 Gin context 中存储用户角色
 )
 
+func abortWithCoreError(c *gin.Context, status int, code core.ErrorCode, message string, details map[string]any) {
+	c.AbortWithStatusJSON(status, gin.H{
+		"code":    string(code),
+		"message": message,
+		"details": details,
+	})
+}
+
 // 识别
 func OptionalAuth(sm core.SessionManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -41,7 +49,7 @@ func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 不再解析 JWT
 		if _, exists := c.Get(ctxUserIDKey); !exists {
-			c.AbortWithStatusJSON(401, gin.H{"error": "unauthorized"})
+			abortWithCoreError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
 			return
 		}
 		c.Next()
@@ -66,7 +74,7 @@ func CSRFCheck(sm core.SessionManager) gin.HandlerFunc {
 
 		// CSRF校验
 		if err := sm.ValidateCSRF(c.Request, val.(string)); err != nil {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			abortWithCoreError(c, http.StatusForbidden, core.CodeForbidden, "permission denied", map[string]any{"reason": err.Error()})
 			return
 		}
 

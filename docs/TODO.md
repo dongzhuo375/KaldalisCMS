@@ -96,19 +96,24 @@
 - [x] `internal/api/v1/system.go`：统一 setup/status 错误映射。
 - [x] `internal/api/v1/setup.go`：统一安装流程错误返回格式。
 - [x] `internal/api/v1/media.go`：统一上传/删除/列表错误返回格式。
-- [ ] OpenAPI（Swagger 注释与 `internal/docs/docs.go`）全量同步更新（`media` 相关路由注解仍待补齐）。
+- [x] OpenAPI（Swagger 注释与 `internal/docs/docs.go`）全量同步更新（已补齐 `media` 相关路由注解并重新生成文档产物）。
 
 新增代做（P0-7 收尾）：
-- [ ] 为 `internal/api/v1/media.go` 补齐 Swagger 注解（`@Summary/@Success/@Failure/@Router`）。
-- [ ] 重新生成并校验 `internal/docs/docs.go`、`internal/docs/swagger.json`、`internal/docs/swagger.yaml`，确认包含 `/media`、`/media/{id}`、`/posts/{id}/media`。
-- [ ] 增加最小错误响应合约测试（覆盖 `400/403/404/409` 的 `{code,message,details}` 结构）。
+- [x] 为 `internal/api/v1/media.go` 补齐 Swagger 注解（`@Summary/@Success/@Failure/@Router`）。
+- [x] 重新生成并校验 `internal/docs/docs.go`、`internal/docs/swagger.json`、`internal/docs/swagger.yaml`，确认包含 `/media`、`/media/{id}`、`/posts/{id}/media`。
+- [x] 增加最小错误响应合约测试（覆盖 `400/403/404/409` 的 `{code,message,details}` 结构）。
 
 后端剩余 error 处理清单（施工前盘点）：
-- [ ] P0：统一中间件错误返回结构与 code（`internal/api/middleware/auth.go`、`internal/api/middleware/casbin.go`，替换 `gin.H{"error":...}` 为统一 `ErrorResponse`）。
-- [ ] P0：统一路由层非业务错误返回结构（`internal/router/swagger_routes_enabled.go` 的 OpenAPI 构建失败返回）。
-- [ ] P0：收敛 service 层主流程错误到 `core` 语义（`internal/service/system_service.go` 的 `ErrAlreadyInstalled`、`internal/service/post_service.go` 的直接 `errors.New(...)`、`internal/service/media_service.go` 自定义错误与 `core.ErrorCode` 映射策略）。
-- [ ] P1：补齐错误映射单测（`error -> code -> status`），覆盖 `core.ErrorCodeOf` 与 `respondErrorByCore` 关键分支。
-- [ ] P1：增加中间件与关键写接口的集成测试，校验所有 4xx/5xx 响应均为 `{code,message,details}`。
+- [x] P0：统一中间件错误返回结构与 code（`internal/api/middleware/auth.go`、`internal/api/middleware/casbin.go`，替换 `gin.H{"error":...}` 为统一 `ErrorResponse`）。
+- [x] P0：统一路由层非业务错误返回结构（`internal/router/swagger_routes_enabled.go` 的 OpenAPI 构建失败返回）。
+- [x] P0：收敛 service 层主流程错误到 `core` 语义（`internal/service/system_service.go` 的安装冲突、`internal/service/post_service.go` 的 validation/conflict 分支、`internal/service/media_service.go` 的 not found/conflict/validation 映射）。
+- [x] P1：补齐错误映射单测（`error -> code -> status`），覆盖 `core.ErrorCodeOf` 与 `respondErrorByCore` 关键分支。
+- [x] P1：增加中间件与关键写接口的集成测试，校验所有 4xx/5xx 响应均为 `{code,message,details}`。
+
+新增代做（service 层收敛拆分）：
+- [x] 将 `internal/service/system_service.go` 的安装冲突收敛为 `core.ErrConflict` 语义，并由 API 统一映射。
+- [x] 将 `internal/service/post_service.go` 中关键 `errors.New/fmt.Errorf` 分支替换为可识别的 `core` 语义错误（validation/conflict）。
+- [x] 定义并落地 `internal/service/media_service.go` 业务错误到 `core.ErrorCode` 的映射策略（保持 409/400 语义稳定）。
 
 #
 

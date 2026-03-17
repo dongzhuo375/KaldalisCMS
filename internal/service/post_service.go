@@ -105,12 +105,12 @@ func (s *PostService) CreateAdminPost(ctx context.Context, actorUserID uint, act
 	post.Status = entity.StatusDraft
 
 	if err := post.CheckValidity(); err != nil {
-		return fmt.Errorf("文章数据校验失败: %w", err)
+		return fmt.Errorf("%w: invalid post payload: %v", core.ErrInvalidInput, err)
 	}
 
 	generatedSlug := slug.Make(post.Title)
 	if generatedSlug == "" {
-		return fmt.Errorf("标题无法生成有效的URL标识符")
+		return fmt.Errorf("%w: title cannot generate a valid slug", core.ErrInvalidInput)
 	}
 
 	finalSlug, err := s.generateUniqueSlug(ctx, generatedSlug)
@@ -153,7 +153,7 @@ func (s *PostService) generateUniqueSlug(ctx context.Context, initialSlug string
 
 		counter++
 		if counter >= maxAttempts {
-			return "", errors.New("无法在合理尝试次数内生成唯一的URL标识符")
+			return "", fmt.Errorf("%w: unable to generate unique slug within max attempts", core.ErrConflict)
 		}
 
 		currentSlug = fmt.Sprintf("%s-%d", initialSlug, counter)
@@ -186,7 +186,7 @@ func (s *PostService) UpdateAdminPost(ctx context.Context, id uint, patch entity
 	existingEntity.ID = id
 
 	if err := existingEntity.CheckValidity(); err != nil {
-		return fmt.Errorf("更新后的数据校验失败: %w", err)
+		return fmt.Errorf("%w: invalid updated post payload: %v", core.ErrInvalidInput, err)
 	}
 
 	if err := s.repo.Update(ctx, existingEntity); err != nil {
@@ -216,10 +216,15 @@ func (s *PostService) PublishAdminPost(ctx context.Context, id uint, actorRole s
 	if err != nil {
 		return fmt.Errorf("发布失败，文章不存在: %w", err)
 	}
-
-	if err := post.Publish(); err != nil {
-		return fmt.Errorf("发布文章失败: %w", err)
+	if post.Status == entity.StatusPublished {
+		return fmt.Errorf("%w: post is already published", core.ErrConflict)
 	}
+	if err := post.CheckValidity(); err != nil {
+		return fmt.Errorf("%w: post is not publishable: %v", core.ErrInvalidInput, err)
+	}
+
+	post.Status = entity.StatusPublished
+	post.UpdatedAt = time.Now()
 
 	if err := s.repo.Update(ctx, post); err != nil {
 		return fmt.Errorf("更新发布状态失败: %w", err)
@@ -238,10 +243,12 @@ func (s *PostService) MovePostToDraft(ctx context.Context, id uint, actorRole st
 	if err != nil {
 		return fmt.Errorf("下线失败，文章不存在: %w", err)
 	}
-
-	if err := post.Draft(); err != nil {
-		return fmt.Errorf("下线文章失败: %w", err)
+	if post.Status == entity.StatusDraft {
+		return fmt.Errorf("%w: post is already draft", core.ErrConflict)
 	}
+
+	post.Status = entity.StatusDraft
+	post.UpdatedAt = time.Now()
 
 	if err := s.repo.Update(ctx, post); err != nil {
 		return fmt.Errorf("更新草稿状态失败: %w", err)

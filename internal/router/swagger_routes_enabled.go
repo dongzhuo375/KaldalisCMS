@@ -3,6 +3,7 @@
 package router
 
 import (
+	"KaldalisCMS/internal/core"
 	docs "KaldalisCMS/internal/docs"
 	"encoding/json"
 	"net/http"
@@ -42,7 +43,11 @@ func registerSwaggerRoutes(r *gin.Engine, opts SwaggerOptions) {
 	r.GET(openAPI3Path, func(c *gin.Context) {
 		spec, err := getOpenAPI3Spec()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build OpenAPI 3.0 spec"})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    string(core.CodeInternalError),
+				"message": "failed to build openapi spec",
+				"details": map[string]any{"reason": err.Error()},
+			})
 			return
 		}
 		c.Data(http.StatusOK, "application/json; charset=utf-8", spec)

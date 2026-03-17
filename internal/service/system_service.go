@@ -13,8 +13,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrAlreadyInstalled = errors.New("already installed")
-
 type SystemService struct {
 	db         *gorm.DB
 	systemRepo *repository.SystemRepository
@@ -74,7 +72,7 @@ func (s *SystemService) SetupOnce(ctx context.Context, p SetupParams) error {
 			return err
 		}
 		if set.Installed {
-			return ErrAlreadyInstalled
+			return fmt.Errorf("%w: already installed", core.ErrConflict)
 		}
 
 		// Create the first super admin user.
@@ -105,7 +103,7 @@ func (s *SystemService) SetupOnce(ctx context.Context, p SetupParams) error {
 			return err
 		}
 		if affected == 0 {
-			return ErrAlreadyInstalled
+			return fmt.Errorf("%w: already installed", core.ErrConflict)
 		}
 
 		return nil

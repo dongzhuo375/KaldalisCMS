@@ -2,9 +2,7 @@ package v1
 
 import (
 	"KaldalisCMS/internal/api/v1/dto"
-	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/service"
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -49,10 +47,6 @@ func (api *SystemAPI) Setup(c *gin.Context) {
 		AdminPassword: req.AdminPassword,
 	})
 	if err != nil {
-		if errors.Is(err, service.ErrAlreadyInstalled) {
-			respondError(c, http.StatusConflict, core.CodeConflict, "already installed", nil)
-			return
-		}
 		respondErrorByCore(c, err, http.StatusInternalServerError, nil)
 		return
 	}

@@ -20,6 +20,7 @@ const (
 var (
 	ErrNotFound           = errors.New("not found")
 	ErrDuplicate          = errors.New("duplicate entry")
+	ErrConflict           = errors.New("conflict")
 	ErrInvalidInput       = errors.New("invalid input")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrDBConnection       = errors.New("database connection error")
@@ -41,6 +42,8 @@ func ErrorCodeOf(err error) ErrorCode {
 		return CodeNotFound
 	case errors.Is(err, ErrDuplicate):
 		return CodeDuplicateResource
+	case errors.Is(err, ErrConflict):
+		return CodeConflict
 	default:
 		return CodeInternalError
 	}
