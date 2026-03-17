@@ -41,6 +41,7 @@ func (api *UserAPI) RegisterRoutes(router *gin.RouterGroup) {
 // @Param body body dto.UserRegisterRequest true "register payload"
 // @Success 201 {object} dto.MessageResponse
 // @Failure 400 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /users/register [post]
 func (api *UserAPI) Register(c *gin.Context) {
@@ -117,6 +118,7 @@ func (a *UserAPI) Login(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} dto.MessageResponse
 // @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken
 // @Router /users/logout [post]

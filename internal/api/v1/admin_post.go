@@ -75,6 +75,7 @@ func (api *AdminPostAPI) GetPosts(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse
 // @Failure 403 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken
@@ -166,6 +167,7 @@ func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
 // @Failure 409 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken
@@ -214,6 +216,7 @@ func (api *AdminPostAPI) UpdatePost(c *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
 // @Failure 409 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken
@@ -256,6 +259,7 @@ func (api *AdminPostAPI) PublishPost(c *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
 // @Failure 409 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken
@@ -298,6 +302,7 @@ func (api *AdminPostAPI) DraftPost(c *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
 // @Failure 409 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken

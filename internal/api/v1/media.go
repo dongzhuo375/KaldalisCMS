@@ -42,6 +42,7 @@ func (api *MediaAPI) RegisterRoutes(rg *gin.RouterGroup) {
 // @Success 201 {object} dto.MediaUploadResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
 // @Failure 413 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Security CookieAuth
@@ -91,6 +92,7 @@ func (api *MediaAPI) Upload(c *gin.Context) {
 // @Param q query string false "search keyword"
 // @Success 200 {object} dto.MediaListResponse
 // @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Security CookieAuth
 // @Security CSRFToken
@@ -176,7 +178,11 @@ func (api *MediaAPI) Delete(c *gin.Context) {
 // @Param purpose query string false "reference purpose: content|cover"
 // @Success 200 {object} dto.MediaItemsResponse
 // @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
+// @Security CookieAuth
+// @Security CSRFToken
 // @Router /posts/{id}/media [get]
 func (api *MediaAPI) ListPostMedia(c *gin.Context) {
 	id64, err := strconv.ParseUint(c.Param("id"), 10, 32)

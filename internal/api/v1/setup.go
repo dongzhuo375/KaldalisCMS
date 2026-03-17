@@ -27,12 +27,6 @@ func (api *SetupAPI) RegisterRoutes(r *gin.RouterGroup) {
 }
 
 // Status returns setup mode status.
-// @Summary Setup status
-// @Description Returns installation status in setup mode.
-// @Tags setup
-// @Produce json
-// @Success 200 {object} dto.SystemStatusResponse
-// @Router /system/status [get]
 func (api *SetupAPI) Status(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.SystemStatusResponse{Installed: false})
 }
@@ -64,16 +58,6 @@ func (api *SetupAPI) CheckDB(c *gin.Context) {
 }
 
 // Setup runs first-time installation workflow.
-// @Summary Install system
-// @Description Persist setup config and initialize system data.
-// @Tags setup
-// @Accept json
-// @Produce json
-// @Param body body dto.SystemSetupRequest true "setup payload"
-// @Success 200 {object} dto.MessageResponse
-// @Failure 400 {object} dto.ErrorResponse
-// @Failure 500 {object} dto.ErrorResponse
-// @Router /system/setup [post]
 func (api *SetupAPI) Setup(c *gin.Context) {
 	var req dto.SystemSetupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

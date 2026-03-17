@@ -69,6 +69,7 @@ func (api *PublicPostAPI) GetPosts(c *gin.Context) {
 // @Success 200 {object} dto.PostResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Failure 504 {object} dto.ErrorResponse
 // @Router /posts/{id} [get]
 func (api *PublicPostAPI) GetPostByID(c *gin.Context) {
