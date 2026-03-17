@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"KaldalisCMS/internal/api/errorx"
 	"KaldalisCMS/internal/api/middleware"
 	"KaldalisCMS/internal/api/v1/dto"
 	"KaldalisCMS/internal/core"
@@ -53,7 +54,7 @@ func (api *AdminPostAPI) GetPosts(c *gin.Context) {
 	posts, err := api.service.ListAdminPosts(ctx, actorUserID, actorRole)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			respondTimeoutError(c, "list admin posts timed out")
+			errorx.RespondTimeoutError(c, "list admin posts timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusInternalServerError)
@@ -95,7 +96,7 @@ func (api *AdminPostAPI) GetPostByID(c *gin.Context) {
 	post, err := api.service.GetAdminPostByID(ctx, id, actorUserID, actorRole)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			respondTimeoutError(c, "get admin post timed out")
+			errorx.RespondTimeoutError(c, "get admin post timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusNotFound)
@@ -126,7 +127,7 @@ func (api *AdminPostAPI) GetPostByID(c *gin.Context) {
 func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 	var createReq dto.CreatePostRequest
 	if err := c.ShouldBindJSON(&createReq); err != nil {
-		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
+		errorx.RespondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
@@ -140,14 +141,14 @@ func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 
 	if err := api.service.CreateAdminPost(ctx, actorUserID, actorRole, *createReq.ToEntity()); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			respondTimeoutError(c, "create post timed out")
+			errorx.RespondTimeoutError(c, "create post timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	respondMessage(c, http.StatusCreated, "post created successfully")
+	errorx.RespondMessage(c, http.StatusCreated, "post created successfully")
 }
 
 // UpdatePost updates editable post content fields.
@@ -182,7 +183,7 @@ func (api *AdminPostAPI) UpdatePost(c *gin.Context) {
 
 	var req dto.UpdatePostRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
+		errorx.RespondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
@@ -191,14 +192,14 @@ func (api *AdminPostAPI) UpdatePost(c *gin.Context) {
 
 	if err := api.service.UpdateAdminPost(ctx, id, req.ToPatch(), actorUserID, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			respondTimeoutError(c, "update post timed out")
+			errorx.RespondTimeoutError(c, "update post timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusNotFound)
 		return
 	}
 
-	respondMessage(c, http.StatusOK, "updated")
+	errorx.RespondMessage(c, http.StatusOK, "updated")
 }
 
 // PublishPost transitions a post from Draft to Published.
@@ -233,14 +234,14 @@ func (api *AdminPostAPI) PublishPost(c *gin.Context) {
 
 	if err := api.service.PublishAdminPost(ctx, id, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			respondTimeoutError(c, "publish post timed out")
+			errorx.RespondTimeoutError(c, "publish post timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusBadRequest)
 		return
 	}
 
-	respondMessage(c, http.StatusOK, "post published successfully")
+	errorx.RespondMessage(c, http.StatusOK, "post published successfully")
 }
 
 // DraftPost performs the minimal offline action by moving a post back to Draft.
@@ -275,14 +276,14 @@ func (api *AdminPostAPI) DraftPost(c *gin.Context) {
 
 	if err := api.service.MovePostToDraft(ctx, id, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			respondTimeoutError(c, "move post to draft timed out")
+			errorx.RespondTimeoutError(c, "move post to draft timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusBadRequest)
 		return
 	}
 
-	respondMessage(c, http.StatusOK, "post moved to draft successfully")
+	errorx.RespondMessage(c, http.StatusOK, "post moved to draft successfully")
 }
 
 // DeletePost removes a post from the system.
@@ -317,26 +318,26 @@ func (api *AdminPostAPI) DeletePost(c *gin.Context) {
 
 	if err := api.service.DeleteAdminPost(ctx, id, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			respondTimeoutError(c, "delete post timed out")
+			errorx.RespondTimeoutError(c, "delete post timed out")
 			return
 		}
 		respondPostWorkflowError(c, err, http.StatusNotFound)
 		return
 	}
 
-	respondMessage(c, http.StatusOK, "deleted")
+	errorx.RespondMessage(c, http.StatusOK, "post deleted successfully")
 }
 
 func getPostActor(c *gin.Context) (uint, string, bool) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		respondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
+		errorx.RespondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
 		return 0, "", false
 	}
 
 	role, ok := middleware.GetUserRole(c)
 	if !ok {
-		respondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
+		errorx.RespondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
 		return 0, "", false
 	}
 
@@ -348,5 +349,5 @@ func respondPostWorkflowError(c *gin.Context, err error, defaultStatus int) {
 	if errors.Is(err, core.ErrInternalError) {
 		status = http.StatusInternalServerError
 	}
-	respondErrorByCore(c, err, status, nil)
+	errorx.RespondErrorByCore(c, err, status, nil)
 }

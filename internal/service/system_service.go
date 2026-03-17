@@ -34,7 +34,7 @@ func (s *SystemService) Status(ctx context.Context) (SystemStatus, error) {
 		return SystemStatus{Installed: false, SiteName: nil}, nil
 	}
 	if err != nil {
-		return SystemStatus{}, err
+		return SystemStatus{}, normalizeServiceErrorWithOpMsg("system.status", "load system status failed", err)
 	}
 	var siteName *string
 	if strings.TrimSpace(set.SiteName) != "" {
@@ -63,13 +63,13 @@ func (s *SystemService) SetupOnce(ctx context.Context, p SetupParams) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Ensure singleton row exists.
 		if err := s.systemRepo.EnsureSingletonRow(ctx, tx); err != nil {
-			return err
+			return normalizeServiceErrorWithOpMsg("system.setup.ensure_singleton", "ensure singleton system row failed", err)
 		}
 
 		// Lock the row for update to serialize setup.
 		set, err := s.systemRepo.LockForUpdate(ctx, tx)
 		if err != nil {
-			return err
+			return normalizeServiceErrorWithOpMsg("system.setup.lock", "lock system setup row failed", err)
 		}
 		if set.Installed {
 			return fmt.Errorf("%w: already installed", core.ErrConflict)
@@ -89,18 +89,21 @@ func (s *SystemService) SetupOnce(ctx context.Context, p SetupParams) error {
 		// To keep existing logic untouched AND keep setup atomic, we create the user via tx directly here.
 		// We still reuse entity password hashing method.
 		if err := admin.SetPassword(admin.Password); err != nil {
-			return fmt.Errorf("system_service.SetupOnce: hash password: %w", err)
+			return fmt.Errorf("%w: invalid admin password", core.ErrInvalidInput)
 		}
 
 		// Create user inside the same transaction.
 		userRepo := repository.NewUserRepository(tx)
 		if err := userRepo.Create(ctx, admin); err != nil {
-			return err
+			if errors.Is(err, core.ErrDuplicate) {
+				return fmt.Errorf("%w: admin account already exists", core.ErrConflict)
+			}
+			return normalizeServiceErrorWithOpMsg("system.setup.create_admin", "create admin account during setup failed", err)
 		}
 
 		affected, err := s.systemRepo.MarkInstalled(ctx, tx, p.SiteName, time.Now())
 		if err != nil {
-			return err
+			return normalizeServiceErrorWithOpMsg("system.setup.mark_installed", "mark system installed failed", err)
 		}
 		if affected == 0 {
 			return fmt.Errorf("%w: already installed", core.ErrConflict)

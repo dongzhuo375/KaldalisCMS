@@ -39,16 +39,24 @@ func (s *tagService) Create(ctx context.Context, tag entity.Tag) (entity.Tag, er
 		// ok, not exists
 	default:
 		// unexpected repo error
-		return entity.Tag{}, err
+		return entity.Tag{}, normalizeServiceErrorWithOpMsg("tag.create.lookup", "check existing tag by name failed", err)
 	}
 
-	return s.repo.Create(ctx, tag)
+	created, err := s.repo.Create(ctx, tag)
+	if err != nil {
+		return entity.Tag{}, normalizeServiceErrorWithOpMsg("tag.create", "create tag failed", err)
+	}
+	return created, nil
 }
 
 // GetAll returns all tags.
 func (s *tagService) GetAll(ctx context.Context) ([]entity.Tag, error) {
 	// No business-specific validation here; just delegate to repository.
-	return s.repo.GetAll(ctx)
+	tags, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, normalizeServiceErrorWithOpMsg("tag.list", "list tags failed", err)
+	}
+	return tags, nil
 }
 
 // GetByID returns a tag by ID.
@@ -56,7 +64,11 @@ func (s *tagService) GetByID(ctx context.Context, id uint) (entity.Tag, error) {
 	if id == 0 {
 		return entity.Tag{}, core.ErrInvalidInput
 	}
-	return s.repo.GetByID(ctx, id)
+	tag, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return entity.Tag{}, normalizeServiceErrorWithOpMsg("tag.get_by_id", "get tag by id failed", err)
+	}
+	return tag, nil
 }
 
 // GetByName returns a tag by name.
@@ -65,7 +77,11 @@ func (s *tagService) GetByName(ctx context.Context, name string) (entity.Tag, er
 	if name == "" {
 		return entity.Tag{}, core.ErrInvalidInput
 	}
-	return s.repo.GetByName(ctx, name)
+	tag, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return entity.Tag{}, normalizeServiceErrorWithOpMsg("tag.get_by_name", "get tag by name failed", err)
+	}
+	return tag, nil
 }
 
 // Update updates a tag.
@@ -80,7 +96,11 @@ func (s *tagService) Update(ctx context.Context, tag entity.Tag) (entity.Tag, er
 		}
 	}
 
-	return s.repo.Update(ctx, tag)
+	updated, err := s.repo.Update(ctx, tag)
+	if err != nil {
+		return entity.Tag{}, normalizeServiceErrorWithOpMsg("tag.update", "update tag failed", err)
+	}
+	return updated, nil
 }
 
 // Delete deletes a tag by ID.
@@ -88,5 +108,5 @@ func (s *tagService) Delete(ctx context.Context, id uint) error {
 	if id == 0 {
 		return core.ErrInvalidInput
 	}
-	return s.repo.Delete(ctx, id)
+	return normalizeServiceErrorWithOpMsg("tag.delete", "delete tag failed", s.repo.Delete(ctx, id))
 }

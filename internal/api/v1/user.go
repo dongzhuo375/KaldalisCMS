@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"KaldalisCMS/internal/api/errorx"
 	"KaldalisCMS/internal/api/v1/dto"
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
@@ -45,7 +46,7 @@ func (api *UserAPI) RegisterRoutes(router *gin.RouterGroup) {
 func (api *UserAPI) Register(c *gin.Context) {
 	var req dto.UserRegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
+		errorx.RespondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
@@ -58,11 +59,11 @@ func (api *UserAPI) Register(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	if err := api.service.CreateUser(ctx, newUser); err != nil {
-		respondErrorByCore(c, err, http.StatusInternalServerError, nil)
+		errorx.RespondErrorByCore(c, err, http.StatusInternalServerError, nil)
 		return
 	}
 
-	respondMessage(c, http.StatusCreated, "user created successfully")
+	errorx.RespondMessage(c, http.StatusCreated, "user created successfully")
 }
 
 // Login authenticates user credentials and creates session cookies.
@@ -82,16 +83,16 @@ func (a *UserAPI) Login(c *gin.Context) {
 
 	var req dto.UserLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
+		errorx.RespondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 	user, err := a.service.Login(ctx, req.Username, req.Password)
 	if err != nil {
-		respondErrorByCore(c, err, http.StatusUnauthorized, nil)
+		errorx.RespondErrorByCore(c, err, http.StatusUnauthorized, nil)
 		return
 	}
 	if err := a.sm.EstablishSession(c.Writer, user.ID, user.Role); err != nil {
-		respondInternalError(c)
+		errorx.RespondInternalError(c)
 		return
 	}
 
@@ -123,5 +124,5 @@ func (a *UserAPI) Logout(c *gin.Context) {
 	// Logout 通过 service 层触发副作用
 	//a.service.Logout() 暂时无逻辑
 	a.sm.DestroySession(c.Writer)
-	respondMessage(c, http.StatusOK, "logged out")
+	errorx.RespondMessage(c, http.StatusOK, "logged out")
 }

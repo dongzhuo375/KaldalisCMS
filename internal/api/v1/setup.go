@@ -1,8 +1,8 @@
 package v1
 
 import (
+	"KaldalisCMS/internal/api/errorx"
 	"KaldalisCMS/internal/api/v1/dto"
-	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/service"
 	"net/http"
 
@@ -46,21 +46,21 @@ func (api *SetupAPI) Status(c *gin.Context) {
 // @Param body body dto.CheckDBRequest true "database connection payload"
 // @Success 200 {object} dto.MessageResponse
 // @Failure 400 {object} dto.ErrorResponse
-// @Failure 503 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /system/check-db [post]
 func (api *SetupAPI) CheckDB(c *gin.Context) {
 	var req dto.CheckDBRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
+		errorx.RespondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
 	if err := api.svc.ValidateDatabase(req.Host, req.Port, req.User, req.Pass, req.Name); err != nil {
-		respondError(c, http.StatusServiceUnavailable, core.CodeConflict, "database connection check failed", map[string]any{"reason": err.Error()})
+		errorx.RespondErrorByCore(c, err, http.StatusInternalServerError, nil)
 		return
 	}
 
-	respondMessage(c, http.StatusOK, "database connection check passed")
+	errorx.RespondMessage(c, http.StatusOK, "database connection check passed")
 }
 
 // Setup runs first-time installation workflow.
@@ -77,7 +77,7 @@ func (api *SetupAPI) CheckDB(c *gin.Context) {
 func (api *SetupAPI) Setup(c *gin.Context) {
 	var req dto.SystemSetupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
+		errorx.RespondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
@@ -95,9 +95,9 @@ func (api *SetupAPI) Setup(c *gin.Context) {
 		AdminFullAccess:    req.AdminFullAccess,
 	}
 	if err := api.svc.Install(cfg); err != nil {
-		respondInternalError(c)
+		errorx.RespondErrorByCore(c, err, http.StatusInternalServerError, nil)
 		return
 	}
 
-	respondMessage(c, http.StatusOK, "installation succeeded, restarting system")
+	errorx.RespondMessage(c, http.StatusOK, "installation succeeded, restarting system")
 }

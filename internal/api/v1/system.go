@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"KaldalisCMS/internal/api/errorx"
 	"KaldalisCMS/internal/api/v1/dto"
 	"KaldalisCMS/internal/service"
 	"net/http"
@@ -27,7 +28,7 @@ func (api *SystemAPI) RegisterRoutes(r *gin.RouterGroup) {
 func (api *SystemAPI) Status(c *gin.Context) {
 	st, err := api.svc.Status(c.Request.Context())
 	if err != nil {
-		respondInternalError(c)
+		errorx.RespondInternalError(c)
 		return
 	}
 	c.JSON(http.StatusOK, dto.SystemStatusResponse{Installed: st.Installed, SiteName: st.SiteName})
@@ -36,7 +37,7 @@ func (api *SystemAPI) Status(c *gin.Context) {
 func (api *SystemAPI) Setup(c *gin.Context) {
 	var req dto.SystemSetupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
+		errorx.RespondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
@@ -47,9 +48,9 @@ func (api *SystemAPI) Setup(c *gin.Context) {
 		AdminPassword: req.AdminPassword,
 	})
 	if err != nil {
-		respondErrorByCore(c, err, http.StatusInternalServerError, nil)
+		errorx.RespondErrorByCore(c, err, http.StatusInternalServerError, nil)
 		return
 	}
 
-	respondMessage(c, http.StatusCreated, "setup completed")
+	errorx.RespondMessage(c, http.StatusCreated, "setup completed")
 }

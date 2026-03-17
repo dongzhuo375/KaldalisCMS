@@ -1,4 +1,4 @@
-package v1
+package errorx
 
 import (
 	"KaldalisCMS/internal/api/v1/dto"
@@ -8,11 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func respondMessage(c *gin.Context, status int, message string) {
+func RespondMessage(c *gin.Context, status int, message string) {
 	c.JSON(status, dto.MessageResponse{Message: message})
 }
 
-func respondError(c *gin.Context, status int, code core.ErrorCode, message string, details map[string]any) {
+func RespondError(c *gin.Context, status int, code core.ErrorCode, message string, details map[string]any) {
 	c.JSON(status, dto.ErrorResponse{
 		Code:    string(code),
 		Message: message,
@@ -20,7 +20,7 @@ func respondError(c *gin.Context, status int, code core.ErrorCode, message strin
 	})
 }
 
-func respondErrorByCore(c *gin.Context, err error, defaultStatus int, details map[string]any) {
+func RespondErrorByCore(c *gin.Context, err error, defaultStatus int, details map[string]any) {
 	code := core.ErrorCodeOf(err)
 	status := defaultStatus
 	message := "internal server error"
@@ -51,23 +51,23 @@ func respondErrorByCore(c *gin.Context, err error, defaultStatus int, details ma
 		status = http.StatusInternalServerError
 	}
 
-	respondError(c, status, code, message, details)
+	RespondError(c, status, code, message, details)
 }
 
-func respondValidationError(c *gin.Context, message string, details map[string]any) {
+func RespondValidationError(c *gin.Context, message string, details map[string]any) {
 	if message == "" {
 		message = "request validation failed"
 	}
-	respondError(c, http.StatusBadRequest, core.CodeValidationFailed, message, details)
+	RespondError(c, http.StatusBadRequest, core.CodeValidationFailed, message, details)
 }
 
-func respondTimeoutError(c *gin.Context, message string) {
+func RespondTimeoutError(c *gin.Context, message string) {
 	if message == "" {
 		message = "request timed out"
 	}
-	respondError(c, http.StatusGatewayTimeout, core.CodeTimeout, message, nil)
+	RespondError(c, http.StatusGatewayTimeout, core.CodeTimeout, message, nil)
 }
 
-func respondInternalError(c *gin.Context) {
-	respondError(c, http.StatusInternalServerError, core.CodeInternalError, "internal server error", nil)
+func RespondInternalError(c *gin.Context) {
+	RespondError(c, http.StatusInternalServerError, core.CodeInternalError, "internal server error", nil)
 }

@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"KaldalisCMS/internal/api/errorx"
 	"KaldalisCMS/internal/api/v1/dto"
 	"KaldalisCMS/internal/core"
 	"context"
@@ -24,12 +25,12 @@ func NewPublicPostAPI(service core.PostService) *PublicPostAPI {
 }
 
 func parsePostID(c *gin.Context) (uint, bool) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		respondValidationError(c, "invalid post id", map[string]any{"id": c.Param("id")})
+		errorx.RespondValidationError(c, "invalid post id", map[string]any{"id": c.Param("id")})
 		return 0, false
 	}
-	return uint(id), true
+	return uint(id64), true
 }
 
 // GetPosts returns only published posts for public consumers.
@@ -48,10 +49,10 @@ func (api *PublicPostAPI) GetPosts(c *gin.Context) {
 	posts, err := api.service.ListPublicPosts(ctx)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			respondTimeoutError(c, "list posts timed out")
+			errorx.RespondTimeoutError(c, "list posts timed out")
 			return
 		}
-		respondInternalError(c)
+		errorx.RespondInternalError(c)
 		return
 	}
 
@@ -82,10 +83,10 @@ func (api *PublicPostAPI) GetPostByID(c *gin.Context) {
 	post, err := api.service.GetPublicPostByID(ctx, id)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			respondTimeoutError(c, "get post timed out")
+			errorx.RespondTimeoutError(c, "get post timed out")
 			return
 		}
-		respondErrorByCore(c, err, http.StatusNotFound, nil)
+		errorx.RespondErrorByCore(c, err, http.StatusNotFound, nil)
 		return
 	}
 

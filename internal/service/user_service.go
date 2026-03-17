@@ -4,6 +4,7 @@ import (
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
 	"context"
+	"errors"
 )
 
 type UserService struct {
@@ -24,19 +25,22 @@ func (s *UserService) CreateUser(ctx context.Context, user entity.User) error {
 	// The user.Password field currently holds the plaintext password.
 	// We use the entity's own method to hash it.
 	if err := user.SetPassword(user.Password); err != nil {
-		return err
+		return core.ErrInvalidInput
 	}
 
 	// Now user.Password holds the hashed password.
 	// We can pass the entity to the repository to be created.
-	return s.repo.Create(ctx, user)
+	return normalizeServiceErrorWithOpMsg("user.create", "create user failed", s.repo.Create(ctx, user))
 }
 
 // VerifyUser 只做验证并返回 user
 func (s *UserService) VerifyUser(ctx context.Context, username, password string) (entity.User, error) {
 	user, err := s.repo.GetByUsername(ctx, username)
 	if err != nil {
-		return entity.User{}, err
+		if errors.Is(err, core.ErrNotFound) {
+			return entity.User{}, core.ErrInvalidCredentials
+		}
+		return entity.User{}, normalizeServiceErrorWithOpMsg("user.verify.lookup", "lookup user by username failed", err)
 	}
 	if !user.CheckPassword(password) {
 		return entity.User{}, core.ErrInvalidCredentials

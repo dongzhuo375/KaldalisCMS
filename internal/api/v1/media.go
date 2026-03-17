@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"KaldalisCMS/internal/api/errorx"
 	"KaldalisCMS/internal/api/middleware"
 	"KaldalisCMS/internal/api/v1/dto"
 	"KaldalisCMS/internal/core"
@@ -49,13 +50,13 @@ func (api *MediaAPI) RegisterRoutes(rg *gin.RouterGroup) {
 func (api *MediaAPI) Upload(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		respondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
+		errorx.RespondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
 		return
 	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		respondValidationError(c, "missing file", nil)
+		errorx.RespondValidationError(c, "missing file", nil)
 		return
 	}
 
@@ -63,13 +64,16 @@ func (api *MediaAPI) Upload(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUploadTooLarge):
-			respondError(c, http.StatusRequestEntityTooLarge, core.CodeValidationFailed, "upload too large", nil)
+			errorx.RespondError(c, http.StatusRequestEntityTooLarge, core.CodeValidationFailed, "upload too large", nil)
 			return
 		case errors.Is(err, service.ErrUnsupportedType):
-			respondValidationError(c, "unsupported file type", nil)
+			errorx.RespondValidationError(c, "unsupported file type", nil)
+			return
+		case errors.Is(err, core.ErrInvalidInput):
+			errorx.RespondValidationError(c, "invalid upload payload", map[string]any{"reason": err.Error()})
 			return
 		default:
-			respondInternalError(c)
+			errorx.RespondErrorByCore(c, err, http.StatusInternalServerError, nil)
 			return
 		}
 	}
@@ -94,7 +98,7 @@ func (api *MediaAPI) Upload(c *gin.Context) {
 func (api *MediaAPI) List(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		respondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
+		errorx.RespondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
 		return
 	}
 	roleVal, _ := c.Get("kaldalis_user_role")
@@ -106,7 +110,7 @@ func (api *MediaAPI) List(c *gin.Context) {
 
 	assets, total, err := api.svc.List(c.Request.Context(), role, userID, page, pageSize, q)
 	if err != nil {
-		respondInternalError(c)
+		errorx.RespondInternalError(c)
 		return
 	}
 	c.JSON(http.StatusOK, dto.MediaListResponse{Items: dto.ToMediaAssetResponses(assets), Total: total, Page: page, PageSize: pageSize})
@@ -131,13 +135,13 @@ func (api *MediaAPI) List(c *gin.Context) {
 func (api *MediaAPI) Delete(c *gin.Context) {
 	id64, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		respondValidationError(c, "invalid id", map[string]any{"id": c.Param("id")})
+		errorx.RespondValidationError(c, "invalid id", map[string]any{"id": c.Param("id")})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		respondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
+		errorx.RespondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
 		return
 	}
 	roleVal, _ := c.Get("kaldalis_user_role")
@@ -147,20 +151,20 @@ func (api *MediaAPI) Delete(c *gin.Context) {
 		switch {
 		case errors.Is(err, service.ErrAssetReferenced):
 			cnt, _ := api.repo.CountReferences(c.Request.Context(), uint(id64))
-			respondError(c, http.StatusConflict, core.CodeConflict, "asset is referenced", map[string]any{"references": cnt})
+			errorx.RespondError(c, http.StatusConflict, core.CodeConflict, "asset is referenced", map[string]any{"references": cnt})
 			return
 		case errors.Is(err, core.ErrNotFound):
-			respondError(c, http.StatusNotFound, core.CodeNotFound, "resource not found", nil)
+			errorx.RespondError(c, http.StatusNotFound, core.CodeNotFound, "resource not found", nil)
 			return
 		case errors.Is(err, core.ErrPermission):
-			respondError(c, http.StatusForbidden, core.CodeForbidden, "permission denied", nil)
+			errorx.RespondError(c, http.StatusForbidden, core.CodeForbidden, "permission denied", nil)
 			return
 		default:
-			respondInternalError(c)
+			errorx.RespondInternalError(c)
 			return
 		}
 	}
-	respondMessage(c, http.StatusOK, "deleted")
+	errorx.RespondMessage(c, http.StatusOK, "deleted")
 }
 
 // ListPostMedia lists assets referenced by one post.
@@ -177,7 +181,7 @@ func (api *MediaAPI) Delete(c *gin.Context) {
 func (api *MediaAPI) ListPostMedia(c *gin.Context) {
 	id64, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		respondValidationError(c, "invalid post id", map[string]any{"id": c.Param("id")})
+		errorx.RespondValidationError(c, "invalid post id", map[string]any{"id": c.Param("id")})
 		return
 	}
 	purpose := c.Query("purpose")
@@ -188,7 +192,7 @@ func (api *MediaAPI) ListPostMedia(c *gin.Context) {
 
 	assets, err := api.svc.ListPostMedia(c.Request.Context(), uint(id64), p)
 	if err != nil {
-		respondInternalError(c)
+		errorx.RespondInternalError(c)
 		return
 	}
 	c.JSON(http.StatusOK, dto.MediaItemsResponse{Items: dto.ToMediaAssetResponses(assets)})
