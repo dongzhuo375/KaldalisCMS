@@ -217,4 +217,5 @@
 
 - 媒体库实现要点：见 `docs/IMPLEMENTATION_NOTES.md`
 - API 文档分层与构建策略：见 `docs/IMPLEMENTATION_NOTES.md`
+- API 错误响应契约：见 `docs/ERROR_CONTRACT.md`
 - Roadmap/TODO：见 `docs/TODO.md`

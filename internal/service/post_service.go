@@ -38,7 +38,7 @@ func NewPostServiceWithMedia(repo core.PostRepository, media *MediaService, auth
 func (s *PostService) ListPublicPosts(ctx context.Context) ([]entity.Post, error) {
 	posts, err := s.repo.GetPublished(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("获取已发布文章列表失败: %w", err)
+		return nil, normalizeServiceErrorWithOpMsg("post.list_public", "list published posts failed", err)
 	}
 	return posts, nil
 }
@@ -47,7 +47,7 @@ func (s *PostService) ListPublicPosts(ctx context.Context) ([]entity.Post, error
 func (s *PostService) GetPublicPostByID(ctx context.Context, id uint) (entity.Post, error) {
 	post, err := s.repo.GetPublishedByID(ctx, id)
 	if err != nil {
-		return entity.Post{}, fmt.Errorf("获取已发布文章失败: %w", err)
+		return entity.Post{}, normalizeServiceErrorWithOpMsg("post.get_public_by_id", "get published post by id failed", err)
 	}
 	return post, nil
 }
@@ -62,7 +62,7 @@ func (s *PostService) ListAdminPosts(ctx context.Context, actorUserID uint, acto
 	if canListAny {
 		posts, err := s.repo.GetAll(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("获取所有文章列表失败: %w", err)
+			return nil, normalizeServiceErrorWithOpMsg("post.list_admin_all", "list all posts in admin scope failed", err)
 		}
 		return posts, nil
 	}
@@ -76,7 +76,7 @@ func (s *PostService) ListAdminPosts(ctx context.Context, actorUserID uint, acto
 
 	posts, err := s.repo.GetDraftsByAuthor(ctx, actorUserID)
 	if err != nil {
-		return nil, fmt.Errorf("获取作者草稿列表失败: %w", err)
+		return nil, normalizeServiceErrorWithOpMsg("post.list_admin_own", "list own draft posts failed", err)
 	}
 	return posts, nil
 }
@@ -105,12 +105,12 @@ func (s *PostService) CreateAdminPost(ctx context.Context, actorUserID uint, act
 	post.Status = entity.StatusDraft
 
 	if err := post.CheckValidity(); err != nil {
-		return fmt.Errorf("文章数据校验失败: %w", err)
+		return fmt.Errorf("%w: invalid post payload: %v", core.ErrInvalidInput, err)
 	}
 
 	generatedSlug := slug.Make(post.Title)
 	if generatedSlug == "" {
-		return fmt.Errorf("标题无法生成有效的URL标识符")
+		return fmt.Errorf("%w: title cannot generate a valid slug", core.ErrInvalidInput)
 	}
 
 	finalSlug, err := s.generateUniqueSlug(ctx, generatedSlug)
@@ -122,7 +122,7 @@ func (s *PostService) CreateAdminPost(ctx context.Context, actorUserID uint, act
 
 	created, err := s.repo.Create(ctx, post)
 	if err != nil {
-		return fmt.Errorf("保存文章失败: %w", err)
+		return normalizeServiceErrorWithOpMsg("post.create_admin", "create admin draft post failed", err)
 	}
 
 	if s.media != nil {
@@ -144,7 +144,7 @@ func (s *PostService) generateUniqueSlug(ctx context.Context, initialSlug string
 	for {
 		exists, err := s.repo.IsSlugExists(ctx, currentSlug)
 		if err != nil {
-			return "", fmt.Errorf("检查Slug唯一性失败: %w", err)
+			return "", normalizeServiceErrorWithOpMsg("post.generate_unique_slug", "check slug uniqueness failed", err)
 		}
 
 		if !exists {
@@ -153,7 +153,7 @@ func (s *PostService) generateUniqueSlug(ctx context.Context, initialSlug string
 
 		counter++
 		if counter >= maxAttempts {
-			return "", errors.New("无法在合理尝试次数内生成唯一的URL标识符")
+			return "", fmt.Errorf("%w: unable to generate unique slug within max attempts", core.ErrConflict)
 		}
 
 		currentSlug = fmt.Sprintf("%s-%d", initialSlug, counter)
@@ -186,11 +186,11 @@ func (s *PostService) UpdateAdminPost(ctx context.Context, id uint, patch entity
 	existingEntity.ID = id
 
 	if err := existingEntity.CheckValidity(); err != nil {
-		return fmt.Errorf("更新后的数据校验失败: %w", err)
+		return fmt.Errorf("%w: invalid updated post payload: %v", core.ErrInvalidInput, err)
 	}
 
 	if err := s.repo.Update(ctx, existingEntity); err != nil {
-		return fmt.Errorf("更新文章失败: %w", err)
+		return normalizeServiceErrorWithOpMsg("post.update_admin", "update admin post failed", err)
 	}
 
 	if s.media != nil {
@@ -214,15 +214,20 @@ func (s *PostService) PublishAdminPost(ctx context.Context, id uint, actorRole s
 
 	post, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return fmt.Errorf("发布失败，文章不存在: %w", err)
+		return normalizeServiceErrorWithOpMsg("post.publish.load", "load post before publish failed", err)
+	}
+	if post.Status == entity.StatusPublished {
+		return fmt.Errorf("%w: post is already published", core.ErrConflict)
+	}
+	if err := post.CheckValidity(); err != nil {
+		return fmt.Errorf("%w: post is not publishable: %v", core.ErrInvalidInput, err)
 	}
 
-	if err := post.Publish(); err != nil {
-		return fmt.Errorf("发布文章失败: %w", err)
-	}
+	post.Status = entity.StatusPublished
+	post.UpdatedAt = time.Now()
 
 	if err := s.repo.Update(ctx, post); err != nil {
-		return fmt.Errorf("更新发布状态失败: %w", err)
+		return normalizeServiceErrorWithOpMsg("post.publish.update", "persist publish status failed", err)
 	}
 
 	return nil
@@ -236,15 +241,17 @@ func (s *PostService) MovePostToDraft(ctx context.Context, id uint, actorRole st
 
 	post, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return fmt.Errorf("下线失败，文章不存在: %w", err)
+		return normalizeServiceErrorWithOpMsg("post.move_draft.load", "load post before move-to-draft failed", err)
+	}
+	if post.Status == entity.StatusDraft {
+		return fmt.Errorf("%w: post is already draft", core.ErrConflict)
 	}
 
-	if err := post.Draft(); err != nil {
-		return fmt.Errorf("下线文章失败: %w", err)
-	}
+	post.Status = entity.StatusDraft
+	post.UpdatedAt = time.Now()
 
 	if err := s.repo.Update(ctx, post); err != nil {
-		return fmt.Errorf("更新草稿状态失败: %w", err)
+		return normalizeServiceErrorWithOpMsg("post.move_draft.update", "persist move-to-draft status failed", err)
 	}
 
 	return nil
@@ -256,7 +263,7 @@ func (s *PostService) DeleteAdminPost(ctx context.Context, id uint, actorRole st
 		return err
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
-		return fmt.Errorf("删除文章失败: %w", err)
+		return normalizeServiceErrorWithOpMsg("post.delete_admin", "delete admin post failed", err)
 	}
 	return nil
 }
@@ -269,7 +276,7 @@ func (s *PostService) loadManageablePost(ctx context.Context, id uint, actorUser
 	if canReadAny {
 		post, err := s.repo.GetByID(ctx, id)
 		if err != nil {
-			return entity.Post{}, fmt.Errorf("获取文章失败: %w", err)
+			return entity.Post{}, normalizeServiceErrorWithOpMsg("post.load_manageable", "load manageable post failed", err)
 		}
 		return post, nil
 	}
@@ -283,7 +290,7 @@ func (s *PostService) loadManageablePost(ctx context.Context, id uint, actorUser
 
 	post, err := s.repo.GetDraftByIDAndAuthor(ctx, id, actorUserID)
 	if err != nil {
-		return entity.Post{}, fmt.Errorf("获取作者草稿失败: %w", err)
+		return entity.Post{}, normalizeServiceErrorWithOpMsg("post.load_manageable_own", "load own manageable draft failed", err)
 	}
 	return post, nil
 }
@@ -296,7 +303,7 @@ func (s *PostService) loadUpdatablePost(ctx context.Context, id uint, actorUserI
 	if canUpdateAny {
 		post, err := s.repo.GetByID(ctx, id)
 		if err != nil {
-			return entity.Post{}, fmt.Errorf("获取文章失败: %w", err)
+			return entity.Post{}, normalizeServiceErrorWithOpMsg("post.load_updatable", "load updatable post failed", err)
 		}
 		return post, nil
 	}
@@ -310,7 +317,7 @@ func (s *PostService) loadUpdatablePost(ctx context.Context, id uint, actorUserI
 
 	post, err := s.repo.GetDraftByIDAndAuthor(ctx, id, actorUserID)
 	if err != nil {
-		return entity.Post{}, fmt.Errorf("获取作者草稿失败: %w", err)
+		return entity.Post{}, normalizeServiceErrorWithOpMsg("post.load_updatable_own", "load own updatable draft failed", err)
 	}
 	return post, nil
 }
@@ -320,7 +327,7 @@ func (s *PostService) authorizePostAction(ctx context.Context, actorRole string,
 		return core.ErrPermission
 	}
 	if err := s.authorizer.AuthorizePostAction(ctx, actorRole, permission); err != nil {
-		return err
+		return normalizeServiceErrorWithOpMsg("post.authorize", "authorize post action failed", err)
 	}
 	return nil
 }
@@ -330,7 +337,7 @@ func (s *PostService) hasPostPermission(ctx context.Context, actorRole string, p
 		if errors.Is(err, core.ErrPermission) {
 			return false, nil
 		}
-		return false, err
+		return false, normalizeServiceErrorWithOpMsg("post.has_permission", "check post permission failed", err)
 	}
 	return true, nil
 }

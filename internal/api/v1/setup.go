@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"KaldalisCMS/internal/api/errorx"
 	"KaldalisCMS/internal/api/v1/dto"
 	"KaldalisCMS/internal/service"
 	"net/http"
@@ -26,12 +27,6 @@ func (api *SetupAPI) RegisterRoutes(r *gin.RouterGroup) {
 }
 
 // Status returns setup mode status.
-// @Summary Setup status
-// @Description Returns installation status in setup mode.
-// @Tags setup
-// @Produce json
-// @Success 200 {object} dto.SystemStatusResponse
-// @Router /system/status [get]
 func (api *SetupAPI) Status(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.SystemStatusResponse{Installed: false})
 }
@@ -45,38 +40,28 @@ func (api *SetupAPI) Status(c *gin.Context) {
 // @Param body body dto.CheckDBRequest true "database connection payload"
 // @Success 200 {object} dto.MessageResponse
 // @Failure 400 {object} dto.ErrorResponse
-// @Failure 503 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /system/check-db [post]
 func (api *SetupAPI) CheckDB(c *gin.Context) {
 	var req dto.CheckDBRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数不完整"})
+		errorx.RespondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
 	if err := api.svc.ValidateDatabase(req.Host, req.Port, req.User, req.Pass, req.Name); err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		errorx.RespondErrorByCore(c, err, http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "数据库连接测试通过"})
+	errorx.RespondMessage(c, http.StatusOK, "database connection check passed")
 }
 
 // Setup runs first-time installation workflow.
-// @Summary Install system
-// @Description Persist setup config and initialize system data.
-// @Tags setup
-// @Accept json
-// @Produce json
-// @Param body body dto.SystemSetupRequest true "setup payload"
-// @Success 200 {object} dto.MessageResponse
-// @Failure 400 {object} dto.ErrorResponse
-// @Failure 500 {object} dto.ErrorResponse
-// @Router /system/setup [post]
 func (api *SetupAPI) Setup(c *gin.Context) {
 	var req dto.SystemSetupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errorx.RespondValidationError(c, "invalid request body", map[string]any{"reason": err.Error()})
 		return
 	}
 
@@ -94,9 +79,9 @@ func (api *SetupAPI) Setup(c *gin.Context) {
 		AdminFullAccess:    req.AdminFullAccess,
 	}
 	if err := api.svc.Install(cfg); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errorx.RespondErrorByCore(c, err, http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "安装成功，系统重启中..."})
+	errorx.RespondMessage(c, http.StatusOK, "installation succeeded, restarting system")
 }

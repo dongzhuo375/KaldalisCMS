@@ -204,8 +204,12 @@ func (r *PostRepository) Update(ctx context.Context, post entity.Post) error {
 }
 
 func (r *PostRepository) Delete(ctx context.Context, id uint) error {
-	if err := r.db.WithContext(ctx).Delete(&model.Post{}, id).Error; err != nil {
-		return fmt.Errorf("post_repository.Delete: %w", err)
+	res := r.db.WithContext(ctx).Delete(&model.Post{}, id)
+	if res.Error != nil {
+		return fmt.Errorf("post_repository.Delete: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return core.ErrNotFound
 	}
 
 	return nil

@@ -1,10 +1,12 @@
 package service
 
 import (
+	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/infra/model"
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/casbin/casbin/v2"
@@ -49,10 +51,23 @@ func (s *SetupService) SetEnforcer(enforcer *casbin.Enforcer) {
 
 var reIdentifier = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 
+func validateInstallConfig(cfg SetupConfig) error {
+	if strings.TrimSpace(cfg.DbHost) == "" || cfg.DbPort <= 0 || strings.TrimSpace(cfg.DbUser) == "" || strings.TrimSpace(cfg.DbName) == "" {
+		return fmt.Errorf("%w: invalid database setup parameters", core.ErrInvalidInput)
+	}
+	if strings.TrimSpace(cfg.SiteName) == "" || strings.TrimSpace(cfg.AdminUser) == "" || strings.TrimSpace(cfg.AdminEmail) == "" || cfg.AdminPass == "" {
+		return fmt.Errorf("%w: missing required setup fields", core.ErrInvalidInput)
+	}
+	if len([]byte(cfg.AdminPass)) > 72 {
+		return fmt.Errorf("%w: admin password exceeds bcrypt limit", core.ErrInvalidInput)
+	}
+	return nil
+}
+
 // ValidateDatabase 采用多级探测机制，确保即便默认管理库缺失也能正常初始化。
 func (s *SetupService) ValidateDatabase(host string, port int, user, pass, dbname string) error {
-	if dbname == "" {
-		return fmt.Errorf("数据库名称不能为空")
+	if strings.TrimSpace(dbname) == "" {
+		return normalizeServiceErrorWithOpMsg("setup.validate_database.input", "database name is required", core.ErrInvalidInput)
 	}
 
 	// --- 1. 尝试直接连接目标库 (第一优先级) ---
@@ -90,7 +105,7 @@ func (s *SetupService) ValidateDatabase(host string, port int, user, pass, dbnam
 	}
 
 	if adminDB == nil {
-		return fmt.Errorf("无法连接到任何管理数据库 (postgres/template1): %w", lastErr)
+		return normalizeServiceErrorWithOpMsg("setup.validate_database.admin_connect", "connect to admin database failed", fmt.Errorf("%w: %v", core.ErrInternalError, lastErr))
 	}
 	// 确保无论如何管理库连接都会关闭
 	defer func() {
@@ -100,7 +115,7 @@ func (s *SetupService) ValidateDatabase(host string, port int, user, pass, dbnam
 	}()
 
 	if !reIdentifier.MatchString(dbname) {
-		return fmt.Errorf("无效的数据库名: %s (只能包含字母、数字和下划线)", dbname)
+		return normalizeServiceErrorWithOpMsg("setup.validate_database.identifier", "database name format is invalid", core.ErrInvalidInput)
 	}
 
 	var exists int
@@ -108,27 +123,34 @@ func (s *SetupService) ValidateDatabase(host string, port int, user, pass, dbnam
 	if exists == 0 {
 		fmt.Printf("[SETUP] 数据库 [%s] 不存在，执行创建指令...\n", dbname)
 		if err := adminDB.Exec(fmt.Sprintf("CREATE DATABASE %s", dbname)).Error; err != nil {
-			return fmt.Errorf("尝试自动创建数据库失败: %w", err)
+			return normalizeServiceErrorWithOpMsg("setup.validate_database.create_db", "auto create database failed", err)
 		}
 	}
 
 	// --- 3. 最后一次终极验证 ---
 	finalDB, err := gorm.Open(postgres.Open(targetDSN), &gorm.Config{})
 	if err != nil {
-		return fmt.Errorf("数据库创建成功但无法连接: %w", err)
+		return normalizeServiceErrorWithOpMsg("setup.validate_database.final_open", "open target database after creation failed", err)
 	}
 	if sqlDB, err := finalDB.DB(); err == nil {
 		defer sqlDB.Close()
-		return sqlDB.Ping()
+		if err := sqlDB.Ping(); err != nil {
+			return normalizeServiceErrorWithOpMsg("setup.validate_database.final_ping", "ping target database failed", err)
+		}
+		return nil
 	}
 
-	return fmt.Errorf("数据库验证逻辑发生未知错误")
+	return normalizeServiceErrorWithOpMsg("setup.validate_database.final_state", "database validation ended in unknown state", core.ErrInternalError)
 }
 
 func (s *SetupService) Install(cfg SetupConfig) error {
+	if err := validateInstallConfig(cfg); err != nil {
+		return normalizeServiceErrorWithOpMsg("setup.install.validate_config", "validate setup config failed", err)
+	}
+
 	// 执行多级预检
 	if err := s.ValidateDatabase(cfg.DbHost, cfg.DbPort, cfg.DbUser, cfg.DbPass, cfg.DbName); err != nil {
-		return err
+		return normalizeServiceErrorWithOpMsg("setup.install.validate_database", "validate database before install failed", err)
 	}
 
 	// 正式连接
@@ -137,18 +159,18 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return err
+		return normalizeServiceErrorWithOpMsg("setup.install.open_db", "open install target database failed", err)
 	}
 
 	// 迁移表结构
 	if err := db.AutoMigrate(&model.User{}, &model.Category{}, &model.Tag{}, &model.Post{}, &model.SystemSetting{}, &model.MediaAsset{}, &model.PostAsset{}); err != nil {
-		return fmt.Errorf("Schema 迁移失败: %w", err)
+		return normalizeServiceErrorWithOpMsg("setup.install.migrate", "schema migration failed", err)
 	}
 
 	// 创建管理员
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminPass), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return normalizeServiceErrorWithOpMsg("setup.install.hash_admin_password", "hash admin password failed", core.ErrInvalidInput)
 	}
 
 	admin := model.User{
@@ -164,7 +186,7 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 	db.Model(&model.User{}).Where("username = ?", admin.Username).Count(&count)
 	if count == 0 {
 		if err := db.Create(&admin).Error; err != nil {
-			return fmt.Errorf("管理员创建失败: %w", err)
+			return normalizeServiceErrorWithOpMsg("setup.install.create_admin", "create admin user failed", err)
 		}
 	}
 
@@ -177,7 +199,7 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 		InstalledAt: &now,
 	}
 	if err := db.Save(&setting).Error; err != nil {
-		return fmt.Errorf("系统设置持久化失败: %w", err)
+		return normalizeServiceErrorWithOpMsg("setup.install.save_setting", "persist system setting failed", err)
 	}
 
 	// --- 权限初始化 (Casbin RBAC 细粒度模板) ---
@@ -264,7 +286,7 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 	// 保存配置文件
 	if s.SaveConfigFunc != nil {
 		if err := s.SaveConfigFunc(cfg.DbHost, cfg.DbPort, cfg.DbUser, cfg.DbPass, cfg.DbName); err != nil {
-			return fmt.Errorf("YAML 配置文件更新失败: %w", err)
+			return normalizeServiceErrorWithOpMsg("setup.install.save_config", "persist setup config failed", err)
 		}
 	}
 

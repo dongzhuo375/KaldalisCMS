@@ -1,28 +1,28 @@
 database:
-  dbname: kaldalis_cms
-  host: localhost
-  password: "2341"
-  port: 5432
-  sslmode: disable
-  timezone: Asia/Shanghai
-  user: postgres
+    dbname: kaldalis_cms
+    host: localhost
+    password: "2341"
+    port: 5432
+    sslmode: disable
+    timezone: Asia/Shanghai
+    user: postgres
 jwt:
-  auth_cookie: kaldalis_auth
-  csrf_cookie: kaldalis_csrf
-  path: /
-  role_cookie: kaldalis_role
-  same_site: 2
-  secret: AL3uaHdBI/zK/t0zfeXrFKb/7LOP8LECxp51j7pOo9PP7Ok99JceBQ8k4AZYlOE7tM8sV/55hPq/8I3WdzJi1w==
-  secure: false
-  ttl: 24h
+    auth_cookie: kaldalis_auth
+    csrf_cookie: kaldalis_csrf
+    path: /
+    role_cookie: kaldalis_role
+    same_site: 2
+    secret: AL3uaHdBI/zK/t0zfeXrFKb/7LOP8LECxp51j7pOo9PP7Ok99JceBQ8k4AZYlOE7tM8sV/55hPq/8I3WdzJi1w==
+    secure: false
+    ttl: 24h
 media:
-  max_filename_bytes: 180
-  max_upload_size_mb: 50
-  public_base_url: ""
-  upload_dir: ./data/uploads
+    max_filename_bytes: 180
+    max_upload_size_mb: 50
+    public_base_url: ""
+    upload_dir: ./data/uploads
 swagger:
-  enabled: false
-  path: /swagger
-  title: KaldalisCMS API
-  version: dev
-  description: KaldalisCMS backend API documentation
+    description: KaldalisCMS backend API documentation
+    enabled: false
+    path: /swagger
+    title: KaldalisCMS API
+    version: dev

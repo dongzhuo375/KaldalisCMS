@@ -3,6 +3,7 @@ package service
 import (
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
+	repository "KaldalisCMS/internal/infra/repository/postgres"
 	"context"
 	"errors"
 	"fmt"
@@ -48,10 +49,10 @@ func NewMediaService(repo core.MediaRepository, cfg MediaConfig) *MediaService {
 }
 
 var (
-	ErrUploadTooLarge   = errors.New("upload too large")
-	ErrUnsupportedType  = errors.New("unsupported file type")
-	ErrAssetReferenced  = errors.New("asset is referenced by posts")
-	ErrInvalidAssetName = errors.New("invalid asset name")
+	ErrUploadTooLarge   = fmt.Errorf("%w: upload too large", core.ErrInvalidInput)
+	ErrUnsupportedType  = fmt.Errorf("%w: unsupported file type", core.ErrInvalidInput)
+	ErrAssetReferenced  = fmt.Errorf("%w: asset is referenced by posts", core.ErrConflict)
+	ErrInvalidAssetName = fmt.Errorf("%w: invalid asset name", core.ErrInvalidInput)
 )
 
 // CreateAssetFromUpload persists metadata and stores file under:
@@ -60,7 +61,7 @@ var (
 // {public_base_url}/media/a/{assetID}/{stored_name}  (public_base_url may be empty)
 func (s *MediaService) CreateAssetFromUpload(ctx context.Context, ownerUserID uint, fileHeader *multipart.FileHeader) (entity.MediaAsset, error) {
 	if fileHeader == nil {
-		return entity.MediaAsset{}, fmt.Errorf("media_service.CreateAssetFromUpload: file is nil")
+		return entity.MediaAsset{}, fmt.Errorf("%w: file is nil", core.ErrInvalidInput)
 	}
 
 	maxBytes := s.cfg.MaxUploadSizeMB * 1024 * 1024
@@ -76,7 +77,7 @@ func (s *MediaService) CreateAssetFromUpload(ctx context.Context, ownerUserID ui
 
 	f, err := fileHeader.Open()
 	if err != nil {
-		return entity.MediaAsset{}, fmt.Errorf("media_service.Open: %w", err)
+		return entity.MediaAsset{}, normalizeServiceErrorWithOpMsg("media.upload.open", "open uploaded file stream failed", err)
 	}
 	defer f.Close()
 
@@ -94,7 +95,7 @@ func (s *MediaService) CreateAssetFromUpload(ctx context.Context, ownerUserID ui
 	_ = f.Close()
 	f, err = fileHeader.Open()
 	if err != nil {
-		return entity.MediaAsset{}, fmt.Errorf("media_service.reopen: %w", err)
+		return entity.MediaAsset{}, normalizeServiceErrorWithOpMsg("media.upload.reopen", "reopen uploaded file stream failed", err)
 	}
 	defer f.Close()
 
@@ -112,7 +113,7 @@ func (s *MediaService) CreateAssetFromUpload(ctx context.Context, ownerUserID ui
 	}
 
 	if err := s.repo.Create(ctx, &asset); err != nil {
-		return entity.MediaAsset{}, err
+		return entity.MediaAsset{}, normalizeServiceErrorWithOpMsg("media.upload.create_asset", "create media asset record failed", err)
 	}
 
 	// Calculate paths
@@ -133,14 +134,14 @@ func (s *MediaService) CreateAssetFromUpload(ctx context.Context, ownerUserID ui
 	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
 		// Write failed -> Mark as FAILED
 		_ = s.repo.UpdateStatus(ctx, asset.ID, entity.MediaStatusFailed)
-		return entity.MediaAsset{}, fmt.Errorf("media_service.MkdirAll: %w", err)
+		return entity.MediaAsset{}, normalizeServiceErrorWithOpMsg("media.upload.mkdir", "prepare upload directory failed", err)
 	}
 
 	out, err := os.OpenFile(absPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		// Write failed -> Mark as FAILED
 		_ = s.repo.UpdateStatus(ctx, asset.ID, entity.MediaStatusFailed)
-		return entity.MediaAsset{}, fmt.Errorf("media_service.OpenFile: %w", err)
+		return entity.MediaAsset{}, normalizeServiceErrorWithOpMsg("media.upload.open_file", "open destination file failed", err)
 	}
 	// We must close explicitely to ensure flush before DB update
 	// so we don't rely on defer alone for the success path
@@ -157,7 +158,7 @@ func (s *MediaService) CreateAssetFromUpload(ctx context.Context, ownerUserID ui
 		// Try to clean up partial file
 		_ = os.Remove(absPath)
 		_ = s.repo.UpdateStatus(ctx, asset.ID, entity.MediaStatusFailed)
-		return entity.MediaAsset{}, fmt.Errorf("media_service.Copy: %w", copyErr)
+		return entity.MediaAsset{}, normalizeServiceErrorWithOpMsg("media.upload.copy", "write uploaded file failed", copyErr)
 	}
 
 	// --- State Machine Step 3: UPLOADED ---
@@ -174,7 +175,7 @@ func (s *MediaService) CreateAssetFromUpload(ctx context.Context, ownerUserID ui
 		// DB update failed. This is the "Inconsistent" state (File ok, DB pending).
 		// We leave it as PENDING. The background cleanup job will see it's old and delete the file + record.
 		// Alternatively, we could try to delete the file here, but let's rely on the cleanup job for robustness.
-		return entity.MediaAsset{}, fmt.Errorf("media_service.update_metadata: %w", err)
+		return entity.MediaAsset{}, normalizeServiceErrorWithOpMsg("media.upload.update_metadata", "update media metadata failed", err)
 	}
 
 	asset.Status = entity.MediaStatusUploaded
@@ -197,7 +198,12 @@ func (s *MediaService) List(ctx context.Context, requesterRole string, requester
 	if requesterRole != "admin" {
 		owner = &requesterUserID
 	}
-	return s.repo.List(ctx, owner, offset, pageSize, q)
+
+	assets, total, err := s.repo.List(ctx, owner, offset, pageSize, q)
+	if err != nil {
+		return nil, 0, normalizeServiceErrorWithOpMsg("media.list", "list media assets failed", err)
+	}
+	return assets, total, nil
 }
 
 // DeleteAs deletes an asset with permission checks:
@@ -206,7 +212,10 @@ func (s *MediaService) List(ctx context.Context, requesterRole string, requester
 func (s *MediaService) DeleteAs(ctx context.Context, requesterRole string, requesterUserID uint, assetID uint) error {
 	asset, err := s.repo.GetByID(ctx, assetID)
 	if err != nil {
-		return err
+		if errors.Is(err, repository.ErrMediaNotFound) {
+			return core.ErrNotFound
+		}
+		return normalizeServiceErrorWithOpMsg("media.delete_as.get", "load media asset before delete-as failed", err)
 	}
 	if requesterRole != "admin" && asset.OwnerUserID != requesterUserID {
 		return core.ErrPermission
@@ -218,7 +227,10 @@ func (s *MediaService) DeleteAs(ctx context.Context, requesterRole string, reque
 func (s *MediaService) Delete(ctx context.Context, assetID uint) error {
 	asset, err := s.repo.GetByID(ctx, assetID)
 	if err != nil {
-		return err
+		if errors.Is(err, repository.ErrMediaNotFound) {
+			return core.ErrNotFound
+		}
+		return normalizeServiceErrorWithOpMsg("media.delete.get", "load media asset before delete failed", err)
 	}
 	return s.deleteByAsset(ctx, asset)
 }
@@ -246,7 +258,7 @@ func (s *MediaService) CleanupStaleMedia(ctx context.Context) error {
 	cutoffDeleted := time.Now().Add(-1 * time.Hour)
 	deletedAssets, err := s.repo.ListSoftDeletedOlderThan(ctx, cutoffDeleted, limit)
 	if err != nil {
-		return fmt.Errorf("failed to list soft-deleted assets: %w", err)
+		return normalizeServiceErrorWithOpMsg("media.cleanup.list_deleted", "list soft-deleted media assets failed", err)
 	}
 
 	if len(deletedAssets) > 0 {
@@ -268,7 +280,8 @@ func (s *MediaService) physicalDelete(ctx context.Context, asset entity.MediaAss
 	// We check if file exists to give better logs, but Remove is idempotent-ish
 	if _, err := os.Stat(absPath); err == nil {
 		if err := os.Remove(absPath); err != nil {
-			fmt.Printf("[MediaCleanup] Failed to remove file %s: %v\n", absPath, err)
+			nerr := normalizeServiceErrorWithOpMsg("media.cleanup.remove_file", fmt.Sprintf("remove physical media file failed (path=%s)", absPath), err)
+			fmt.Printf("[MediaCleanup] %v\n", nerr)
 			return // If file deletion fails (e.g. locked), retry later
 		}
 	}
@@ -276,7 +289,8 @@ func (s *MediaService) physicalDelete(ctx context.Context, asset entity.MediaAss
 
 	// 2. Delete DB record HARD
 	if err := s.repo.DeletePhysical(ctx, asset.ID); err != nil {
-		fmt.Printf("[MediaCleanup] Failed to hard delete asset ID %d: %v\n", asset.ID, err)
+		nerr := normalizeServiceErrorWithOpMsg("media.cleanup.delete_physical", fmt.Sprintf("hard delete media asset failed (id=%d)", asset.ID), err)
+		fmt.Printf("[MediaCleanup] %v\n", nerr)
 	} else {
 		fmt.Printf("[MediaCleanup] Hard deleted asset ID %d\n", asset.ID)
 	}
@@ -285,7 +299,7 @@ func (s *MediaService) physicalDelete(ctx context.Context, asset entity.MediaAss
 func (s *MediaService) deleteByAsset(ctx context.Context, asset entity.MediaAsset) error {
 	cnt, err := s.repo.CountReferences(ctx, asset.ID)
 	if err != nil {
-		return err
+		return normalizeServiceErrorWithOpMsg("media.delete.count_refs", "count media references failed", err)
 	}
 	if cnt > 0 {
 		return ErrAssetReferenced
@@ -294,21 +308,25 @@ func (s *MediaService) deleteByAsset(ctx context.Context, asset entity.MediaAsse
 	// Scheme A: Soft Delete Only
 	// We rely on background job to cleanup the file and hard delete the record.
 	if err := s.repo.Delete(ctx, asset.ID); err != nil {
-		return err
+		return normalizeServiceErrorWithOpMsg("media.delete.soft_delete", "soft delete media asset failed", err)
 	}
 
 	return nil
 }
 
 func (s *MediaService) ListPostMedia(ctx context.Context, postID uint, purpose *string) ([]entity.MediaAsset, error) {
-	return s.repo.ListPostMedia(ctx, postID, purpose)
+	assets, err := s.repo.ListPostMedia(ctx, postID, purpose)
+	if err != nil {
+		return nil, normalizeServiceErrorWithOpMsg("media.list_post_media", "list post media references failed", err)
+	}
+	return assets, nil
 }
 
 // SyncPostReferences parses markdown content and cover URL to update post_assets mappings.
 func (s *MediaService) SyncPostReferences(ctx context.Context, postID uint, content string, cover string) error {
 	contentIDs := extractAssetIDsFromMarkdown(content)
 	if err := s.repo.UpsertPostReferences(ctx, postID, "content", contentIDs); err != nil {
-		return err
+		return normalizeServiceErrorWithOpMsg("media.sync_refs.content", "sync content media references failed", err)
 	}
 
 	coverID := extractAssetIDFromMediaURL(cover)
@@ -317,7 +335,7 @@ func (s *MediaService) SyncPostReferences(ctx context.Context, postID uint, cont
 		coverIDs = []uint{coverID}
 	}
 	if err := s.repo.UpsertPostReferences(ctx, postID, "cover", coverIDs); err != nil {
-		return err
+		return normalizeServiceErrorWithOpMsg("media.sync_refs.cover", "sync cover media references failed", err)
 	}
 	return nil
 }
