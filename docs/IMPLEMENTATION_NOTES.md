@@ -62,12 +62,23 @@
 
 实现细节：
 - `readyz` 的 DB 检查使用 `context.WithTimeout(..., 2s)` + `PingContext`，避免探针阻塞工作线程。
+- `readyz` 增加进程内短 TTL 缓存以削峰：成功结果默认缓存 `400ms`，失败结果默认缓存 `250ms`，在高频探针下可显著降低 DB `ping` 压力并保持较快恢复感知。
 - 不额外引入第三方健康检查库，优先保持依赖面最小；后续可在 `checks` 中继续扩展 `redis`、`queue`、`storage` 等依赖状态。
+
+指标与告警：
+- 新增 Prometheus 指标：
+  - `kaldalis_probe_requests_total{probe,mode,result,cache}`：探针请求总量计数（包含缓存命中/未命中）。
+  - `kaldalis_probe_ready_state{mode}`：当前就绪状态（`1=ready`，`0=not_ready`）。
+- 指标抓取端点：`GET /metrics`。
+- 推荐告警基线（按 5 分钟窗口）：
+  - 就绪状态持续异常：`max_over_time(kaldalis_probe_ready_state{mode="app"}[5m]) < 1`。
+  - 未就绪占比过高：
+    `sum(rate(kaldalis_probe_requests_total{probe="readyz",mode="app",result="not_ready"}[5m])) / sum(rate(kaldalis_probe_requests_total{probe="readyz",mode="app"}[5m])) > 0.2`。
 
 代表文件：
 - `internal/api/v1/health.go`
 - `internal/service/system_service.go` (`CheckDatabase`)
-- `internal/router/router.go`（App/Setup 路由统一注册）
+- `internal/router/router.go`（App/Setup 路由统一注册，含 `/metrics`）
 
 容器探针示例：
 

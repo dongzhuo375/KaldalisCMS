@@ -64,11 +64,14 @@
 - [x] App Mode `readyz` 接入 DB `PingContext` 检查，失败返回 `503`。
 - [x] Setup Mode `readyz` 语义固定为未就绪（`503`）。
 - [x] 响应结构统一为可扩展 `status/mode/checks`。
+- [x] 提供 Docker `HEALTHCHECK` 与 K8s `liveness/readinessProbe` 对接示例（见 `docs/IMPLEMENTATION_NOTES.md`）。
 
 新增代做（探针能力扩展）：
 - [ ] P1：在 `checks` 中增加 `redis`、`queue`、`storage` 多依赖聚合检查。
-- [ ] P1：加入轻量级短 TTL 缓存（如 200~500ms）以削峰高频探针流量。
-- [ ] P1：补充探针结果指标上报（Prometheus counter/gauge）与告警阈值文档。
+- [x] P1：加入轻量级短 TTL 缓存（如 200~500ms）以削峰高频探针流量。
+- [x] P1：补充探针结果指标上报（Prometheus counter/gauge）与告警阈值文档。
+- [ ] P1：补充 `Dockerfile`/`docker-compose` 实际探针配置，并完成一次容器内探针联调记录。
+- [ ] P1：补充 K8s `startupProbe`（冷启动保护）及 `liveness/readiness` 推荐阈值基线文档。
 
 ### P0-6) 文章发布最小工作流（Draft/Published）
 

@@ -16,6 +16,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gorm.io/gorm"
 )
 
@@ -80,6 +81,7 @@ func ensurePostWorkflowPolicies(enforcer *casbin.Enforcer) {
 func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, swaggerOpts SwaggerOptions) *gin.Engine {
 	r := gin.Default()
 	r.Use(apimw.CORSMiddleware())
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	registerSwaggerRoutes(r, swaggerOpts)
 
 	uploadDir := os.Getenv("MEDIA_UPLOAD_DIR")
@@ -177,6 +179,7 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, s
 func NewSetupRouter(save func(string, int, string, string, string) error, reload func() error, swaggerOpts SwaggerOptions) *gin.Engine {
 	r := gin.Default()
 	r.Use(apimw.CORSMiddleware())
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	registerSwaggerRoutes(r, swaggerOpts)
 
 	setupSvc := service.NewSetupService(save, reload)
