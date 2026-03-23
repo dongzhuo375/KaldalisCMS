@@ -44,6 +44,18 @@ func (s *SystemService) Status(ctx context.Context) (SystemStatus, error) {
 	return SystemStatus{Installed: set.Installed, SiteName: siteName}, nil
 }
 
+// CheckDatabase verifies database connectivity for readiness probes.
+func (s *SystemService) CheckDatabase(ctx context.Context) error {
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		return normalizeServiceErrorWithOpMsg("system.readyz.db_handle", "resolve sql db handle failed", err)
+	}
+	if err := sqlDB.PingContext(ctx); err != nil {
+		return normalizeServiceErrorWithOpMsg("system.readyz.db_ping", "database ping failed", err)
+	}
+	return nil
+}
+
 type SetupParams struct {
 	SiteName      string
 	AdminUsername string

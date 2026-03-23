@@ -11,3 +11,16 @@ type ErrorResponse struct {
 type MessageResponse struct {
 	Message string `json:"message"`
 }
+
+// HealthCheckResult describes one dependency check in readiness probes.
+type HealthCheckResult struct {
+	Status string `json:"status"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// HealthResponse is a stable and extensible probe response contract.
+type HealthResponse struct {
+	Status string                       `json:"status"`
+	Mode   string                       `json:"mode"`
+	Checks map[string]HealthCheckResult `json:"checks"`
+}

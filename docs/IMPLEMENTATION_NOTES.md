@@ -38,6 +38,55 @@
 代表文件：
 - `cmd/server/config.go` (`SaveDatabaseConfig`)
 
+### Root Health/Ready 探针 - [2026-03-23 新增]
+
+系统在根路径提供统一探针接口，供 Docker/K8s/反向代理进行存活与就绪判定。
+
+- `GET /healthz`：仅表示进程存活，恒定返回 `200`。
+- `GET /readyz`：表示服务可接流量；App Mode 下至少检查 DB `PingContext`；Setup Mode 下固定返回 `503`（未就绪）。
+
+响应结构固定且可扩展：
+
+```json
+{
+  "status": "ok|not_ready",
+  "mode": "app|setup",
+  "checks": {
+    "database": {
+      "status": "ok|fail|skip",
+      "detail": "optional"
+    }
+  }
+}
+```
+
+实现细节：
+- `readyz` 的 DB 检查使用 `context.WithTimeout(..., 2s)` + `PingContext`，避免探针阻塞工作线程。
+- 不额外引入第三方健康检查库，优先保持依赖面最小；后续可在 `checks` 中继续扩展 `redis`、`queue`、`storage` 等依赖状态。
+
+代表文件：
+- `internal/api/v1/health.go`
+- `internal/service/system_service.go` (`CheckDatabase`)
+- `internal/router/router.go`（App/Setup 路由统一注册）
+
+容器探针示例：
+
+```dockerfile
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8080/healthz || exit 1
+```
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8080
+```
+
 ---
 
 ## 媒体库（Media Library）

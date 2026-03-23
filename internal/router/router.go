@@ -123,6 +123,8 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, s
 	systemRepo := repository.NewSystemRepository(db)
 	systemService := service.NewSystemService(db, systemRepo, userService)
 	systemAPI := v1.NewSystemAPI(systemService)
+	healthAPI := v1.NewAppHealthAPI(systemService)
+	healthAPI.RegisterRootRoutes(r)
 
 	go func() {
 		utils.RunTicker(1*time.Hour, func() {
@@ -179,6 +181,8 @@ func NewSetupRouter(save func(string, int, string, string, string) error, reload
 
 	setupSvc := service.NewSetupService(save, reload)
 	setupAPI := v1.NewSetupAPI(setupSvc)
+	healthAPI := v1.NewSetupHealthAPI()
+	healthAPI.RegisterRootRoutes(r)
 
 	apiV1 := r.Group("/api/v1")
 	setupAPI.RegisterRoutes(apiV1)
