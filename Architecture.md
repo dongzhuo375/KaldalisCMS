@@ -18,6 +18,7 @@
 │   │   │   │   ├── setup.go              # 安装模式 API [已实现]
 │   │   │   │   ├── user.go               # 用户管理 API [已实现]
 │   │   │   │   ├── system.go             # 系统管理 API [已实现]
+│   │   │   │   ├── health.go             # Health/Ready 探针 API [已实现]
 │   │   │   │   ├── media.go              # 媒体库 API [已实现]
 │   │   │   │   ├── theme.go              # 主题管理 API [预留]
 │   │   │   │   ├── upload.go             # 通用文件上传 API [预留]（当前以 media.go 为主）

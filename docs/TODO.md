@@ -46,7 +46,7 @@
 - 文档说明 uploadDir 的目录约束；
 - 覆盖常见路径穿越/误放文件风险。
 
-### P0-5) Health/Ready 探活接口
+### P0-5) Health/Ready 探活接口 **[2026-03-23 完成]**
 
 目标：支持部署平台（容器/反向代理）探活与就绪判断。
 
@@ -58,6 +58,20 @@
 - `/healthz`：进程存活即可 200；
 - `/readyz`：至少检查 DB 连接可用；
 - 响应结构固定，便于监控。
+
+本次改造进度：
+- [x] 新增根路径探针：`GET /healthz` 与 `GET /readyz`。
+- [x] App Mode `readyz` 接入 DB `PingContext` 检查，失败返回 `503`。
+- [x] Setup Mode `readyz` 语义固定为未就绪（`503`）。
+- [x] 响应结构统一为可扩展 `status/mode/checks`。
+- [x] 提供 Docker `HEALTHCHECK` 与 K8s `liveness/readinessProbe` 对接示例（见 `docs/IMPLEMENTATION_NOTES.md`）。
+
+新增代做（探针能力扩展）：
+- [ ] P1：在 `checks` 中增加 `redis`、`queue`、`storage` 多依赖聚合检查。
+- [x] P1：加入轻量级短 TTL 缓存（如 200~500ms）以削峰高频探针流量。
+- [x] P1：补充探针结果指标上报（Prometheus counter/gauge）与告警阈值文档。
+- [ ] P1：补充 `Dockerfile`/`docker-compose` 实际探针配置，并完成一次容器内探针联调记录。
+- [ ] P1：补充 K8s `startupProbe`（冷启动保护）及 `liveness/readiness` 推荐阈值基线文档。
 
 ### P0-6) 文章发布最小工作流（Draft/Published）
 

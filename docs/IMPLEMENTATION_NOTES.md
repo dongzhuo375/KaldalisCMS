@@ -38,6 +38,66 @@
 代表文件：
 - `cmd/server/config.go` (`SaveDatabaseConfig`)
 
+### Root Health/Ready 探针 - [2026-03-23 新增]
+
+系统在根路径提供统一探针接口，供 Docker/K8s/反向代理进行存活与就绪判定。
+
+- `GET /healthz`：仅表示进程存活，恒定返回 `200`。
+- `GET /readyz`：表示服务可接流量；App Mode 下至少检查 DB `PingContext`；Setup Mode 下固定返回 `503`（未就绪）。
+
+响应结构固定且可扩展：
+
+```json
+{
+  "status": "ok|not_ready",
+  "mode": "app|setup",
+  "checks": {
+    "database": {
+      "status": "ok|fail|skip",
+      "detail": "optional"
+    }
+  }
+}
+```
+
+实现细节：
+- `readyz` 的 DB 检查使用 `context.WithTimeout(..., 2s)` + `PingContext`，避免探针阻塞工作线程。
+- `readyz` 增加进程内短 TTL 缓存以削峰：成功结果默认缓存 `400ms`，失败结果默认缓存 `250ms`，在高频探针下可显著降低 DB `ping` 压力并保持较快恢复感知。
+- 不额外引入第三方健康检查库，优先保持依赖面最小；后续可在 `checks` 中继续扩展 `redis`、`queue`、`storage` 等依赖状态。
+
+指标与告警：
+- 新增 Prometheus 指标：
+  - `kaldalis_probe_requests_total{probe,mode,result,cache}`：探针请求总量计数（包含缓存命中/未命中）。
+  - `kaldalis_probe_ready_state{mode}`：当前就绪状态（`1=ready`，`0=not_ready`）。
+- 指标抓取端点：`GET /metrics`。
+- 推荐告警基线（按 5 分钟窗口）：
+  - 就绪状态持续异常：`max_over_time(kaldalis_probe_ready_state{mode="app"}[5m]) < 1`。
+  - 未就绪占比过高：
+    `sum(rate(kaldalis_probe_requests_total{probe="readyz",mode="app",result="not_ready"}[5m])) / sum(rate(kaldalis_probe_requests_total{probe="readyz",mode="app"}[5m])) > 0.2`。
+
+代表文件：
+- `internal/api/v1/health.go`
+- `internal/service/system_service.go` (`CheckDatabase`)
+- `internal/router/router.go`（App/Setup 路由统一注册，含 `/metrics`）
+
+容器探针示例：
+
+```dockerfile
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8080/healthz || exit 1
+```
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8080
+```
+
 ---
 
 ## 媒体库（Media Library）
