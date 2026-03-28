@@ -29,7 +29,33 @@ func (api *UserAPI) RegisterRoutes(router *gin.RouterGroup) {
 	{
 		userRoutes.POST("/register", api.Register)
 		userRoutes.POST("/login", api.Login)
+		userRoutes.GET("/profile", api.GetProfile)
 	}
+}
+
+// GetProfile returns the current authenticated user's profile.
+func (api *UserAPI) GetProfile(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		// Middleware already handles 401 if it's required, 
+		// but OptionalAuth might let it through.
+		errorx.RespondError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
+		return
+	}
+
+	ctx := c.Request.Context()
+	user, err := api.service.GetUserByID(ctx, userID)
+	if err != nil {
+		errorx.RespondErrorByCore(c, err, http.StatusNotFound, nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.LoginUserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		Role:     user.Role,
+	})
 }
 
 // Register handles new user registration.

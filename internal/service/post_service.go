@@ -93,36 +93,36 @@ func (s *PostService) GetAdminPostByID(ctx context.Context, id uint, actorUserID
 
 // CreateAdminPost persists a new post as Draft.
 // The authenticated actor is always recorded as the author to keep ownership trustworthy.
-func (s *PostService) CreateAdminPost(ctx context.Context, actorUserID uint, actorRole string, post entity.Post) error {
+func (s *PostService) CreateAdminPost(ctx context.Context, actorUserID uint, actorRole string, post entity.Post) (entity.Post, error) {
 	if actorUserID == 0 {
-		return core.ErrPermission
+		return entity.Post{}, core.ErrPermission
 	}
 	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionCreateOwnDraft); err != nil {
-		return err
+		return entity.Post{}, err
 	}
 
 	post.AuthorID = actorUserID
 	post.Status = entity.StatusDraft
 
 	if err := post.CheckValidity(); err != nil {
-		return fmt.Errorf("%w: invalid post payload: %v", core.ErrInvalidInput, err)
+		return entity.Post{}, fmt.Errorf("%w: invalid post payload: %v", core.ErrInvalidInput, err)
 	}
 
 	generatedSlug := slug.Make(post.Title)
 	if generatedSlug == "" {
-		return fmt.Errorf("%w: title cannot generate a valid slug", core.ErrInvalidInput)
+		return entity.Post{}, fmt.Errorf("%w: title cannot generate a valid slug", core.ErrInvalidInput)
 	}
 
 	finalSlug, err := s.generateUniqueSlug(ctx, generatedSlug)
 	if err != nil {
-		return err
+		return entity.Post{}, err
 	}
 
 	post.Slug = finalSlug
 
 	created, err := s.repo.Create(ctx, post)
 	if err != nil {
-		return normalizeServiceErrorWithOpMsg("post.create_admin", "create admin draft post failed", err)
+		return entity.Post{}, normalizeServiceErrorWithOpMsg("post.create_admin", "create admin draft post failed", err)
 	}
 
 	if s.media != nil {
@@ -133,7 +133,7 @@ func (s *PostService) CreateAdminPost(ctx context.Context, actorUserID uint, act
 			log.Printf("[ERROR] Post created (ID: %d) but failed to sync media references: %v", created.ID, err)
 		}
 	}
-	return nil
+	return created, nil
 }
 
 func (s *PostService) generateUniqueSlug(ctx context.Context, initialSlug string) (string, error) {

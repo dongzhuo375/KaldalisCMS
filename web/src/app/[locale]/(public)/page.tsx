@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import {Link} from '@/i18n/routing';
 import { ArrowRight, BookOpen, Users, Shield, Zap, CheckCircle2, Layers } from "lucide-react";
 import { useTranslations } from 'next-intl';
-import FluidBackground from "@/components/site/fluid-background";
+import FluidSimulationBackground from "@/components/site/fluid-simulation-background";
 
 export default function HomePage() {
   const { user, isLoggedIn } = useAuthStore();
@@ -15,7 +15,7 @@ export default function HomePage() {
   return (
     <div className="relative z-0 min-h-[calc(100vh-4rem)] flex flex-col justify-center">
       {/* 3D 流体背景 */}
-      <FluidBackground />
+      <FluidSimulationBackground />
 
       <div className="space-y-24 py-12 md:py-20">
         

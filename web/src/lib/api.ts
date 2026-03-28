@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { toast } from 'sonner';
 
 // 创建 axios 实例
 const api = axios.create({
@@ -9,20 +10,13 @@ const api = axios.create({
 });
 
 // 🟢 请求拦截器 (Request Interceptor)
-// 在这里处理 CSRF Token
 api.interceptors.request.use(
   (config) => {
     // 1. 尝试从浏览器 Cookie 中获取 CSRF Token
+    // 注意：CSRF Cookie 名在后端配置为 kaldalis_csrf
     const csrfToken = Cookies.get('kaldalis_csrf');
-    // Debug info
-    if (typeof window !== 'undefined') {
-       console.log("🚀 [API Debug] Request:", config.url);
-       console.log("🚀 [API Debug] All Cookies:", document.cookie);
-       console.log("🚀 [API Debug] CSRF Token found:", csrfToken);
-    }
-
+    
     // 2. 如果拿到了，就塞到 Header 里
-    // 后端通常识别的 Header key 是 "X-CSRF-Token" 或 "X-Xsrf-Token"
     if (csrfToken) {
       config.headers['X-CSRF-Token'] = csrfToken;
     }
@@ -41,20 +35,27 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    // 统一错误处理
-    console.error("API请求错误:", error.response?.data?.message || error.message);
-    
-    // 如果是 401 (未登录) 且当前不在登录页，跳转登录
-    if (error.response?.status === 401) {
-       // 注意：Next.js 的 Router 在这里不能直接用，只能用 window.location
-       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-         // window.location.href = '/login'; // 可选：强制踢下线
-       }
+    const message = error.response?.data?.message || error.message || "Unknown error occurred";
+    const status = error.response?.status;
+    const url = error.config?.url || "";
+
+    // 统一错误提示
+    // 401: Unauthorized (expected when checking profile if not logged in)
+    // 404: Not Found
+    if (status !== 401 && status !== 404) {
+      toast.error(message);
+    }
+
+    // Only log error if it's not a routine profile check failing
+    if (status !== 401 || (!url.includes('/users/profile') && !url.includes('/system/status'))) {
+      console.error(`[API Error] ${status}: ${message} (${url})`);
     }
     
-    // 如果是 403 (CSRF 失败或权限不足)
-    if (error.response?.status === 403) {
-        console.error("权限不足或 CSRF 校验失败");
+    // 如果是 401 (未登录) 且当前不在登录页，跳转登录
+    if (status === 401) {
+       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/setup')) {
+         // window.location.href = '/login'; 
+       }
     }
 
     return Promise.reject(error);

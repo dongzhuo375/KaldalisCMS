@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+import { useParams } from "next/navigation";
+
 export default function AdminLayout({
   children,
 }: {
@@ -35,12 +37,17 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const params = useParams();
+  const rawLocale = params?.locale as string;
+  const locale = (rawLocale && rawLocale !== 'undefined') ? rawLocale : 'zh-CN';
+  
   const t = useTranslations('admin');
   const { user, isLoggedIn, logout } = useAuthStore();
 
   // 登录守卫：如果未登录，重定向到登录页
   React.useEffect(() => {
     if (!isLoggedIn) {
+      // Ensuring we don't redirect to /undefined/login
       router.replace("/login");
     }
   }, [isLoggedIn, router]);
@@ -102,7 +109,7 @@ export default function AdminLayout({
             return (
               <Link 
                 key={item.href}
-                href={item.href as any} 
+                href={item.href} 
                 className={cn(
                   "flex items-center justify-between group rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive 
