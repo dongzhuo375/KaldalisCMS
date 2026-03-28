@@ -246,7 +246,14 @@ export default function PostsPage() {
                                         : '-'}
                                   </span>
                                   <span className="text-[10px] text-slate-600 font-bold uppercase tracking-tighter">
-                                      {(dateObj && locale !== 'undefined') ? format.relativeTime(dateObj, now) : ''}
+                                      {dateObj ? (() => {
+                                        const diffInSeconds = Math.floor((dateObj.getTime() - now.getTime()) / 1000);
+                                        const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+                                        if (Math.abs(diffInSeconds) < 60) return rtf.format(diffInSeconds, 'second');
+                                        if (Math.abs(diffInSeconds) < 3600) return rtf.format(Math.floor(diffInSeconds / 60), 'minute');
+                                        if (Math.abs(diffInSeconds) < 86400) return rtf.format(Math.floor(diffInSeconds / 3600), 'hour');
+                                        return rtf.format(Math.floor(diffInSeconds / 86400), 'day');
+                                      })() : ''}
                                   </span>
                               </div>
 

@@ -28,7 +28,10 @@ export default async function RootLayout({
   children: React.ReactNode;
   params: Promise<{locale: string}>;
 }) {
-  const {locale} = await params;
+  const resolvedParams = await params;
+  const locale = (resolvedParams.locale && resolvedParams.locale !== 'undefined') 
+    ? resolvedParams.locale 
+    : routing.defaultLocale;
 
   // Providing all messages to the client
   // side is the easiest way to get started
