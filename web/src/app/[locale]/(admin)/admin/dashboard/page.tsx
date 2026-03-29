@@ -1,33 +1,42 @@
 "use client";
 
 import { 
-  Eye, 
   FileText, 
-  Users, 
-  Server, 
   Activity, 
   Clock, 
   Loader2,
-  TrendingUp,
-  Plus
+  Database,
+  ShieldCheck,
+  Cpu,
+  Zap,
+  Plus,
+  Terminal,
+  ChevronRight,
+  Code
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, getImageUrl } from "@/lib/utils";
 import { useTranslations } from 'next-intl';
-import { useSystemStatus } from "@/services/system-service";
+import { useSystemStatus, useReadyz } from "@/services/system-service";
 import { usePosts } from "@/services/post-service";
-import { motion } from "framer-motion";
+import { useMedia } from "@/services/media-service";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "@/i18n/routing";
-
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
   const t = useTranslations('admin');
   const { data: status, isLoading: statusLoading } = useSystemStatus();
-  const { data: posts = [], isLoading: postsLoading } = usePosts({ limit: 5, admin: true });
+  const { data: health, isLoading: healthLoading } = useReadyz();
+  const { data: postsData = [], isLoading: postsLoading } = usePosts({ limit: 5, admin: true });
+  const { data: mediaData, isLoading: mediaLoading } = useMedia({ page_size: 1 });
 
-  if (statusLoading || postsLoading) {
+  const posts = Array.isArray(postsData) ? postsData : [];
+  const isLoading = statusLoading || healthLoading || postsLoading || mediaLoading;
+
+  if (isLoading) {
     return (
       <div className="h-full space-y-10 pb-20">
         <header className="flex justify-between items-end gap-6">
@@ -53,35 +62,42 @@ export default function DashboardPage() {
     );
   }
 
+  const dbStatus = health?.checks?.database?.status === 'ok';
+  const engineMode = health?.mode || 'unknown';
+
   const stats = [
     {
-      title: "Total Impressions",
-      value: "124,592",
-      change: "+12.5%",
-      icon: Eye,
+      title: "Database Link",
+      value: dbStatus ? "Connected" : "Disconnected",
+      status: dbStatus ? "success" : "error",
+      icon: Database,
+      detail: dbStatus ? "PostgreSQL Active" : "Check logs"
     },
     {
-      title: "Articles Published",
-      value: posts.filter(p => p.status === 1).length.toString(),
-      change: `+${posts.length} total`,
+      title: "API Engine",
+      value: health?.status === 'ok' ? "Healthy" : "Degraded",
+      status: health?.status === 'ok' ? "success" : "warning",
+      icon: Zap,
+      detail: `Mode: ${engineMode.toUpperCase()}`
+    },
+    {
+      title: "Content Store",
+      value: posts.length.toString(),
+      status: "neutral",
       icon: FileText,
+      detail: "Managed Articles"
     },
     {
-      title: "Community Growth",
-      value: "1.2k",
-      change: "Stable",
-      icon: Users,
-    },
-    {
-      title: "System Uptime",
-      value: "99.9%",
-      change: "Online",
+      title: "Media Assets",
+      value: mediaData?.total?.toString() || "0",
+      status: "neutral",
       icon: Activity,
+      detail: "Uploaded Files"
     }
   ];
 
   return (
-    <div className="h-full overflow-y-auto space-y-10 custom-scrollbar pb-20">
+    <div className="h-full space-y-10 custom-scrollbar pb-20">
       
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -94,8 +110,11 @@ export default function DashboardPage() {
             {status?.site_name || "Console"}
           </h1>
           <p className="text-muted-foreground font-medium flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-            System is operational • {status?.version || 'v2.4.0'}
+            <span className={cn(
+              "w-2 h-2 rounded-full animate-pulse",
+              dbStatus ? "bg-emerald-500" : "bg-rose-500"
+            )} />
+            {dbStatus ? "System is fully operational" : "System issue detected"} • {status?.version || 'v2.4.0'}
           </p>
         </motion.div>
 
@@ -106,7 +125,7 @@ export default function DashboardPage() {
         </Link>
       </header>
 
-      {/* Stats Grid */}
+      {/* Stats Grid: Real Health Data */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
           <motion.div
@@ -120,13 +139,17 @@ export default function DashboardPage() {
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground group-hover:text-accent transition-colors">
                   {stat.title}
                 </CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" strokeWidth={2.5} />
+                <stat.icon className={cn(
+                  "h-4 w-4",
+                  stat.status === 'success' ? "text-emerald-500" : 
+                  stat.status === 'error' ? "text-rose-500" : 
+                  "text-muted-foreground"
+                )} strokeWidth={2.5} />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-serif font-medium">{stat.value}</div>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <TrendingUp className="w-3 h-3 text-accent" />
-                  <span className="text-[10px] font-bold text-accent">{stat.change}</span>
+                <div className="text-2xl font-serif font-medium">{stat.value}</div>
+                <div className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1 italic">
+                  {stat.detail}
                 </div>
               </CardContent>
             </Card>
@@ -138,8 +161,9 @@ export default function DashboardPage() {
         
         {/* Recent Content */}
         <Card className="lg:col-span-2 border-border shadow-none bg-transparent">
-          <CardHeader className="px-0">
-            <CardTitle className="text-2xl font-serif font-medium">Recent Articles</CardTitle>
+          <CardHeader className="px-0 flex flex-row items-center justify-between">
+            <CardTitle className="text-2xl font-serif font-medium">Recent Activity</CardTitle>
+            <Link href="/admin/posts" className="text-xs font-bold uppercase text-accent hover:underline">View All</Link>
           </CardHeader>
           <CardContent className="px-0 pt-2">
             <div className="space-y-1">
@@ -154,8 +178,12 @@ export default function DashboardPage() {
                   className="flex items-center justify-between p-4 rounded-xl hover:bg-muted/50 transition-colors group border border-transparent hover:border-border"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-accent/5 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all">
-                      <FileText className="w-5 h-5" />
+                    <div className="w-10 h-10 rounded-full bg-accent/5 overflow-hidden flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all">
+                      {item.cover ? (
+                        <img src={getImageUrl(item.cover)} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <FileText className="w-5 h-5" />
+                      )}
                     </div>
                     <div>
                       <h4 className="font-bold text-sm group-hover:text-accent transition-colors">{item.title}</h4>
@@ -176,23 +204,44 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* System Activity */}
+        {/* System Telemetry & Logs */}
         <div className="space-y-8">
           <section className="space-y-4">
-            <h3 className="text-xl font-serif font-medium">System Health</h3>
-            <div className="space-y-4 p-6 rounded-2xl border border-border bg-white/30 dark:bg-slate-900/30 backdrop-blur-sm">
-              <ResourceItem label="Core Usage" value={14} />
-              <ResourceItem label="Memory" value={42} />
-              <ResourceItem label="I/O Speed" value={8} />
+            <div className="flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-accent" />
+              <h3 className="text-xl font-serif font-medium">Telemetry</h3>
+            </div>
+            
+            <div className="p-6 rounded-2xl border border-border bg-slate-950 text-emerald-500 font-mono text-[10px] leading-relaxed overflow-hidden relative group">
+               <div className="absolute top-2 right-2 flex gap-1 opacity-30 group-hover:opacity-100 transition-opacity">
+                  <div className="w-2 h-2 rounded-full bg-rose-500" />
+                  <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+               </div>
+               <pre className="custom-scrollbar overflow-x-auto">
+                 {JSON.stringify(health, null, 2)}
+               </pre>
             </div>
           </section>
 
           <section className="space-y-4">
-            <h3 className="text-xl font-serif font-medium">Activity Log</h3>
-            <div className="relative border-l-2 border-muted ml-2 space-y-6 py-2">
-              <LogItem time="Just now" msg="Post 'Refactor' published" />
-              <LogItem time="2h ago" msg="New media asset uploaded" />
-              <LogItem time="5h ago" msg="Admin session initiated" />
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-serif font-medium">Session</h3>
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            </div>
+            <div className="space-y-4 p-6 rounded-2xl border border-border bg-white/30 dark:bg-slate-900/30 backdrop-blur-sm">
+               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                  <span className="text-muted-foreground">Process Identity</span>
+                  <span className="text-foreground">Node_01</span>
+               </div>
+               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                  <span className="text-muted-foreground">Up Since</span>
+                  <span className="text-foreground">24 Mar 2026</span>
+               </div>
+               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                  <span className="text-muted-foreground">Region</span>
+                  <span className="text-foreground">Global_Edge</span>
+               </div>
             </div>
           </section>
         </div>
@@ -200,34 +249,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-function ResourceItem({ label, value }: { label: string, value: number }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        <span>{label}</span>
-        <span>{value}%</span>
-      </div>
-      <div className="h-1 bg-muted rounded-full overflow-hidden">
-        <motion.div 
-          initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
-          transition={{ duration: 1, ease: "easeOut" }}
-          className="h-full bg-accent"
-        />
-      </div>
-    </div>
-  )
-}
-
-function LogItem({ time, msg }: { time: string, msg: string }) {
-  return (
-    <div className="ml-6 relative">
-      <div className="absolute -left-[33px] w-3 h-3 rounded-full bg-background border-2 border-accent" />
-      <p className="text-xs font-bold">{msg}</p>
-      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter mt-0.5">{time}</p>
-    </div>
-  )
-}
-
-import { Button } from "@/components/ui/button";

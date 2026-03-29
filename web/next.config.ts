@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
         source: '/api/v1/:path*',
         destination: 'http://localhost:8080/api/v1/:path*',
       },
+      {
+        source: '/healthz',
+        destination: 'http://localhost:8080/healthz',
+      },
+      {
+        source: '/readyz',
+        destination: 'http://localhost:8080/readyz',
+      },
     ]
   },
 };

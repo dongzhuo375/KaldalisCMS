@@ -23,7 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn, getImageUrl } from "@/lib/utils";
 import { useMedia, useUploadMedia, useDeleteMedia } from "@/services/media-service";
 import { toast } from "sonner";
 
@@ -95,7 +95,7 @@ export default function MediaPage() {
             <Input 
               placeholder={t('search')}
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 h-10 bg-slate-900/50 border-slate-800 text-slate-200 focus-visible:ring-indigo-500/30 rounded-lg"
             />
          </div>
@@ -146,7 +146,7 @@ export default function MediaPage() {
                <div key={file.id} className="group relative aspect-square bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden hover:border-indigo-500/50 transition-all hover:-translate-y-1">
                  {/* Image Preview or Icon */}
                  {file.mime_type.startsWith('image/') ? (
-                   <img src={file.url} alt={file.filename} className="w-full h-full object-cover" />
+                   <img src={getImageUrl(file.url)} alt={file.filename} className="w-full h-full object-cover" />
                  ) : (
                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-500 bg-slate-900">
                       <File className="h-10 w-10 opacity-20" />
@@ -160,7 +160,7 @@ export default function MediaPage() {
                     <div className="flex justify-between items-center">
                        <span className="text-[10px] text-slate-400">{formatSize(file.size)}</span>
                        <div className="flex gap-2">
-                         <a href={file.url} target="_blank" rel="noreferrer" className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-white/20 text-white">
+                         <a href={getImageUrl(file.url)} target="_blank" rel="noreferrer" className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-white/20 text-white">
                             <ExternalLink className="h-3.5 w-3.5" />
                          </a>
                          <DropdownMenu>
@@ -172,7 +172,7 @@ export default function MediaPage() {
                            <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
                              <DropdownMenuItem 
                                onClick={() => {
-                                 navigator.clipboard.writeText(file.url);
+                                 navigator.clipboard.writeText(getImageUrl(file.url));
                                  toast.success("Link copied to clipboard");
                                }} 
                                className="cursor-pointer"
@@ -197,7 +197,7 @@ export default function MediaPage() {
                   <div className="flex items-center gap-4">
                      <div className="h-10 w-10 rounded bg-slate-800 overflow-hidden flex items-center justify-center shrink-0">
                         {file.mime_type.startsWith('image/') ? (
-                          <img src={file.url} alt="" className="h-full w-full object-cover" />
+                          <img src={getImageUrl(file.url)} alt="" className="h-full w-full object-cover" />
                         ) : (
                           <File className="h-5 w-5 text-slate-500" />
                         )}
@@ -215,7 +215,7 @@ export default function MediaPage() {
                           size="icon" 
                           className="h-8 w-8 text-slate-500 hover:text-indigo-400 hover:bg-indigo-400/10"
                           onClick={() => {
-                            navigator.clipboard.writeText(file.url);
+                            navigator.clipboard.writeText(getImageUrl(file.url));
                             toast.success("Link copied to clipboard");
                           }}
                         >

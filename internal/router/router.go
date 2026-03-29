@@ -24,10 +24,6 @@ import (
 // the current application build. It intentionally seeds two complementary policy sets:
 //   - route policies used by the HTTP authorization middleware
 //   - capability policies used by the service-layer post authorizer
-
-// The ensurePostWorkflowPolicies function silently seeds policies during application startup without checking if they already exist.
-// The AddPolicies method on line 68 may fail if policies already exist (depending on Casbin configuration),
-// but the error is only logged as a warning. Consider checking for existing policies first, or documenting that this function is idempotent and safe to call on every startup.
 func ensurePostWorkflowPolicies(enforcer *casbin.Enforcer) {
 	if enforcer == nil {
 		return
@@ -76,8 +72,6 @@ func ensurePostWorkflowPolicies(enforcer *casbin.Enforcer) {
 }
 
 // NewAppRouter initializes the router for the fully functional application.
-// Public content delivery and admin management are registered under different paths so
-// callers can reason about visibility and authorization from the URL contract alone.
 func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, swaggerOpts SwaggerOptions) *gin.Engine {
 	r := gin.Default()
 	r.Use(apimw.CORSMiddleware())
@@ -126,7 +120,7 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, s
 	systemService := service.NewSystemService(db, systemRepo, userService)
 	systemAPI := v1.NewSystemAPI(systemService)
 	healthAPI := v1.NewAppHealthAPI(systemService)
-	healthAPI.RegisterRootRoutes(r)
+	healthAPI.RegisterRootRoutes(r) // Correct: root registration
 
 	go func() {
 		utils.RunTicker(1*time.Hour, func() {
@@ -144,7 +138,6 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, s
 		userAPI.RegisterRoutes(apiV1)
 		systemAPI.RegisterRoutes(apiV1)
 
-		// Public post endpoints are permanently read-only and only expose published content.
 		apiV1.GET("/posts", publicPostAPI.GetPosts)
 		apiV1.GET("/posts/:id", publicPostAPI.GetPostByID)
 
@@ -155,10 +148,6 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, s
 		{
 			protected.POST("/users/logout", userAPI.Logout)
 
-			// Management post endpoints stay under /api/v1/admin/posts to keep draft visibility
-			// and write operations separate from the public content contract. Casbin still guards
-			// route entry here, while the service layer asks a Casbin-backed authorizer for the
-			// finer-grained post capabilities needed to resolve own-draft vs any-post access.
 			adminPosts := protected.Group("/admin")
 			adminPosts.GET("/posts", adminPostAPI.GetPosts)
 			adminPosts.GET("/posts/:id", adminPostAPI.GetPostByID)
@@ -175,7 +164,6 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, s
 	return r
 }
 
-// NewSetupRouter initializes the router for the setup mode, hiding service instantiation from main.
 func NewSetupRouter(save func(string, int, string, string, string) error, reload func() error, swaggerOpts SwaggerOptions) *gin.Engine {
 	r := gin.Default()
 	r.Use(apimw.CORSMiddleware())
@@ -185,7 +173,7 @@ func NewSetupRouter(save func(string, int, string, string, string) error, reload
 	setupSvc := service.NewSetupService(save, reload)
 	setupAPI := v1.NewSetupAPI(setupSvc)
 	healthAPI := v1.NewSetupHealthAPI()
-	healthAPI.RegisterRootRoutes(r)
+	healthAPI.RegisterRootRoutes(r) // Correct: root registration
 
 	apiV1 := r.Group("/api/v1")
 	setupAPI.RegisterRoutes(apiV1)

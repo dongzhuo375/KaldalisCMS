@@ -1,5 +1,5 @@
-import api from "@/lib/api";
-import { SystemStatus, SetupDTO } from "@/lib/types";
+import api, { sysApi } from "@/lib/api";
+import { SystemStatus, SetupDTO, HealthResponse } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -19,6 +19,17 @@ export const useSystemStatus = () => {
       return response as SystemStatus;
     },
     refetchOnWindowFocus: false,
+  });
+};
+
+export const useReadyz = () => {
+  return useQuery({
+    queryKey: ["readyz"],
+    queryFn: async () => {
+      const response = await sysApi.get("/readyz");
+      return response as HealthResponse;
+    },
+    refetchInterval: 5000,
   });
 };
 

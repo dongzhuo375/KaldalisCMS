@@ -48,6 +48,17 @@ export interface ApiResponse<T = unknown> {
   error?: string;
 }
 
+export interface HealthCheckResult {
+  status: 'ok' | 'fail' | 'skip';
+  detail?: string;
+}
+
+export interface HealthResponse {
+  status: string;
+  mode: string;
+  checks: Record<string, HealthCheckResult>;
+}
+
 export interface SystemStatus {
   installed: boolean;
   site_name?: string;
