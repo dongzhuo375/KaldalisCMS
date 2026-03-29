@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
         source: '/readyz',
         destination: 'http://localhost:8080/readyz',
       },
+      {
+        source: '/media/:path*',
+        destination: 'http://localhost:8080/media/:path*',
+      },
     ]
   },
 };
