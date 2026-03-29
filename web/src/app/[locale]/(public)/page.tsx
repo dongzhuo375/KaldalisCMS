@@ -15,8 +15,6 @@ export default function HomePage() {
 
   return (
     <div className="relative z-0 min-h-[calc(100vh-4rem)] flex flex-col justify-center overflow-hidden">
-      <SunWaveBackground />
-
       <div className="relative z-10 space-y-24 py-12 md:py-20 max-w-7xl mx-auto px-6">
         
         {/* Hero 区域 */}

@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SystemStatusGuard } from "@/components/system-status-guard";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { Toaster } from "@/components/ui/sonner";
+import SunWaveBackground from "@/components/site/sun-wave-background";
 
 import { redirect } from 'next/navigation';
 import { routing } from '@/i18n/routing';
@@ -56,6 +57,7 @@ export default async function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
+              <SunWaveBackground />
               <SystemStatusGuard>
                 {children}
               </SystemStatusGuard>

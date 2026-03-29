@@ -20,6 +20,8 @@ import { usePosts } from "@/services/post-service";
 import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function DashboardPage() {
   const t = useTranslations('admin');
   const { data: status, isLoading: statusLoading } = useSystemStatus();
@@ -27,8 +29,26 @@ export default function DashboardPage() {
 
   if (statusLoading || postsLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      <div className="h-full space-y-10 pb-20">
+        <header className="flex justify-between items-end gap-6">
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-12 w-40 rounded-full" />
+        </header>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-3xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <Skeleton className="lg:col-span-2 h-[400px] rounded-3xl" />
+          <div className="space-y-8">
+            <Skeleton className="h-[200px] rounded-3xl" />
+            <Skeleton className="h-[200px] rounded-3xl" />
+          </div>
+        </div>
       </div>
     );
   }

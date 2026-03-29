@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Link } from "@/i18n/routing";
-import { useFormatter, useLocale } from 'next-intl';
+import { useFormatter } from 'next-intl';
 import { useParams } from "next/navigation";
 import { 
   DropdownMenu, 
@@ -22,7 +22,6 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   Image as ImageIcon,
   SortAsc,
   Calendar
@@ -32,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PostsPage() {
   const format = useFormatter();
@@ -47,6 +47,25 @@ export default function PostsPage() {
 
   const { data: posts = [], isLoading } = usePosts({ admin: true });
   const deletePostMutation = useDeletePost();
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col gap-10 text-foreground font-sans pb-20">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 shrink-0">
+          <div className="space-y-2">
+             <Skeleton className="h-12 w-64" />
+             <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-12 w-40 rounded-full" />
+        </header>
+        <div className="flex-1 space-y-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-3xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const formatDateSafe = (dateStr: string) => {
     if (!dateStr) return null;
@@ -136,11 +155,7 @@ export default function PostsPage() {
 
       {/* List Container */}
       <div className="flex-1 relative min-h-[400px]">
-        {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-accent" />
-            </div>
-        ) : filteredPosts.length === 0 ? (
+        {filteredPosts.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -197,9 +212,9 @@ export default function PostsPage() {
 
                                   <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors">
-                                              <MoreHorizontal className="h-5 w-5" />
-                                          </Button>
+                                          <button className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted transition-colors">
+                                              <MoreHorizontal className="h-4 w-4" />
+                                          </button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end" className="w-[180px] bg-white dark:bg-slate-900 border-border shadow-2xl rounded-2xl p-2">
                                           <Link href={`/admin/posts/${post.id}/edit`}>
