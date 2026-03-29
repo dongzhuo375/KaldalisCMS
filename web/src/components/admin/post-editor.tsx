@@ -18,12 +18,15 @@ import {
   Link as LinkIcon,
   Quote,
   List as ListIcon,
-  Rocket
+  Rocket,
+  ChevronRight
 } from "lucide-react";
 import { Post } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useCreatePost, useUpdatePost } from "@/services/post-service";
 import { useUploadMedia } from "@/services/media-service";
+import { useParams } from "next/navigation";
+import { motion } from "framer-motion";
 
 // Dynamically import Markdown Editor
 const MDEditor = dynamic(
@@ -35,8 +38,6 @@ interface PostEditorProps {
   initialData?: Partial<Post>;
   mode: 'create' | 'edit';
 }
-
-import { useParams } from "next/navigation";
 
 export function PostEditor({ initialData, mode }: PostEditorProps) {
   const router = useRouter();
@@ -60,7 +61,6 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
   const isSubmitting = createPost.isPending || updatePost.isPending;
   const isPublished = formData.status === 1;
 
-  // Manual slug generation when title changes in create mode
   const handleTitleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const title = e.target.value;
     const updates: Record<string, unknown> = { title };
@@ -78,6 +78,7 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
   const handleChange = (key: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
+
   const handleSave = async (statusOverride?: number) => {
     const finalStatus = statusOverride ?? formData.status;
     const submissionData = {
@@ -89,10 +90,6 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
       createPost.mutate(submissionData, {
         onSuccess: (newPost) => {
           if (newPost?.id) {
-            // Explicitly ensuring locale is not 'undefined' in any string interpolation
-            const safeLocale = (locale && locale !== 'undefined') ? locale : 'zh-CN';
-            // Next-intl router.push usually doesn't need the locale prefix, 
-            // but we ensure the path is clean.
             router.push(`/admin/posts/${newPost.id}/edit`);
           } else {
             router.push('/admin/posts');
@@ -133,26 +130,26 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
   const wordCount = formData.content.split(/\s+/).filter(w => w.length > 0).length;
 
   return (
-    <div className="flex h-screen bg-[#0d0b14] text-slate-200 overflow-hidden font-sans selection:bg-indigo-500/30">
-
-      {/* 1. Left Vertical Toolbar */}
-      <aside className="w-16 flex flex-col items-center py-6 border-r border-white/5 gap-8 shrink-0">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans selection:bg-accent/30 relative">
+      
+      {/* 1. Left Vertical Toolbar: Minimalist */}
+      <aside className="w-20 flex flex-col items-center py-8 border-r border-border bg-white dark:bg-slate-900 z-20">
         <Button 
           variant="ghost" 
           size="icon"
           onClick={() => router.back()}
-          className="text-slate-500 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+          className="text-muted-foreground hover:text-foreground rounded-full hover:bg-muted mb-10"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           {[Type, Bold, Italic, LinkIcon, Quote, ListIcon, ImageIcon].map((Icon, i) => (
             <Button 
               key={i}
               variant="ghost" 
               size="icon"
-              className="text-slate-500 hover:text-white hover:bg-white/5 transition-all"
+              className="text-muted-foreground hover:text-accent transition-all rounded-xl"
             >
               <Icon className="h-5 w-5" />
             </Button>
@@ -160,179 +157,204 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
         </div>
       </aside>
 
-      {/* 2. Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-hidden relative">
-
-        {/* Status Bar */}
-        <div className="flex items-center justify-between px-12 py-6 shrink-0">
-          <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-            <span className={cn(isPublished ? "text-emerald-500" : "text-yellow-500")}>
-              {isPublished ? "PUBLISHED" : "DRAFT"}
+      {/* 2. Main Content Area: Immersive Writing Space */}
+      <main className="flex-1 flex flex-col overflow-hidden relative bg-background/50 backdrop-blur-sm">
+        
+        {/* Status Header */}
+        <div className="flex items-center justify-between px-16 py-8 shrink-0">
+          <div className="flex items-center gap-4 text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+            <span className={cn(
+              "px-3 py-1 rounded-full",
+              isPublished ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
+            )}>
+              {isPublished ? "Published" : "Draft Mode"}
             </span>
-            <span className="opacity-30">•</span>
-            <span>{isSubmitting ? "SAVING..." : "READY"}</span>
+            <span className="opacity-20">/</span>
+            <span className="flex items-center gap-2">
+              {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+              {isSubmitting ? "Persisting..." : "All changes saved"}
+            </span>
           </div>
-          <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-            {wordCount.toLocaleString()} WORDS
+          
+          <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase bg-muted/50 px-4 py-1.5 rounded-full">
+            {wordCount.toLocaleString()} Words
           </div>
         </div>
 
         {/* Editor Canvas */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-12 pb-24">
-          <div className="max-w-4xl mx-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-16 pb-32">
+          <div className="max-w-3xl mx-auto">
             {/* Title Section */}
-            <div className="mb-12 group">
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-16 group"
+            >
               <textarea
-                placeholder="Untitled Story"
-                className="w-full bg-transparent border-none text-6xl font-bold text-white placeholder:text-white/10 focus:outline-none resize-none leading-tight mb-4"
+                placeholder="Story Title..."
+                className="w-full bg-transparent border-none text-6xl md:text-7xl font-serif font-medium text-foreground placeholder:text-foreground/5 focus:outline-none resize-none leading-[1.1] mb-6"
                 rows={1}
                 value={formData.title}
                 onChange={handleTitleChange}
               />
-              <div className="h-1 w-24 bg-indigo-500 rounded-full transition-all group-focus-within:w-48" />
-            </div>
+              <div className="h-px w-20 bg-accent transition-all group-focus-within:w-full opacity-30" />
+            </motion.div>
 
             {/* Markdown Editor */}
-            <div data-color-mode="dark" className="prose prose-invert max-w-none prose-p:text-slate-400 prose-p:text-lg prose-p:leading-relaxed prose-headings:text-white">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              data-color-mode="light" 
+              className="prose prose-lg dark:prose-invert max-w-none prose-p:text-foreground/80 prose-p:leading-relaxed prose-headings:font-serif prose-headings:font-medium"
+            >
               <MDEditor
                 value={formData.content}
                 onChange={(val) => handleChange('content', val || "")}
-                height={800}
-                className="bg-transparent border-none shadow-none !bg-transparent md-editor-custom"
+                height={1000}
+                className="bg-transparent border-none shadow-none !bg-transparent md-editor-minimal"
                 visibleDragbar={false}
                 preview="edit"
                 hideToolbar={true} 
                 textareaProps={{
-                  placeholder: "Write your masterpiece here...",
-                  className: "text-xl leading-relaxed text-slate-400 font-sans focus:outline-none"
+                  placeholder: "Begin your creative journey...",
+                  className: "text-xl leading-relaxed text-foreground/80 font-sans focus:outline-none"
                 }}
                 style={{ backgroundColor: 'transparent' }}
               />
-            </div>
+            </motion.div>
           </div>
         </div>
       </main>
 
-      {/* 3. Right Sidebar (Settings) */}
-      <aside className="w-80 border-l border-white/5 bg-[#0d0b14] flex flex-col shrink-0">
-        {/* Top Buttons */}
-        <div className="p-6 flex items-center justify-between gap-4">
-          <Button 
-            variant="ghost" 
-            className="text-slate-400 hover:text-white text-[10px] font-bold uppercase tracking-widest px-0"
-            onClick={() => handleSave(0)}
-            disabled={isSubmitting || isPublished}
-          >
-            {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : isPublished ? "Saved" : "Save Draft"}
-          </Button>
-
-          <Button 
-            className="bg-indigo-600 hover:bg-indigo-700 text-white border-0 px-6 rounded-lg font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 transition-all hover:translate-y-[-2px]"
-            onClick={() => handleSave(1)}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Rocket className="h-3 w-3 mr-2" />}
-            {isPublished ? "Update" : "Publish"}
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-10 custom-scrollbar">
-
-          {/* Post Settings */}
-          <div className="space-y-6">
-            <h3 className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em] flex items-center gap-2">
-              <Settings className="w-3 h-3" />
-              Settings
-            </h3>
-
-            <div className="space-y-3">
-              <Label className="text-[11px] font-bold text-slate-400">URL Slug</Label>
-              <div className="bg-white/5 rounded-lg border border-white/5 px-4 py-3 flex items-center gap-3 focus-within:border-indigo-500/50 transition-colors">
-                <LinkIcon className="w-3.5 h-3.5 text-slate-600" />
-                <input 
-                  className="bg-transparent border-none focus:outline-none w-full text-xs font-medium text-slate-300 placeholder:text-slate-700"
-                  value={formData.slug}
-                  onChange={(e) => handleChange('slug', e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-[11px] font-bold text-slate-400">Tags</Label>
-              <div className="bg-white/5 rounded-lg border border-white/5 p-2 flex flex-wrap gap-2 focus-within:border-indigo-500/50 transition-colors">
-                {formData.tags.map((tag: string) => (
-                  <Badge 
-                    key={tag} 
-                    className="bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 border-none px-3 py-1 text-[10px] font-bold flex items-center gap-1.5"
-                  >
-                    #{tag}
-                    <X className="w-3 h-3 cursor-pointer opacity-50 hover:opacity-100" onClick={() => removeTag(tag)}/>
-                  </Badge>
-                ))}
-                <input 
-                  className="bg-transparent border-none focus:outline-none text-[11px] font-medium text-slate-500 px-2 py-1 min-w-[60px]"
-                  placeholder="Add..."
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleAddTag}
-                />
-              </div>
-            </div>
+      {/* 3. Right Sidebar: Refined Controls */}
+      <aside className="w-80 border-l border-border bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
+        <div className="p-8 space-y-10">
+          {/* Actions */}
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              className="flex-1 rounded-full border-border hover:bg-muted text-xs font-bold uppercase tracking-widest h-12"
+              onClick={() => handleSave(0)}
+              disabled={isSubmitting}
+            >
+              {isPublished ? "To Draft" : "Save"}
+            </Button>
+            
+            <Button 
+              className="flex-1 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl shadow-primary/10 text-xs font-bold uppercase tracking-widest h-12"
+              onClick={() => handleSave(1)}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Rocket className="h-3 w-3 mr-2" />}
+              {isPublished ? "Update" : "Publish"}
+            </Button>
           </div>
 
-          {/* Cover Image */}
-          <div className="space-y-6">
-            <h3 className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em] flex items-center gap-2">
-              <ImageIcon className="w-3 h-3" />
-              Cover Image
-            </h3>
-
-            <div className="group relative rounded-xl overflow-hidden bg-white/5 border border-white/5 transition-all hover:border-indigo-500/30 cursor-pointer aspect-video flex items-center justify-center">
-              {formData.cover ? (
-                <img src={formData.cover} alt="Cover" className="w-full h-full object-cover" />
-              ) : (
-                <div className="text-center p-6">
-                  <div className="bg-white/5 p-3 rounded-full inline-block mb-3 text-slate-600 group-hover:text-indigo-400 transition-colors">
-                    <ImageIcon className="w-6 h-6" />
+          <div className="space-y-12 overflow-y-auto custom-scrollbar pr-2">
+            
+            {/* Metadata */}
+            <section className="space-y-6">
+              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
+                <Settings className="w-3 h-3" />
+                Configuration
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-foreground/60 uppercase tracking-wider ml-1">URL Extension</Label>
+                  <div className="bg-muted/50 rounded-2xl border border-border px-4 py-3 flex items-center gap-3 focus-within:border-accent/50 transition-all">
+                    <LinkIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                    <input 
+                      className="bg-transparent border-none focus:outline-none w-full text-xs font-medium placeholder:text-muted-foreground/30"
+                      value={formData.slug}
+                      onChange={(e) => handleChange('slug', e.target.value)}
+                    />
                   </div>
-                  <p className="text-[11px] text-slate-600">Click to upload cover</p>
                 </div>
-              )}
-              {uploadMedia.isPending && (
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-foreground/60 uppercase tracking-wider ml-1">Taxonomy</Label>
+                  <div className="bg-muted/50 rounded-2xl border border-border p-3 flex flex-wrap gap-2 focus-within:border-accent/50 transition-all min-h-[100px]">
+                    {formData.tags.map((tag: string) => (
+                      <Badge 
+                        key={tag} 
+                        className="bg-accent text-white hover:bg-accent/90 border-none px-3 py-1 text-[10px] font-bold rounded-full flex items-center gap-1.5 shadow-lg shadow-accent/10"
+                      >
+                        {tag}
+                        <X className="w-3 h-3 cursor-pointer opacity-70 hover:opacity-100" onClick={() => removeTag(tag)}/>
+                      </Badge>
+                    ))}
+                    <input 
+                      className="bg-transparent border-none focus:outline-none text-[11px] font-medium text-foreground px-2 py-1 min-w-[80px]"
+                      placeholder="Add tag..."
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleAddTag}
+                    />
+                  </div>
                 </div>
-              )}
-              <input 
-                type="file" 
-                className="absolute inset-0 opacity-0 cursor-pointer" 
-                onChange={handleCoverUpload}
-                accept="image/*"
-              />
-            </div>
+              </div>
+            </section>
+
+            {/* Visuals */}
+            <section className="space-y-6">
+              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
+                <ImageIcon className="w-3 h-3" />
+                Cover Visual
+              </h3>
+              
+              <div className="group relative rounded-3xl overflow-hidden bg-muted/50 border-2 border-dashed border-border transition-all hover:border-accent/30 cursor-pointer aspect-[4/3] flex items-center justify-center">
+                {formData.cover ? (
+                  <img src={formData.cover} alt="Cover" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                ) : (
+                  <div className="text-center p-6 space-y-3">
+                    <div className="bg-background w-12 h-12 rounded-full flex items-center justify-center mx-auto text-muted-foreground group-hover:text-accent transition-colors shadow-sm">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Upload Cover</p>
+                  </div>
+                )}
+                {uploadMedia.isPending && (
+                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                  </div>
+                )}
+                <input 
+                  type="file" 
+                  className="absolute inset-0 opacity-0 cursor-pointer" 
+                  onChange={handleCoverUpload}
+                  accept="image/*"
+                />
+              </div>
+            </section>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-white/5">
-          <p className="text-[10px] text-slate-700 font-bold tracking-widest text-center uppercase">
-            Kaldalis Engine v2.4.0
+        <div className="mt-auto p-8 border-t border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Active</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground/40 font-bold tracking-widest uppercase">
+            Kaldalis v2.4
           </p>
         </div>
       </aside>
 
       <style jsx global>{`
-        .md-editor-custom .w-md-editor-content {
+        .md-editor-minimal .w-md-editor-content {
           background-color: transparent !important;
         }
-        .md-editor-custom .w-md-editor-text {
+        .md-editor-minimal .w-md-editor-text {
           background-color: transparent !important;
         }
-        .md-editor-custom .w-md-editor-preview {
+        .md-editor-minimal .w-md-editor-preview {
           background-color: transparent !important;
-          border-left-color: rgba(255,255,255,0.05) !important;
+          border-left: 1px solid var(--border) !important;
         }
-        .md-editor-custom {
+        .md-editor-minimal {
           box-shadow: none !important;
         }
         .custom-scrollbar::-webkit-scrollbar {
@@ -342,11 +364,11 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--border);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.1);
+          background: var(--accent);
         }
       `}</style>
     </div>

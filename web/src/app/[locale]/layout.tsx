@@ -1,6 +1,6 @@
 import {NextIntlClientProvider} from 'next-intl';
 import {getMessages, getTranslations} from 'next-intl/server';
-import {Inter} from "next/font/google";
+import {Inter, EB_Garamond} from "next/font/google";
 import "../globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SystemStatusGuard } from "@/components/system-status-guard";
@@ -10,7 +10,15 @@ import { Toaster } from "@/components/ui/sonner";
 import { redirect } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 
-const inter = Inter({subsets: ["latin"]});
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const ebGaramond = EB_Garamond({
+  subsets: ["latin"],
+  variable: "--font-eb-garamond",
+});
 
 export async function generateMetadata() {
   const t = await getTranslations('common');
@@ -38,13 +46,13 @@ export default async function RootLayout({
   const messages = await getMessages({locale});
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning className={`${inter.variable} ${ebGaramond.variable}`}>
       <body className={inter.className}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <QueryProvider>
             <ThemeProvider
               attribute="class"
-              defaultTheme="system"
+              defaultTheme="light"
               enableSystem
               disableTransitionOnChange
             >
