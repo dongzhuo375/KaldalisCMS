@@ -25,6 +25,7 @@ type UserService interface {
 	CreateUser(ctx context.Context, user entity.User) error
 	VerifyUser(ctx context.Context, username, password string) (entity.User, error)
 	Login(ctx context.Context, username, password string) (entity.User, error)
+	GetUserByID(ctx context.Context, id uint) (entity.User, error)
 	Logout()
 	//后面估计还加
 }

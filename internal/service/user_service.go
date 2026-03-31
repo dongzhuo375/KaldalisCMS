@@ -57,6 +57,14 @@ func (s *UserService) Login(ctx context.Context, username, password string) (ent
 	return user, nil
 }
 
+func (s *UserService) GetUserByID(ctx context.Context, id uint) (entity.User, error) {
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return entity.User{}, normalizeServiceErrorWithOpMsg("user.get_by_id", "failed to get user by ID", err)
+	}
+	return user, nil
+}
+
 // Logout 登出逻辑
 func (s *UserService) Logout() {
 	//逻辑留空

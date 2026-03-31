@@ -43,7 +43,9 @@ api.interceptors.response.use(
     }
 
     if (status !== 401 || (!url.includes('/users/profile') && !url.includes('/system/status'))) {
-      console.error(`[API Error] ${status}: ${message} (${url})`);
+      // Use console.warn instead of console.error to prevent Next.js dev overlay 
+      // from taking over the screen for expected API errors (like 401 on login).
+      console.warn(`[API Error] ${status}: ${message} (${url})`);
     }
 
     return Promise.reject(error);

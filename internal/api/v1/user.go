@@ -2,6 +2,7 @@ package v1
 
 import (
 	"KaldalisCMS/internal/api/errorx"
+	"KaldalisCMS/internal/api/middleware"
 	"KaldalisCMS/internal/api/v1/dto"
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/core/entity"
