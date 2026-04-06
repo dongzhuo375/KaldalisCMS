@@ -34,6 +34,7 @@ func (a *CasbinPostAuthorizer) AuthorizePostAction(ctx context.Context, role str
 		return fmt.Errorf("post authorization failed: %w", err)
 	}
 	if !ok {
+		fmt.Printf("[DEBUG PostAuthorizer] DENIED: role=%q, obj=%q, act=%q\n", role, obj, act)
 		return core.ErrPermission
 	}
 	return nil
