@@ -2,21 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "@/i18n/routing";
-import {Link} from '@/i18n/routing'; // 引入 Link 用于跳转注册
+import { Link } from '@/i18n/routing';
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from 'next-intl';
+import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  // 1. 修复：正确从 Zustand 获取 setLogin 方法
   const setLogin = useAuthStore((state) => state.setLogin);
   const t = useTranslations();
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -25,7 +25,6 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    // 2. 修复：获取表单数据并构造 Payload
     const formData = new FormData(e.currentTarget);
     const payload = {
       username: formData.get("username") as string,
@@ -33,34 +32,23 @@ export default function LoginPage() {
     };
 
     try {
-      // 3. 请求接口
-      // 注意：根据你的 api.ts 拦截器，res 应该是后端返回的 JSON body
       const res: any = await api.post("/users/login", payload);
-      
-      console.log("登录响应数据:", res); // 调试用，看后端到底返了什么
-
-      // 4. 解析数据
-      // 后端返回: { message: "...", user: { username: "admin", role: "admin" } }
-      const userData = res.user; // <-- 修正：从 res.user 获取嵌套的用户对象
+      const userData = res.user;
 
       if (!userData || !userData.role) {
         throw new Error("返回数据格式错误，未找到用户信息或角色");
       }
 
-      // 5. 存入 Zustand
-      setLogin(userData); // 传递正确的 user 对象
+      setLogin(userData);
 
-      // 6. 核心跳转逻辑
       if (userData.role === 'admin' || userData.role === 'super_admin') {
         router.replace("/admin/dashboard");
       } else {
-        // 普通用户去首页
         router.replace("/");
       }
 
     } catch (err: any) {
       console.error("登录错误:", err);
-      // 优先显示后端返回的错误信息
       setError(err.response?.data?.message || err.message || t('auth.login_failed'));
     } finally {
       setLoading(false);
@@ -68,45 +56,83 @@ export default function LoginPage() {
   };
 
   return (
-    <Card className="w-full max-w-md shadow-lg">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">{t('common.app_name')}</CardTitle>
-        <CardDescription>{t('auth.login_title')}</CardDescription>
-      </CardHeader>
-      
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="w-full max-w-sm"
+    >
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 shadow-xl shadow-black/5 border border-border/50">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-serif font-medium text-foreground mb-2">
+            {t('common.app_name')}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {t('auth.login_title')}
+          </p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="p-3 text-sm font-medium text-red-500 bg-red-50 rounded-md border border-red-200">
+            <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
               {error}
             </div>
           )}
-          
+
           <div className="space-y-2">
-            <Label htmlFor="username">{t('auth.username')}</Label>
-            <Input id="username" name="username" placeholder="admin" required disabled={loading} />
+            <Label htmlFor="username" className="text-sm font-medium">
+              {t('auth.username')}
+            </Label>
+            <Input
+              id="username"
+              name="username"
+              placeholder="admin"
+              required
+              disabled={loading}
+              className="h-11 rounded-xl bg-muted/50 border-border/50 focus:border-accent"
+            />
           </div>
-          
+
           <div className="space-y-2">
-            <Label htmlFor="password">{t('auth.password')}</Label>
-            <Input id="password" name="password" type="password" required disabled={loading} />
+            <Label htmlFor="password" className="text-sm font-medium">
+              {t('auth.password')}
+            </Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              required
+              disabled={loading}
+              className="h-11 rounded-xl bg-muted/50 border-border/50 focus:border-accent"
+            />
           </div>
-        </CardContent>
-        
-        <CardFooter className="flex flex-col space-y-2">
-          <Button className="w-full" type="submit" disabled={loading}>
-            {loading ? t('auth.logging_in') : t('auth.sign_in')}
+
+          <Button
+            className="w-full h-11 rounded-xl font-medium mt-2"
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {t('auth.logging_in')}
+              </>
+            ) : (
+              t('auth.sign_in')
+            )}
           </Button>
-          
-          {/* 补充：去注册页面的链接 */}
-          <div className="text-sm text-center text-slate-500">
-            {t('auth.dont_have_account')}{" "}
-            <Link href="/register" className="text-blue-600 hover:underline">
-              {t('auth.sign_up')}
-            </Link>
-          </div>
-        </CardFooter>
-      </form>
-    </Card>
+        </form>
+
+        {/* Footer */}
+        <div className="mt-6 text-center text-sm text-muted-foreground">
+          {t('auth.dont_have_account')}{" "}
+          <Link href="/register" className="text-accent hover:underline font-medium">
+            {t('auth.sign_up')}
+          </Link>
+        </div>
+      </div>
+    </motion.div>
   );
 }

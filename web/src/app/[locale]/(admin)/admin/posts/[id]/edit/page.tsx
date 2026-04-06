@@ -39,11 +39,9 @@ export default function EditPostPage() {
   }
 
   return (
-    <div className="h-full w-full">
-      <PostEditor 
-        mode="edit"
-        initialData={post}
-      />
-    </div>
+    <PostEditor
+      mode="edit"
+      initialData={post}
+    />
   );
 }

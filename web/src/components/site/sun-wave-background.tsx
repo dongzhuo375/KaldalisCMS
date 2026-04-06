@@ -5,20 +5,20 @@ import React from "react";
 export default function SunWaveBackground() {
   return (
     <div className="fixed inset-0 -z-10 w-full h-full overflow-hidden bg-[#f5f5f3] dark:bg-slate-950 pointer-events-none">
-      {/* The Sun: Clean circle with soft glow, partially clipped top-left */}
+      {/* The Sun: Centered, floating above the wave */}
       <div
-        className="absolute -top-[8vw] -left-[8vw] w-[50vw] h-[50vw] md:w-[28vw] md:h-[28vw] max-w-[350px] max-h-[350px] rounded-full pointer-events-none animate-sun-breathe"
+        className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[35vw] h-[35vw] md:w-[20vw] md:h-[20vw] max-w-[280px] max-h-[280px] rounded-full pointer-events-none animate-sun-breathe"
         style={{
           backgroundColor: '#e86a33',
-          boxShadow: '0 0 80px 20px rgba(232,106,51,0.2), 0 0 4px rgba(232,106,51,0.4)',
+          boxShadow: '0 0 100px 30px rgba(232,106,51,0.25), 0 0 6px rgba(232,106,51,0.5)',
         }}
       />
       {/* Dark mode sun overlay */}
       <div
-        className="absolute -top-[8vw] -left-[8vw] w-[50vw] h-[50vw] md:w-[28vw] md:h-[28vw] max-w-[350px] max-h-[350px] rounded-full pointer-events-none opacity-0 dark:opacity-100 transition-opacity duration-500 animate-sun-breathe"
+        className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[35vw] h-[35vw] md:w-[20vw] md:h-[20vw] max-w-[280px] max-h-[280px] rounded-full pointer-events-none opacity-0 dark:opacity-100 transition-opacity duration-500 animate-sun-breathe"
         style={{
           backgroundColor: '#6B4423',
-          boxShadow: '0 0 60px 15px rgba(107,68,35,0.3)',
+          boxShadow: '0 0 80px 25px rgba(107,68,35,0.35)',
         }}
       />
 

@@ -1,56 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "@/i18n/routing";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft, 
-  Loader2, 
-  ImageIcon, 
-  Settings, 
-  Type, 
+import {
+  ArrowLeft,
+  Loader2,
+  ImageIcon,
   X,
-  Bold,
-  Italic,
   Link as LinkIcon,
-  Quote,
-  List as ListIcon,
   Rocket,
-  ChevronRight
+  Maximize2,
+  Minimize2,
+  Trash2,
+  Save,
+  FileText,
 } from "lucide-react";
 import { Post, PostStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useCreatePost, useUpdatePost } from "@/services/post-service";
 import { useUploadMedia } from "@/services/media-service";
-import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
 
-// Dynamically import Markdown Editor
-const MDEditor = dynamic(
-  () => import("@uiw/react-md-editor"),
-  { ssr: false }
-);
+const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
 interface PostEditorProps {
   initialData?: Partial<Post>;
-  mode: 'create' | 'edit';
+  mode: "create" | "edit";
 }
 
 export function PostEditor({ initialData, mode }: PostEditorProps) {
   const router = useRouter();
-  const params = useParams();
-  const locale = (params?.locale as string) || 'zh-CN';
-  
+  const { resolvedTheme } = useTheme();
+  const [focusMode, setFocusMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     slug: initialData?.slug || "",
     content: initialData?.content || "",
     status: initialData?.status ?? PostStatus.DRAFT,
     cover: initialData?.cover || "",
-    tags: (initialData?.tags || []).map(t => typeof t === 'string' ? t : t.name),
+    tags: (initialData?.tags || []).map((t) =>
+      typeof t === "string" ? t : t.name
+    ),
     excerpt: "",
   });
 
@@ -61,314 +56,466 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
   const isSubmitting = createPost.isPending || updatePost.isPending;
   const isPublished = formData.status === PostStatus.PUBLISHED;
 
+  useEffect(() => setMounted(true), []);
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const title = e.target.value;
     const updates: Record<string, unknown> = { title };
 
-    if (mode === 'create' && !initialData?.slug) {
+    if (mode === "create" && !initialData?.slug) {
       updates.slug = title
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '');
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)+/g, "");
     }
 
-    setFormData(prev => ({ ...prev, ...updates }));
+    setFormData((prev) => ({ ...prev, ...updates }));
+
+    e.target.style.height = "auto";
+    e.target.style.height = e.target.scrollHeight + "px";
   };
 
   const handleChange = (key: string, value: unknown) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
+    setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSave = async (statusOverride?: number) => {
-    const finalStatus = statusOverride ?? formData.status;
-    const submissionData = {
-      ...formData,
-      status: finalStatus,
-    };
+  const handleSave = useCallback(
+    async (statusOverride?: number) => {
+      const finalStatus = statusOverride ?? formData.status;
+      const submissionData = {
+        ...formData,
+        status: finalStatus,
+      };
 
-    if (mode === 'create') {
-      createPost.mutate(submissionData, {
-        onSuccess: (newPost) => {
-          if (newPost?.id) {
-            router.push(`/admin/posts/${newPost.id}/edit`);
-          } else {
-            router.push('/admin/posts');
-          }
-        }
-      });
-    } else {
-      updatePost.mutate(submissionData);
-    }
-  };
+      if (mode === "create") {
+        createPost.mutate(submissionData, {
+          onSuccess: (newPost) => {
+            if (newPost?.id) {
+              router.push(`/admin/posts/${newPost.id}/edit`);
+            } else {
+              router.push("/admin/posts");
+            }
+          },
+        });
+      } else {
+        updatePost.mutate(submissionData);
+      }
+    },
+    [formData, mode, createPost, updatePost, router]
+  );
 
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       uploadMedia.mutate(file, {
         onSuccess: (asset) => {
-          handleChange('cover', asset.url);
-        }
+          handleChange("cover", asset.url);
+        },
       });
     }
   };
 
+  const removeCover = () => handleChange("cover", "");
+
   const [tagInput, setTagInput] = useState("");
   const handleAddTag = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && tagInput.trim()) {
+    if (e.key === "Enter" && tagInput.trim()) {
       e.preventDefault();
       if (!formData.tags.includes(tagInput.trim())) {
-        setFormData(prev => ({ ...prev, tags: [...prev.tags, tagInput.trim()] }));
+        setFormData((prev) => ({
+          ...prev,
+          tags: [...prev.tags, tagInput.trim()],
+        }));
       }
       setTagInput("");
     }
   };
 
   const removeTag = (tag: string) => {
-    setFormData(prev => ({ ...prev, tags: formData.tags.filter((t: string) => t !== tag) }));
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((t: string) => t !== tag),
+    }));
   };
 
-  const wordCount = formData.content.split(/\s+/).filter(w => w.length > 0).length;
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        handleSave();
+      }
+      if (e.key === "Escape" && focusMode) {
+        setFocusMode(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleSave, focusMode]);
 
-  return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans selection:bg-accent/30 relative">
-      
-      {/* 1. Left Vertical Toolbar: Minimalist */}
-      <aside className="w-20 flex flex-col items-center py-8 border-r border-border bg-white dark:bg-slate-900 z-20">
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={() => router.back()}
-          className="text-muted-foreground hover:text-foreground rounded-full hover:bg-muted mb-10"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+  const wordCount = formData.content.trim()
+    ? formData.content.trim().split(/\s+/).length
+    : 0;
+  const charCount = formData.content.length;
 
-        <div className="flex flex-col gap-6">
-          {[Type, Bold, Italic, LinkIcon, Quote, ListIcon, ImageIcon].map((Icon, i) => (
-            <Button 
-              key={i}
-              variant="ghost" 
-              size="icon"
-              className="text-muted-foreground hover:text-accent transition-all rounded-xl"
-            >
-              <Icon className="h-5 w-5" />
-            </Button>
-          ))}
-        </div>
-      </aside>
+  const colorMode = resolvedTheme === "dark" ? "dark" : "light";
 
-      {/* 2. Main Content Area: Immersive Writing Space */}
-      <main className="flex-1 flex flex-col overflow-hidden relative bg-background/50 backdrop-blur-sm">
-        
-        {/* Status Header */}
-        <div className="flex items-center justify-between px-16 py-8 shrink-0">
-          <div className="flex items-center gap-4 text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
-            <span className={cn(
-              "px-3 py-1 rounded-full",
-              isPublished ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
-            )}>
-              {isPublished ? "Published" : "Draft Mode"}
+  // -- Focus mode: fullscreen overlay --
+  if (focusMode) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex flex-col bg-background"
+        data-color-mode={colorMode}
+      >
+        {/* Focus mode top bar */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-border/50 bg-background/80 backdrop-blur-sm">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <FileText className="h-4 w-4" />
+            <span className="font-medium truncate max-w-[300px]">
+              {formData.title || "Untitled"}
             </span>
-            <span className="opacity-20">/</span>
-            <span className="flex items-center gap-2">
-              {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-              {isSubmitting ? "Persisting..." : "All changes saved"}
+            <span className="text-xs opacity-60">
+              {charCount} chars
             </span>
           </div>
-          
-          <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase bg-muted/50 px-4 py-1.5 rounded-full">
-            {wordCount.toLocaleString()} Words
-          </div>
-        </div>
-
-        {/* Editor Canvas */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-16 pb-32">
-          <div className="max-w-3xl mx-auto">
-            {/* Title Section */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-16 group"
-            >
-              <textarea
-                placeholder="Story Title..."
-                className="w-full bg-transparent border-none text-6xl md:text-7xl font-serif font-medium text-foreground placeholder:text-foreground/5 focus:outline-none resize-none leading-[1.1] mb-6"
-                rows={1}
-                value={formData.title}
-                onChange={handleTitleChange}
-              />
-              <div className="h-px w-20 bg-accent transition-all group-focus-within:w-full opacity-30" />
-            </motion.div>
-
-            {/* Markdown Editor */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              data-color-mode="light" 
-              className="prose prose-lg dark:prose-invert max-w-none prose-p:text-foreground/80 prose-p:leading-relaxed prose-headings:font-serif prose-headings:font-medium"
-            >
-              <MDEditor
-                value={formData.content}
-                onChange={(val) => handleChange('content', val || "")}
-                height={1000}
-                className="bg-transparent border-none shadow-none !bg-transparent md-editor-minimal"
-                visibleDragbar={false}
-                preview="edit"
-                hideToolbar={true} 
-                textareaProps={{
-                  placeholder: "Begin your creative journey...",
-                  className: "text-xl leading-relaxed text-foreground/80 font-sans focus:outline-none"
-                }}
-                style={{ backgroundColor: 'transparent' }}
-              />
-            </motion.div>
-          </div>
-        </div>
-      </main>
-
-      {/* 3. Right Sidebar: Refined Controls */}
-      <aside className="w-80 border-l border-border bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
-        <div className="p-8 space-y-10">
-          {/* Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Button
-              variant="outline"
-              className="flex-1 rounded-full border-border hover:bg-muted text-xs font-bold uppercase tracking-widest h-12"
+              variant="ghost"
+              size="sm"
               onClick={() => handleSave(PostStatus.DRAFT)}
               disabled={isSubmitting}
+              className="text-muted-foreground hover:text-foreground"
             >
-              {isPublished ? "To Draft" : "Save"}
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-1.5" />
+              )}
+              Save
             </Button>
-
             <Button
-              className="flex-1 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl shadow-primary/10 text-xs font-bold uppercase tracking-widest h-12"
-              onClick={() => handleSave(PostStatus.PUBLISHED)}
-              disabled={isSubmitting}
+              variant="ghost"
+              size="icon"
+              onClick={() => setFocusMode(false)}
+              className="text-muted-foreground hover:text-foreground"
             >
-              {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Rocket className="h-3 w-3 mr-2" />}
-              {isPublished ? "Update" : "Publish"}
+              <Minimize2 className="h-4 w-4" />
             </Button>
           </div>
+        </div>
 
-          <div className="space-y-12 overflow-y-auto custom-scrollbar pr-2">
-            
-            {/* Metadata */}
-            <section className="space-y-6">
-              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
-                <Settings className="w-3 h-3" />
-                Configuration
-              </h3>
-              
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-foreground/60 uppercase tracking-wider ml-1">URL Extension</Label>
-                  <div className="bg-muted/50 rounded-2xl border border-border px-4 py-3 flex items-center gap-3 focus-within:border-accent/50 transition-all">
-                    <LinkIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                    <input 
-                      className="bg-transparent border-none focus:outline-none w-full text-xs font-medium placeholder:text-muted-foreground/30"
-                      value={formData.slug}
-                      onChange={(e) => handleChange('slug', e.target.value)}
-                    />
-                  </div>
-                </div>
+        {/* Focus editor area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-6 py-10">
+            <textarea
+              placeholder="Title"
+              className="w-full bg-transparent border-none font-serif font-medium text-4xl text-foreground placeholder:text-muted-foreground/25 focus:outline-none resize-none leading-tight mb-8"
+              rows={1}
+              value={formData.title}
+              onChange={handleTitleChange}
+            />
+            <div data-color-mode={colorMode}>
+              <MDEditor
+                value={formData.content}
+                onChange={(val) => handleChange("content", val || "")}
+                height="calc(100vh - 280px)"
+                visibleDragbar={false}
+                preview="live"
+                textareaProps={{
+                  placeholder: "Write your content...",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-foreground/60 uppercase tracking-wider ml-1">Taxonomy</Label>
-                  <div className="bg-muted/50 rounded-2xl border border-border p-3 flex flex-wrap gap-2 focus-within:border-accent/50 transition-all min-h-[100px]">
-                    {formData.tags.map((tag: string) => (
-                      <Badge 
-                        key={tag} 
-                        className="bg-accent text-white hover:bg-accent/90 border-none px-3 py-1 text-[10px] font-bold rounded-full flex items-center gap-1.5 shadow-lg shadow-accent/10"
-                      >
-                        {tag}
-                        <X className="w-3 h-3 cursor-pointer opacity-70 hover:opacity-100" onClick={() => removeTag(tag)}/>
-                      </Badge>
-                    ))}
-                    <input 
-                      className="bg-transparent border-none focus:outline-none text-[11px] font-medium text-foreground px-2 py-1 min-w-[80px]"
-                      placeholder="Add tag..."
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={handleAddTag}
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
+  // -- Normal mode: integrated in admin layout --
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+            className="rounded-xl text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-serif font-bold tracking-tight">
+              {mode === "create" ? "New Post" : "Edit Post"}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {mode === "create"
+                ? "Create a new article"
+                : `Editing "${initialData?.title || "Untitled"}"`}
+            </p>
+          </div>
+        </div>
 
-            {/* Visuals */}
-            <section className="space-y-6">
-              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
-                <ImageIcon className="w-3 h-3" />
-                Cover Visual
-              </h3>
-              
-              <div className="group relative rounded-3xl overflow-hidden bg-muted/50 border-2 border-dashed border-border transition-all hover:border-accent/30 cursor-pointer aspect-[4/3] flex items-center justify-center">
-                {formData.cover ? (
-                  <img src={formData.cover} alt="Cover" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                ) : (
-                  <div className="text-center p-6 space-y-3">
-                    <div className="bg-background w-12 h-12 rounded-full flex items-center justify-center mx-auto text-muted-foreground group-hover:text-accent transition-colors shadow-sm">
-                      <ImageIcon className="w-5 h-5" />
-                    </div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Upload Cover</p>
-                  </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setFocusMode(true)}
+            className="rounded-xl text-muted-foreground hover:text-foreground"
+            title="Focus mode"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleSave(PostStatus.DRAFT)}
+            disabled={isSubmitting}
+            className="rounded-xl"
+          >
+            <Save className="h-4 w-4 mr-1.5" />
+            {isPublished ? "Unpublish" : "Save Draft"}
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={() => handleSave(PostStatus.PUBLISHED)}
+            disabled={isSubmitting}
+            className="rounded-xl"
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+            ) : (
+              <Rocket className="h-4 w-4 mr-1.5" />
+            )}
+            {isPublished ? "Update" : "Publish"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Two column layout */}
+      <div className="flex gap-6 items-start">
+        {/* Main editor column */}
+        <div className="flex-1 min-w-0 space-y-4">
+          {/* Title card */}
+          <div className="rounded-2xl border border-border bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm p-6">
+            <textarea
+              placeholder="Post title..."
+              className="w-full bg-transparent border-none font-serif font-medium text-3xl text-foreground placeholder:text-muted-foreground/25 focus:outline-none resize-none leading-tight"
+              rows={1}
+              value={formData.title}
+              onChange={handleTitleChange}
+            />
+          </div>
+
+          {/* Markdown editor card */}
+          <div
+            className="rounded-2xl border border-border bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden"
+            data-color-mode={colorMode}
+          >
+            {mounted && (
+              <MDEditor
+                value={formData.content}
+                onChange={(val) => handleChange("content", val || "")}
+                height={560}
+                visibleDragbar={false}
+                preview="live"
+                textareaProps={{
+                  placeholder: "Write your content...",
+                }}
+              />
+            )}
+          </div>
+
+          {/* Stats bar */}
+          <div className="flex items-center gap-4 px-2 text-xs text-muted-foreground">
+            <span>{charCount} characters</span>
+            <span>{wordCount} words</span>
+            <span className="ml-auto flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">
+                Ctrl+S
+              </kbd>
+              save
+            </span>
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="w-72 shrink-0 space-y-4">
+          {/* Status */}
+          <div className="rounded-2xl border border-border bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm p-5">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Status
+            </label>
+            <div className="mt-3 flex items-center gap-2">
+              <div
+                className={cn(
+                  "w-2 h-2 rounded-full",
+                  isPublished
+                    ? "bg-emerald-500"
+                    : "bg-amber-400"
                 )}
-                {uploadMedia.isPending && (
-                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-accent" />
-                  </div>
-                )}
-                <input 
-                  type="file" 
-                  className="absolute inset-0 opacity-0 cursor-pointer" 
+              />
+              <span className="text-sm font-medium">
+                {isPublished ? "Published" : "Draft"}
+              </span>
+            </div>
+          </div>
+
+          {/* Cover Image */}
+          <div className="rounded-2xl border border-border bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm p-5">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Cover Image
+            </label>
+            <div className="mt-3 relative rounded-xl overflow-hidden bg-muted/50 border border-border/50 aspect-video flex items-center justify-center group cursor-pointer hover:border-accent/30 transition-colors">
+              {formData.cover ? (
+                <>
+                  <img
+                    src={formData.cover}
+                    alt="Cover"
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    onClick={removeCover}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </>
+              ) : (
+                <div className="text-center p-4">
+                  <ImageIcon className="w-5 h-5 mx-auto text-muted-foreground/50 mb-1.5" />
+                  <span className="text-xs text-muted-foreground/60">
+                    Click to upload
+                  </span>
+                </div>
+              )}
+              {uploadMedia.isPending && (
+                <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-accent" />
+                </div>
+              )}
+              {!formData.cover && (
+                <input
+                  type="file"
+                  className="absolute inset-0 opacity-0 cursor-pointer"
                   onChange={handleCoverUpload}
                   accept="image/*"
                 />
-              </div>
-            </section>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="mt-auto p-8 border-t border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Active</span>
+          {/* Tags */}
+          <div className="rounded-2xl border border-border bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm p-5">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Tags
+            </label>
+            <div className="mt-3 rounded-xl border border-border/50 p-3 flex flex-wrap gap-1.5 min-h-[72px] focus-within:border-accent/30 transition-colors bg-background/50">
+              {formData.tags.map((tag: string) => (
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="px-2.5 py-1 text-xs flex items-center gap-1 rounded-lg"
+                >
+                  {tag}
+                  <X
+                    className="w-3 h-3 cursor-pointer hover:text-destructive transition-colors"
+                    onClick={() => removeTag(tag)}
+                  />
+                </Badge>
+              ))}
+              <input
+                className="bg-transparent border-none focus:outline-none text-sm flex-1 min-w-[60px] placeholder:text-muted-foreground/40"
+                placeholder="Add tag..."
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleAddTag}
+              />
+            </div>
           </div>
-          <p className="text-[10px] text-muted-foreground/40 font-bold tracking-widest uppercase">
-            Kaldalis v2.4
-          </p>
+
+          {/* Slug */}
+          <div className="rounded-2xl border border-border bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm p-5">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Slug
+            </label>
+            <div className="mt-3 rounded-xl border border-border/50 px-3 py-2.5 flex items-center gap-2 focus-within:border-accent/30 transition-colors bg-background/50">
+              <LinkIcon className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+              <input
+                className="bg-transparent border-none focus:outline-none text-sm w-full placeholder:text-muted-foreground/40 font-mono"
+                value={formData.slug}
+                onChange={(e) => handleChange("slug", e.target.value)}
+                placeholder="post-url-slug"
+              />
+            </div>
+          </div>
         </div>
-      </aside>
+      </div>
 
       <style jsx global>{`
-        .md-editor-minimal .w-md-editor-content {
+        /* MDEditor theme integration */
+        .w-md-editor {
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
           background-color: transparent !important;
         }
-        .md-editor-minimal .w-md-editor-text {
+        .w-md-editor-toolbar {
+          background-color: transparent !important;
+          border-bottom: 1px solid var(--border) !important;
+          padding: 8px 12px !important;
+          min-height: 40px;
+        }
+        .w-md-editor-toolbar ul > li > button {
+          color: var(--muted-foreground) !important;
+          border-radius: 6px !important;
+        }
+        .w-md-editor-toolbar ul > li > button:hover {
+          color: var(--foreground) !important;
+          background-color: var(--muted) !important;
+        }
+        .w-md-editor-toolbar ul > li > button.active {
+          color: var(--foreground) !important;
+          background-color: var(--muted) !important;
+        }
+        .w-md-editor-content {
           background-color: transparent !important;
         }
-        .md-editor-minimal .w-md-editor-preview {
+        .w-md-editor-text {
           background-color: transparent !important;
+        }
+        .w-md-editor-text-input,
+        .w-md-editor-text-pre {
+          font-size: 15px !important;
+          line-height: 1.75 !important;
+          padding: 20px !important;
+          font-family: var(--font-sans) !important;
+        }
+        .w-md-editor-preview {
+          background-color: transparent !important;
+          padding: 20px !important;
           border-left: 1px solid var(--border) !important;
         }
-        .md-editor-minimal {
-          box-shadow: none !important;
+        .wmde-markdown {
+          background-color: transparent !important;
+          font-size: 15px !important;
+          line-height: 1.75 !important;
+          font-family: var(--font-sans) !important;
         }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
+        .wmde-markdown hr {
+          border-color: var(--border) !important;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
+        /* Dark mode adjustments */
+        [data-color-mode="dark"] .w-md-editor {
+          color: var(--foreground) !important;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: var(--border);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: var(--accent);
+        [data-color-mode="dark"] .w-md-editor-text-input {
+          color: var(--foreground) !important;
+          -webkit-text-fill-color: var(--foreground) !important;
         }
       `}</style>
     </div>
