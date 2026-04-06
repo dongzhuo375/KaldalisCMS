@@ -19,13 +19,22 @@ export interface Tag {
   name: string;
 }
 
+// Post status constants
+export const PostStatus = {
+  DRAFT: 0,
+  PUBLISHED: 1,
+  ARCHIVED: 2,
+} as const;
+
+export type PostStatusType = typeof PostStatus[keyof typeof PostStatus];
+
 export interface Post {
   id: number;
   title: string;
   slug: string;
   content: string;
   cover?: string;
-  status: number; // 0=draft, 1=published, 2=archived
+  status: PostStatusType;
   author_id: number;
   author?: User;
   category_id?: number;
@@ -33,6 +42,22 @@ export interface Post {
   tags?: Tag[];
   created_at: string;
   updated_at: string;
+}
+
+export interface CreatePostDTO {
+  title: string;
+  content: string;
+  cover?: string;
+  tags?: string[];
+  category_id?: number;
+}
+
+export interface UpdatePostDTO {
+  title?: string;
+  content?: string;
+  cover?: string;
+  tags?: string[];
+  category_id?: number;
 }
 
 export interface AuthResponse {

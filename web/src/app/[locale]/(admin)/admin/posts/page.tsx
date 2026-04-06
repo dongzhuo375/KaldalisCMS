@@ -26,7 +26,8 @@ import {
   SortAsc,
   Calendar
 } from "lucide-react";
-import { usePosts, useDeletePost } from "@/services/post-service";
+import { useAdminPosts, useDeletePost } from "@/services/post-service";
+import { PostStatus } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -45,7 +46,7 @@ export default function PostsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  const { data: posts = [], isLoading } = usePosts({ admin: true });
+  const { data: posts = [], isLoading } = useAdminPosts();
   const deletePostMutation = useDeletePost();
 
   if (isLoading) {
@@ -82,10 +83,14 @@ export default function PostsPage() {
   const filteredPosts = posts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           post.slug.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     if (statusFilter === "all") return matchesSearch;
-    const statusMap = { published: 1, draft: 0, archived: 2 };
-    return matchesSearch && post.status === (statusMap as any)[statusFilter];
+    const statusMap = {
+      published: PostStatus.PUBLISHED,
+      draft: PostStatus.DRAFT,
+      archived: PostStatus.ARCHIVED
+    };
+    return matchesSearch && post.status === statusMap[statusFilter];
   });
 
   const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);
@@ -205,9 +210,9 @@ export default function PostsPage() {
                               <div className="flex items-center gap-6 mt-4 md:mt-0 ml-auto md:ml-0">
                                   <Badge variant="outline" className={cn(
                                       "border-0 px-4 py-1 text-[10px] font-bold uppercase rounded-full",
-                                      post.status === 1 ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
+                                      post.status === PostStatus.PUBLISHED ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
                                   )}>
-                                      {post.status === 1 ? "Published" : "Draft"}
+                                      {post.status === PostStatus.PUBLISHED ? "Published" : "Draft"}
                                   </Badge>
 
                                   <DropdownMenu>

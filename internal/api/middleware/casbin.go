@@ -36,7 +36,6 @@ func Authorize(e *casbin.Enforcer) gin.HandlerFunc {
 		}
 
 		if !ok {
-			println("[DEBUG CasbinMiddleware] DENIED: sub=" + sub + ", obj=" + obj + ", act=" + act)
 			abortWithCoreError(c, http.StatusForbidden, core.CodeForbidden, "permission denied", nil)
 			return
 		}

@@ -19,7 +19,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn, getImageUrl } from "@/lib/utils";
 import { useTranslations } from 'next-intl';
 import { useSystemStatus, useReadyz } from "@/services/system-service";
-import { usePosts } from "@/services/post-service";
+import { useAdminPosts } from "@/services/post-service";
+import { PostStatus } from "@/lib/types";
 import { useMedia } from "@/services/media-service";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "@/i18n/routing";
@@ -30,7 +31,7 @@ export default function DashboardPage() {
   const t = useTranslations('admin');
   const { data: status, isLoading: statusLoading } = useSystemStatus();
   const { data: health, isLoading: healthLoading } = useReadyz();
-  const { data: postsData = [], isLoading: postsLoading } = usePosts({ limit: 5, admin: true });
+  const { data: postsData = [], isLoading: postsLoading } = useAdminPosts();
   const { data: mediaData, isLoading: mediaLoading } = useMedia({ page_size: 1 });
 
   const posts = Array.isArray(postsData) ? postsData : [];
@@ -194,9 +195,9 @@ export default function DashboardPage() {
                   </div>
                   <Badge variant="outline" className={cn(
                     "rounded-full border-0 px-3 py-1 text-[10px] font-bold uppercase",
-                    item.status === 1 ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
+                    item.status === PostStatus.PUBLISHED ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
                   )}>
-                    {item.status === 1 ? 'Published' : 'Draft'}
+                    {item.status === PostStatus.PUBLISHED ? 'Published' : 'Draft'}
                   </Badge>
                 </motion.div>
               ))}

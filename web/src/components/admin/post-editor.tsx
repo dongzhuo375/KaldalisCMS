@@ -21,7 +21,7 @@ import {
   Rocket,
   ChevronRight
 } from "lucide-react";
-import { Post } from "@/lib/types";
+import { Post, PostStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useCreatePost, useUpdatePost } from "@/services/post-service";
 import { useUploadMedia } from "@/services/media-service";
@@ -48,10 +48,10 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
     title: initialData?.title || "",
     slug: initialData?.slug || "",
     content: initialData?.content || "",
-    status: initialData?.status ?? 0, 
+    status: initialData?.status ?? PostStatus.DRAFT,
     cover: initialData?.cover || "",
     tags: (initialData?.tags || []).map(t => typeof t === 'string' ? t : t.name),
-    excerpt: "", 
+    excerpt: "",
   });
 
   const createPost = useCreatePost();
@@ -59,7 +59,7 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
   const uploadMedia = useUploadMedia();
 
   const isSubmitting = createPost.isPending || updatePost.isPending;
-  const isPublished = formData.status === 1;
+  const isPublished = formData.status === PostStatus.PUBLISHED;
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const title = e.target.value;
@@ -232,18 +232,18 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
         <div className="p-8 space-y-10">
           {/* Actions */}
           <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="flex-1 rounded-full border-border hover:bg-muted text-xs font-bold uppercase tracking-widest h-12"
-              onClick={() => handleSave(0)}
+              onClick={() => handleSave(PostStatus.DRAFT)}
               disabled={isSubmitting}
             >
               {isPublished ? "To Draft" : "Save"}
             </Button>
-            
-            <Button 
+
+            <Button
               className="flex-1 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl shadow-primary/10 text-xs font-bold uppercase tracking-widest h-12"
-              onClick={() => handleSave(1)}
+              onClick={() => handleSave(PostStatus.PUBLISHED)}
               disabled={isSubmitting}
             >
               {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Rocket className="h-3 w-3 mr-2" />}

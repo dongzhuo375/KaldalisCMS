@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { PostEditor } from "@/components/admin/post-editor";
-import { usePost } from "@/services/post-service";
+import { useAdminPost } from "@/services/post-service";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
@@ -11,7 +11,7 @@ export default function EditPostPage() {
   const params = useParams();
   const id = params?.id as string;
   
-  const { data: post, isLoading, isError, error } = usePost(id);
+  const { data: post, isLoading, isError, error } = useAdminPost(id);
 
   if (isLoading) {
     return (
