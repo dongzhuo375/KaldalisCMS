@@ -13,6 +13,12 @@ async function proxyRequest(request: NextRequest, path: string) {
     }
   });
 
+  // Ensure cookies are explicitly forwarded (safety net for Next.js edge cases)
+  const cookieHeader = request.headers.get('cookie');
+  if (cookieHeader) {
+    headers.set('cookie', cookieHeader);
+  }
+
   // Build fetch options
   const fetchOptions: RequestInit = {
     method: request.method,

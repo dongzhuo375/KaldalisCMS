@@ -62,7 +62,7 @@ export default function LoginPage() {
       transition={{ duration: 0.5 }}
       className="w-full max-w-sm"
     >
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 shadow-xl shadow-black/5 border border-border/50">
+      <div className="bg-white/80 dark:bg-card/80 backdrop-blur-xl rounded-3xl p-8 shadow-xl shadow-black/5 border border-border/50">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-serif font-medium text-foreground mb-2">

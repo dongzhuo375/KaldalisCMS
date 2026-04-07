@@ -112,7 +112,7 @@ export default function PostsPage() {
         </div>
         
         <Link href="/admin/posts/new">
-          <Button className="rounded-full bg-primary text-primary-foreground h-12 px-8 font-bold shadow-xl shadow-primary/10 hover:scale-105 transition-transform">
+          <Button className="rounded-full bg-accent text-accent-foreground h-12 px-8 font-bold shadow-lg shadow-accent/10 hover:shadow-xl transition-all">
             <Plus className="mr-2 h-4 w-4" /> Create New Post
           </Button>
         </Link>
@@ -124,7 +124,7 @@ export default function PostsPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input 
               placeholder="Search by title or slug..."
-              className="pl-12 h-12 bg-white/50 dark:bg-slate-900/50 border-border focus-visible:ring-accent rounded-2xl"
+              className="pl-12 h-12 bg-white/50 dark:bg-white/[0.03] border-border focus-visible:ring-accent rounded-2xl"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -132,12 +132,12 @@ export default function PostsPage() {
          <div className="flex items-center gap-3">
              <DropdownMenu>
                <DropdownMenuTrigger asChild>
-                 <Button variant="outline" className="h-12 border-border bg-white/50 dark:bg-slate-900/50 rounded-2xl min-w-[140px] justify-between font-bold text-xs uppercase tracking-widest">
+                 <Button variant="outline" className="h-12 border-border bg-white/50 dark:bg-white/[0.03] rounded-2xl min-w-[140px] justify-between font-bold text-xs uppercase tracking-widest">
                    {statusFilter}
                    <Filter className="ml-2 h-3.5 w-3.5 opacity-50" /> 
                  </Button>
                </DropdownMenuTrigger>
-               <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border-border shadow-xl rounded-xl">
+               <DropdownMenuContent align="end" className="w-48 bg-background border-border shadow-xl rounded-xl">
                  {['all', 'published', 'draft', 'archived'].map((s) => (
                    <DropdownMenuCheckboxItem 
                     key={s}
@@ -151,7 +151,7 @@ export default function PostsPage() {
                </DropdownMenuContent>
              </DropdownMenu>
 
-             <Button variant="outline" className="h-12 border-border bg-white/50 dark:bg-slate-900/50 rounded-2xl font-bold text-xs uppercase tracking-widest">
+             <Button variant="outline" className="h-12 border-border bg-white/50 dark:bg-white/[0.03] rounded-2xl font-bold text-xs uppercase tracking-widest">
                <SortAsc className="mr-2 h-3.5 w-3.5 opacity-50" />
                Latest
              </Button>
@@ -181,7 +181,7 @@ export default function PostsPage() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ delay: i * 0.05 }}
-                            className="group flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm border border-border rounded-3xl hover:border-accent/30 transition-all hover:shadow-xl hover:shadow-accent/5"
+                            className="group flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm border border-border rounded-3xl hover:border-accent/30 transition-all hover:shadow-xl hover:shadow-accent/5"
                           >
                               <div className="flex items-center gap-6 min-w-0">
                                   <div className="h-16 w-24 bg-muted rounded-2xl overflow-hidden shrink-0 border border-border group-hover:scale-105 transition-transform">
@@ -221,7 +221,7 @@ export default function PostsPage() {
                                               <MoreHorizontal className="h-4 w-4" />
                                           </button>
                                       </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="w-[180px] bg-white dark:bg-slate-900 border-border shadow-2xl rounded-2xl p-2">
+                                      <DropdownMenuContent align="end" className="w-[180px] bg-background border-border shadow-2xl rounded-2xl p-2">
                                           <Link href={`/admin/posts/${post.id}/edit`}>
                                               <DropdownMenuItem className="cursor-pointer rounded-xl py-2.5">
                                                   <Pencil className="mr-2 h-4 w-4" /> Edit Article

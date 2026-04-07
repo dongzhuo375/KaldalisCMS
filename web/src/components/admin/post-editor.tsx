@@ -311,9 +311,9 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
             />
           </div>
 
-          {/* Markdown editor card */}
+          {/* Markdown editor card - no backdrop-blur/transforms to avoid cursor misalignment */}
           <div
-            className="rounded-2xl border border-border bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden"
+            className="rounded-2xl border border-border bg-white dark:bg-background overflow-hidden"
             data-color-mode={colorMode}
           >
             {mounted && (
@@ -488,13 +488,10 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
         .w-md-editor-text {
           background-color: transparent !important;
         }
-        .w-md-editor-text-input,
-        .w-md-editor-text-pre {
-          font-size: 15px !important;
-          line-height: 1.75 !important;
-          padding: 20px !important;
-          font-family: var(--font-sans) !important;
-        }
+        /* DO NOT override font-size, line-height, padding, or font-family
+           on .w-md-editor-text-input / .w-md-editor-text-pre —
+           MDEditor relies on pixel-perfect alignment between the textarea
+           and the syntax-highlighted pre overlay. Any override breaks the cursor. */
         .w-md-editor-preview {
           background-color: transparent !important;
           padding: 20px !important;
@@ -504,7 +501,6 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
           background-color: transparent !important;
           font-size: 15px !important;
           line-height: 1.75 !important;
-          font-family: var(--font-sans) !important;
         }
         .wmde-markdown hr {
           border-color: var(--border) !important;

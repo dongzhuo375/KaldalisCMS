@@ -31,13 +31,13 @@ export default function HomePage() {
         >
           {isLoggedIn ? (
             <Link href="/admin/dashboard">
-              <Button size="lg" className="h-12 px-8 text-base rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-lg shadow-primary/10 hover:shadow-xl transition-all">
+              <Button size="lg" className="h-12 px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold shadow-lg shadow-accent/10 hover:shadow-xl transition-all">
                 Go to Dashboard <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
           ) : (
             <Link href="/login">
-              <Button size="lg" className="h-12 px-8 text-base rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-lg shadow-primary/10 hover:shadow-xl transition-all">
+              <Button size="lg" className="h-12 px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold shadow-lg shadow-accent/10 hover:shadow-xl transition-all">
                 Get Started <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>

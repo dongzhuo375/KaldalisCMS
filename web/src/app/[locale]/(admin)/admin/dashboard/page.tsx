@@ -1,34 +1,27 @@
 "use client";
 
-import { 
-  FileText, 
-  Activity, 
-  Clock, 
-  Loader2,
+import {
+  FileText,
+  Activity,
   Database,
-  ShieldCheck,
-  Cpu,
   Zap,
   Plus,
-  Terminal,
-  ChevronRight,
-  Code
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn, getImageUrl } from "@/lib/utils";
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 import { useSystemStatus, useReadyz } from "@/services/system-service";
 import { useAdminPosts } from "@/services/post-service";
 import { PostStatus } from "@/lib/types";
 import { useMedia } from "@/services/media-service";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
-  const t = useTranslations('admin');
+  const t = useTranslations("admin");
   const { data: status, isLoading: statusLoading } = useSystemStatus();
   const { data: health, isLoading: healthLoading } = useReadyz();
   const { data: postsData = [], isLoading: postsLoading } = useAdminPosts();
@@ -39,7 +32,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="h-full space-y-10 pb-20">
+      <div className="space-y-10 pb-20">
         <header className="flex justify-between items-end gap-6">
           <div className="space-y-2">
             <Skeleton className="h-12 w-64" />
@@ -52,103 +45,104 @@ export default function DashboardPage() {
             <Skeleton key={i} className="h-32 w-full rounded-3xl" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Skeleton className="lg:col-span-2 h-[400px] rounded-3xl" />
-          <div className="space-y-8">
-            <Skeleton className="h-[200px] rounded-3xl" />
-            <Skeleton className="h-[200px] rounded-3xl" />
-          </div>
-        </div>
+        <Skeleton className="h-[400px] rounded-3xl" />
       </div>
     );
   }
 
-  const dbStatus = health?.checks?.database?.status === 'ok';
-  const engineMode = health?.mode || 'unknown';
+  const dbStatus = health?.checks?.database?.status === "ok";
 
   const stats = [
     {
-      title: "Database Link",
+      title: "Database",
       value: dbStatus ? "Connected" : "Disconnected",
       status: dbStatus ? "success" : "error",
       icon: Database,
-      detail: dbStatus ? "PostgreSQL Active" : "Check logs"
+      detail: dbStatus ? "PostgreSQL" : "Check logs",
     },
     {
-      title: "API Engine",
-      value: health?.status === 'ok' ? "Healthy" : "Degraded",
-      status: health?.status === 'ok' ? "success" : "warning",
+      title: "API",
+      value: health?.status === "ok" ? "Healthy" : "Degraded",
+      status: health?.status === "ok" ? "success" : "warning",
       icon: Zap,
-      detail: `Mode: ${engineMode.toUpperCase()}`
+      detail: `${(health?.mode || "app").toUpperCase()} mode`,
     },
     {
-      title: "Content Store",
+      title: "Posts",
       value: posts.length.toString(),
       status: "neutral",
       icon: FileText,
-      detail: "Managed Articles"
+      detail: `${posts.filter((p) => p.status === PostStatus.PUBLISHED).length} published`,
     },
     {
-      title: "Media Assets",
+      title: "Media",
       value: mediaData?.total?.toString() || "0",
       status: "neutral",
       icon: Activity,
-      detail: "Uploaded Files"
-    }
+      detail: "Files uploaded",
+    },
   ];
 
   return (
-    <div className="h-full space-y-10 custom-scrollbar pb-20">
-      
+    <div className="space-y-10 pb-20">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-2"
         >
-          <h1 className="text-4xl md:text-5xl font-serif font-medium tracking-tight text-foreground">
+          <h1 className="text-4xl md:text-5xl font-serif font-medium tracking-tight">
             {status?.site_name || "Console"}
           </h1>
           <p className="text-muted-foreground font-medium flex items-center gap-2">
-            <span className={cn(
-              "w-2 h-2 rounded-full animate-pulse",
-              dbStatus ? "bg-emerald-500" : "bg-rose-500"
-            )} />
-            {dbStatus ? "System is fully operational" : "System issue detected"} • {status?.version || 'v2.4.0'}
+            <span
+              className={cn(
+                "w-2 h-2 rounded-full",
+                dbStatus ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+              )}
+            />
+            {dbStatus ? "All systems operational" : "System issue detected"}
           </p>
         </motion.div>
 
         <Link href="/admin/posts/new">
-          <Button className="rounded-full bg-primary text-primary-foreground h-12 px-6 font-bold shadow-xl shadow-primary/10 hover:scale-105 transition-transform">
+          <Button className="rounded-full bg-accent text-accent-foreground h-12 px-6 font-bold shadow-lg shadow-accent/10 hover:shadow-xl transition-all">
             <Plus className="w-4 h-4 mr-2" /> New Article
           </Button>
         </Link>
       </header>
 
-      {/* Stats Grid: Real Health Data */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+            transition={{ delay: index * 0.08 }}
           >
-            <Card className="border-border bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm shadow-none hover:border-accent/20 transition-colors group">
+            <Card className="border-border bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm shadow-none hover:border-accent/20 transition-colors group">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground group-hover:text-accent transition-colors">
                   {stat.title}
                 </CardTitle>
-                <stat.icon className={cn(
-                  "h-4 w-4",
-                  stat.status === 'success' ? "text-emerald-500" : 
-                  stat.status === 'error' ? "text-rose-500" : 
-                  "text-muted-foreground"
-                )} strokeWidth={2.5} />
+                <stat.icon
+                  className={cn(
+                    "h-4 w-4",
+                    stat.status === "success"
+                      ? "text-emerald-500"
+                      : stat.status === "error"
+                        ? "text-rose-500"
+                        : "text-muted-foreground"
+                  )}
+                  strokeWidth={2.5}
+                />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-serif font-medium">{stat.value}</div>
+                <div className="text-2xl font-serif font-medium">
+                  {stat.value}
+                </div>
                 <div className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1 italic">
                   {stat.detail}
                 </div>
@@ -158,95 +152,84 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Recent Content */}
-        <Card className="lg:col-span-2 border-border shadow-none bg-transparent">
-          <CardHeader className="px-0 flex flex-row items-center justify-between">
-            <CardTitle className="text-2xl font-serif font-medium">Recent Activity</CardTitle>
-            <Link href="/admin/posts" className="text-xs font-bold uppercase text-accent hover:underline">View All</Link>
-          </CardHeader>
-          <CardContent className="px-0 pt-2">
-            <div className="space-y-1">
-              {posts.length === 0 ? (
-                <p className="text-muted-foreground text-sm py-10 text-center border border-dashed rounded-xl">No articles found.</p>
-              ) : posts.map((item, i) => (
-                <motion.div 
-                  key={item.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + (i * 0.05) }}
+      {/* Recent Posts */}
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-serif font-medium">Recent Articles</h2>
+          <Link
+            href="/admin/posts"
+            className="text-xs font-bold uppercase text-accent hover:underline"
+          >
+            View All
+          </Link>
+        </div>
+
+        {posts.length === 0 ? (
+          <div className="text-center py-16 border border-dashed border-border rounded-2xl">
+            <FileText className="w-8 h-8 mx-auto text-muted-foreground/30 mb-3" />
+            <p className="text-sm text-muted-foreground">No articles yet</p>
+            <Link href="/admin/posts/new">
+              <Button variant="outline" size="sm" className="mt-4 rounded-xl">
+                <Plus className="w-4 h-4 mr-1.5" /> Create your first post
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {posts.map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + i * 0.04 }}
+              >
+                <Link
+                  href={`/admin/posts/${item.id}/edit`}
                   className="flex items-center justify-between p-4 rounded-xl hover:bg-muted/50 transition-colors group border border-transparent hover:border-border"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-accent/5 overflow-hidden flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all">
+                    <div className="w-10 h-10 rounded-full bg-accent/5 overflow-hidden flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all shrink-0">
                       {item.cover ? (
-                        <img src={getImageUrl(item.cover)} alt="" className="w-full h-full object-cover" />
+                        <img
+                          src={getImageUrl(item.cover)}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <FileText className="w-5 h-5" />
                       )}
                     </div>
-                    <div>
-                      <h4 className="font-bold text-sm group-hover:text-accent transition-colors">{item.title}</h4>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-sm group-hover:text-accent transition-colors truncate">
+                        {item.title}
+                      </h4>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-                        {new Date(item.created_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
+                        {new Date(item.created_at).toLocaleDateString(
+                          undefined,
+                          { month: "long", day: "numeric" }
+                        )}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className={cn(
-                    "rounded-full border-0 px-3 py-1 text-[10px] font-bold uppercase",
-                    item.status === PostStatus.PUBLISHED ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
-                  )}>
-                    {item.status === PostStatus.PUBLISHED ? 'Published' : 'Draft'}
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "rounded-full border-0 px-3 py-1 text-[10px] font-bold uppercase shrink-0",
+                      item.status === PostStatus.PUBLISHED
+                        ? "bg-accent/10 text-accent"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {item.status === PostStatus.PUBLISHED
+                      ? "Published"
+                      : "Draft"}
                   </Badge>
-                </motion.div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* System Telemetry & Logs */}
-        <div className="space-y-8">
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-accent" />
-              <h3 className="text-xl font-serif font-medium">Telemetry</h3>
-            </div>
-            
-            <div className="p-6 rounded-2xl border border-border bg-slate-950 text-emerald-500 font-mono text-[10px] leading-relaxed overflow-hidden relative group">
-               <div className="absolute top-2 right-2 flex gap-1 opacity-30 group-hover:opacity-100 transition-opacity">
-                  <div className="w-2 h-2 rounded-full bg-rose-500" />
-                  <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-               </div>
-               <pre className="custom-scrollbar overflow-x-auto">
-                 {JSON.stringify(health, null, 2)}
-               </pre>
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-serif font-medium">Session</h3>
-              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            </div>
-            <div className="space-y-4 p-6 rounded-2xl border border-border bg-white/30 dark:bg-slate-900/30 backdrop-blur-sm">
-               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                  <span className="text-muted-foreground">Process Identity</span>
-                  <span className="text-foreground">Node_01</span>
-               </div>
-               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                  <span className="text-muted-foreground">Up Since</span>
-                  <span className="text-foreground">24 Mar 2026</span>
-               </div>
-               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                  <span className="text-muted-foreground">Region</span>
-                  <span className="text-foreground">Global_Edge</span>
-               </div>
-            </div>
-          </section>
-        </div>
-      </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

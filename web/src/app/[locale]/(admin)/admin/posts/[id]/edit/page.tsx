@@ -26,8 +26,8 @@ export default function EditPostPage() {
       <div className="flex h-[80vh] w-full flex-col items-center justify-center gap-4 text-center">
         <AlertCircle className="h-12 w-12 text-rose-500 opacity-50" />
         <div className="space-y-1">
-          <h2 className="text-xl font-bold text-white">Failed to load post</h2>
-          <p className="text-slate-400">{(error as { message?: string })?.message || "The post could not be found or retrieved."}</p>
+          <h2 className="text-xl font-bold">Failed to load post</h2>
+          <p className="text-muted-foreground">{(error as { message?: string })?.message || "The post could not be found or retrieved."}</p>
         </div>
         <Link href="/admin/posts">
           <Button variant="outline" className="mt-4 border-slate-800">

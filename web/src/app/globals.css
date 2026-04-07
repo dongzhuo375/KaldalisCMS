@@ -109,15 +109,30 @@
   50% { transform: scale(1.02); opacity: 0.95; }
 }
 
-@keyframes wave-drift {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(-20px); }
-}
-
 .animate-sun-breathe {
   animation: sun-breathe 8s ease-in-out infinite;
 }
 
-.animate-wave-drift {
-  animation: wave-drift 20s ease-in-out infinite;
+/* Three wave layers at different speeds for a realistic ocean feel */
+@keyframes wave-slow {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes wave-mid {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes wave-fast {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-wave-slow {
+  animation: wave-slow 25s linear infinite;
+}
+.animate-wave-mid {
+  animation: wave-mid 18s linear infinite;
+}
+.animate-wave-fast {
+  animation: wave-fast 12s linear infinite;
 }
