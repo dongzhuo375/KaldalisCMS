@@ -1,2 +1,32 @@
-/cmd/configs
+# Build outputs
+/bin/
+/server
+*.exe
+
+# Config with secrets
+/cmd/configs/
+
+# User uploads
+/data/
+
+# Logs
+*.log
+
+# Test artifacts
+test.hurl
+
+# Personal notes
+progress.md
 CLAUDE.md
+
+# Go
+vendor/
+
+# Node / Next.js
+web/node_modules/
+web/.next/
+web/.env*.local
+
+# OS
+.DS_Store
+Thumbs.db

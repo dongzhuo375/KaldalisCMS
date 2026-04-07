@@ -5,18 +5,23 @@ const BACKEND_URL = 'http://localhost:8080';
 async function proxyRequest(request: NextRequest, path: string) {
   const url = `${BACKEND_URL}/api/v1/${path}`;
 
-  // Forward headers, excluding host
+  // Forward headers, excluding host and cookie (cookie rebuilt below)
   const headers = new Headers();
   request.headers.forEach((value, key) => {
-    if (key.toLowerCase() !== 'host') {
+    const k = key.toLowerCase();
+    if (k !== 'host' && k !== 'cookie') {
       headers.set(key, value);
     }
   });
 
-  // Ensure cookies are explicitly forwarded (safety net for Next.js edge cases)
-  const cookieHeader = request.headers.get('cookie');
-  if (cookieHeader) {
-    headers.set('cookie', cookieHeader);
+  // Rebuild cookie header from NextRequest.cookies — the reliable way
+  // in Next.js App Router (request.headers.get('cookie') can be empty)
+  const cookieParts: string[] = [];
+  request.cookies.getAll().forEach((c) => {
+    cookieParts.push(`${c.name}=${c.value}`);
+  });
+  if (cookieParts.length > 0) {
+    headers.set('cookie', cookieParts.join('; '));
   }
 
   // Build fetch options
@@ -25,16 +30,16 @@ async function proxyRequest(request: NextRequest, path: string) {
     headers,
   };
 
-  // Forward body for non-GET requests
+  // Forward body for non-GET requests (use arrayBuffer to preserve binary data like file uploads)
   if (request.method !== 'GET' && request.method !== 'HEAD') {
-    fetchOptions.body = await request.text();
+    fetchOptions.body = await request.arrayBuffer();
   }
 
   // Make request to backend
   const backendResponse = await fetch(url, fetchOptions);
 
-  // Create response with backend body
-  const responseBody = await backendResponse.text();
+  // Read response as arrayBuffer to preserve binary responses too
+  const responseBody = await backendResponse.arrayBuffer();
   const response = new NextResponse(responseBody, {
     status: backendResponse.status,
     statusText: backendResponse.statusText,
