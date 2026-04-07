@@ -1,52 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "@/i18n/routing";
-import api from "@/lib/api";
+import { useSystemStatus } from "@/services/system-service";
 import { Loader2 } from "lucide-react";
 
 export function SystemStatusGuard({ children }: { children: React.ReactNode }) {
-  const [isReady, setIsReady] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { data: status, isLoading, isError } = useSystemStatus();
 
   useEffect(() => {
-    const checkStatus = async () => {
-      // Don't check if we are already on the setup page to avoid recursion
-      if (pathname.includes('/setup')) {
-        setIsReady(true);
-        return;
+    if (isLoading) return;
+
+    const isSetupPage = pathname.includes('/setup');
+
+    if (status && status.installed === false) {
+      if (!isSetupPage) {
+        router.replace("/setup");
       }
-
-      try {
-        const response = await api.get("/system/status");
-        // Backend returns { installed: boolean, site_name: string }
-        if (response && response.installed === false) {
-          if (!pathname.includes('/setup')) {
-            router.replace("/setup");
-          } else {
-            setIsReady(true);
-          }
-        } else {
-          // 系统已安装
-          if (pathname.includes('/setup')) {
-            router.replace("/"); // 已安装则不允许回 setup
-          } else {
-            setIsReady(true);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to check system status:", error);
-        // If API fails, we assume it's ready or at least let the app try to load
-        // to avoid being stuck on a loader forever
-        setIsReady(true);
+    } else if (status && status.installed === true) {
+      if (isSetupPage) {
+        router.replace("/");
       }
-    };
+    }
+  }, [status, isLoading, pathname, router]);
 
-    checkStatus();
-  }, [pathname, router]);
-
-  if (!isReady && !pathname.includes('/setup')) {
+  if (isLoading && !pathname.includes('/setup')) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-4">

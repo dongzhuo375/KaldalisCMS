@@ -140,7 +140,8 @@ func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	if err := api.service.CreateAdminPost(ctx, actorUserID, actorRole, *createReq.ToEntity()); err != nil {
+	createdPost, err := api.service.CreateAdminPost(ctx, actorUserID, actorRole, *createReq.ToEntity())
+	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			errorx.RespondTimeoutError(c, "create post timed out")
 			return
@@ -149,7 +150,7 @@ func (api *AdminPostAPI) CreatePost(c *gin.Context) {
 		return
 	}
 
-	errorx.RespondMessage(c, http.StatusCreated, "post created successfully")
+	c.JSON(http.StatusCreated, dto.ToPostResponse(&createdPost))
 }
 
 // UpdatePost updates editable post content fields.

@@ -1,32 +1,33 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Image, 
-  Users, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  FileText,
+  Image,
+  Users,
+  BarChart3,
   Settings,
   LogOut,
-  ChevronRight
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
 
-// 引入 shadcn 组件
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { useParams } from "next/navigation";
 
 export default function AdminLayout({
   children,
@@ -35,10 +36,38 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const t = useTranslations('admin');
+  const params = useParams();
+  const rawLocale = params?.locale as string;
+  const locale =
+    rawLocale && rawLocale !== "undefined" ? rawLocale : "zh-CN";
+
+  const t = useTranslations("admin");
   const { user, isLoggedIn, logout } = useAuthStore();
 
-  // 登录守卫：如果未登录，重定向到登录页
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved !== null) setCollapsed(saved === "true");
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "b") {
+        e.preventDefault();
+        toggle();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const toggle = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  };
+
   React.useEffect(() => {
     if (!isLoggedIn) {
       router.replace("/login");
@@ -49,148 +78,165 @@ export default function AdminLayout({
     try {
       await api.post("/users/logout");
     } catch (error) {
-      console.error("登出请求失败:", error);
+      console.error("Logout failed:", error);
     }
     logout();
     router.push("/login");
   };
 
-  if (!isLoggedIn) {
-    return null; // 或者返回一个加载动画，防止内容闪烁
-  }
+  if (!isLoggedIn) return null;
 
   const navItems = [
-    {
-      name: t('dashboard'),
-      href: "/admin/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      name: t('content'),
-      href: "/admin/posts",
-      icon: FileText,
-    },
-    {
-      name: t('media'),
-      href: "/admin/media",
-      icon: Image,
-    },
-    {
-      name: t('users'),
-      href: "/admin/users",
-      icon: Users,
-    },
-    {
-      name: t('analytics'),
-      href: "/admin/analytics",
-      icon: BarChart3,
-    },
+    { name: t("dashboard"), href: "/admin/dashboard", icon: LayoutDashboard },
+    { name: t("content"), href: "/admin/posts", icon: FileText },
+    { name: t("media"), href: "/admin/media", icon: Image },
+    { name: t("users"), href: "/admin/users", icon: Users },
+    { name: t("analytics"), href: "/admin/analytics", icon: BarChart3 },
   ];
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-950 text-slate-200">
-      {/* 左侧侧边栏 (Sidebar) */}
-      <aside className="hidden w-64 flex-col border-r border-slate-800 bg-slate-950 md:flex">
-        <div className="flex h-16 items-center border-b border-slate-800 px-6 text-lg font-bold tracking-tight text-white">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500 text-slate-950 font-bold mr-3 shadow-[0_0_15px_rgba(16,185,129,0.3)]">K</div>
-          Kaldalis
+    <div className="flex h-screen w-full bg-transparent text-foreground overflow-hidden">
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "hidden md:flex flex-col border-r border-border bg-background shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out",
+          collapsed ? "w-16" : "w-[240px]"
+        )}
+      >
+        {/* Logo + collapse toggle */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
+          <Link
+            href="/admin/dashboard"
+            className="flex items-center gap-3 min-w-0"
+          >
+            <div className="w-8 h-8 rounded-lg bg-accent text-accent-foreground flex items-center justify-center font-serif text-lg font-bold shrink-0">
+              K
+            </div>
+            {!collapsed && (
+              <span className="font-serif text-base font-bold tracking-tight truncate">
+                Kaldalis
+              </span>
+            )}
+          </Link>
+          {!collapsed && (
+            <button
+              onClick={toggle}
+              className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+              title="Collapse sidebar (Cmd+B)"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        
-        <nav className="flex-1 space-y-1 p-4">
+
+        {/* Expand button when collapsed */}
+        {collapsed && (
+          <div className="px-3 pt-3 shrink-0">
+            <button
+              onClick={toggle}
+              className="w-full flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              title="Expand sidebar (Cmd+B)"
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Nav */}
+        <nav className="flex-1 py-3 px-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive =
+              pathname === item.href ||
+              pathname.startsWith(`${item.href}/`);
             return (
-              <Link 
+              <Link
                 key={item.href}
-                href={item.href as any} 
+                href={item.href}
                 className={cn(
-                  "flex items-center justify-between group rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                  isActive 
-                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[inset_0_0_10px_rgba(16,185,129,0.05)]" 
-                    : "text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent"
+                  "flex items-center rounded-lg text-sm font-medium transition-colors relative group",
+                  collapsed
+                    ? "justify-center p-2.5"
+                    : "gap-3 px-3 py-2.5",
+                  isActive
+                    ? "bg-accent/10 text-accent font-semibold"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                <div className="flex items-center gap-3">
-                  <item.icon className={cn(
-                    "w-5 h-5 transition-colors",
-                    isActive ? "text-emerald-400" : "text-slate-500 group-hover:text-slate-300"
-                  )} />
-                  {item.name}
-                </div>
-                {isActive && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+                <item.icon className="w-[18px] h-[18px] shrink-0" />
+                {!collapsed && <span className="truncate">{item.name}</span>}
+
+                {collapsed && (
+                  <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-foreground text-background text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                    {item.name}
+                  </div>
                 )}
               </Link>
             );
           })}
         </nav>
-        
-        {/* Settings & User Info */}
-        <div className="mt-auto border-t border-slate-800 p-4 space-y-4">
-          <Link 
-            href="/admin/settings" 
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              pathname.startsWith("/admin/settings")
-                ? "bg-slate-800 text-white"
-                : "text-slate-400 hover:bg-slate-900 hover:text-white"
-            )}
-          >
-            <Settings className="w-5 h-5 text-slate-500" />
-            {t('settings')}
-          </Link>
 
-          <div className="flex items-center justify-between bg-slate-900/40 rounded-xl p-3 border border-slate-800/50">
-             <div className="flex items-center gap-3">
-               <Avatar className="h-9 w-9 border border-slate-700">
-                 <AvatarImage src={user?.avatar || ""} />
-                 <AvatarFallback className="bg-slate-800 text-slate-200">
-                   {user?.username?.[0]?.toUpperCase() || "A"}
-                 </AvatarFallback>
-               </Avatar>
-               <div className="flex flex-col">
-                 <span className="text-sm font-semibold text-white truncate max-w-[100px]">{user?.username || "Admin"}</span>
-                 <span className="text-[10px] text-slate-500 font-mono uppercase tracking-tighter">System Admin</span>
-               </div>
-             </div>
-             
-             <DropdownMenu>
-               <DropdownMenuTrigger asChild>
-                 <button className="text-slate-500 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors">
-                    <MoreHorizontal className="w-4 h-4" />
-                 </button>
-               </DropdownMenuTrigger>
-               <DropdownMenuContent align="end" side="top" className="w-56 bg-slate-900 border-slate-800 text-slate-200">
-                 <DropdownMenuLabel className="text-xs text-slate-500 font-mono uppercase">Manage Session</DropdownMenuLabel>
-                 <DropdownMenuItem className="cursor-pointer focus:bg-slate-800 focus:text-white">
-                   <Settings className="mr-2 h-4 w-4" /> {t('settings')}
-                 </DropdownMenuItem>
-                 <DropdownMenuSeparator className="bg-slate-800" />
-                 <DropdownMenuItem onClick={handleLogout} className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/30 cursor-pointer">
-                   <LogOut className="mr-2 h-4 w-4" /> {t('logout_text') || 'Logout'}
-                 </DropdownMenuItem>
-               </DropdownMenuContent>
-             </DropdownMenu>
-          </div>
+        {/* User at the very bottom */}
+        <div className="p-3 border-t border-border shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  "flex items-center w-full rounded-lg hover:bg-muted transition-colors text-left",
+                  collapsed
+                    ? "justify-center p-2"
+                    : "gap-3 px-3 py-2"
+                )}
+              >
+                <Avatar className="h-7 w-7 shrink-0">
+                  <AvatarImage src={user?.avatar || ""} />
+                  <AvatarFallback className="bg-muted text-foreground text-xs font-bold">
+                    {user?.username?.[0]?.toUpperCase() || "A"}
+                  </AvatarFallback>
+                </Avatar>
+                {!collapsed && (
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium truncate">
+                      {user?.username || "Admin"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      {user?.role?.replace("_", " ") || "user"}
+                    </span>
+                  </div>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align={collapsed ? "center" : "start"}
+              side="top"
+              className="w-48"
+            >
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => router.push("/admin/settings")}
+              >
+                <Settings className="mr-2 h-4 w-4" /> {t("settings")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="text-destructive focus:text-destructive cursor-pointer"
+              >
+                <LogOut className="mr-2 h-4 w-4" />{" "}
+                {t("logout_text") || "Logout"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
 
-      {/* 右侧主内容区 */}
-      <div className="flex flex-1 flex-col bg-slate-950 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-          <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-emerald-500 opacity-20 blur-[100px]"></div>
-          <div className="absolute right-0 bottom-0 -z-10 h-[310px] w-[310px] rounded-full bg-indigo-500 opacity-10 blur-[100px]"></div>
-        </div>
-
-        <main className="flex-1 overflow-hidden p-4 md:p-8 relative z-10 flex flex-col">
-          {children}
+      {/* Main */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-6 md:p-10 max-w-7xl w-full mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>
   );
 }
-
-// 辅助图标
-import { MoreHorizontal } from "lucide-react";

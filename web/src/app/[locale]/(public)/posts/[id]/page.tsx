@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { useTranslations, useFormatter } from 'next-intl';
@@ -10,19 +10,18 @@ import { Post } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, User, ArrowLeft, Clock, Tag } from "lucide-react";
+import { Calendar, ArrowLeft, Clock } from "lucide-react";
 
-export default function PostDetailPage() {
-  const params = useParams();
+export default function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
+  
   const router = useRouter();
-  const t = useTranslations(); // Use generic for common keys
+  const t = useTranslations();
   const format = useFormatter();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-
-  // params.id might be string or string[]
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   useEffect(() => {
     if (!id) return;
@@ -69,7 +68,6 @@ export default function PostDetailPage() {
 
   return (
     <article className="max-w-4xl mx-auto py-12 px-4 space-y-8">
-      {/* Back Navigation */}
       <div>
         <Link href="/posts">
           <Button variant="ghost" className="pl-0 hover:pl-2 transition-all text-muted-foreground hover:text-foreground">
@@ -78,7 +76,6 @@ export default function PostDetailPage() {
         </Link>
       </div>
 
-      {/* Header */}
       <header className="space-y-6">
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <Badge variant="secondary" className="rounded-full px-3">
@@ -88,7 +85,6 @@ export default function PostDetailPage() {
             <Calendar className="w-4 h-4" />
             {post.created_at ? format.dateTime(new Date(post.created_at), { dateStyle: 'long' }) : '-'}
           </span>
-          {/* Estimated read time placeholder */}
           <span className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
             5 min read
@@ -111,7 +107,6 @@ export default function PostDetailPage() {
         </div>
       </header>
 
-      {/* Featured Image */}
       {post.cover && (
         <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-lg bg-muted">
           <img 
@@ -122,15 +117,12 @@ export default function PostDetailPage() {
         </div>
       )}
 
-      {/* Content */}
       <div className="prose prose-slate dark:prose-invert max-w-none lg:prose-lg leading-loose">
-        {/* Simple rendering for now, can be replaced with ReactMarkdown */}
         <div className="whitespace-pre-wrap font-serif text-foreground/90">
           {post.content}
         </div>
       </div>
 
-      {/* Tags */}
       {post.tags && post.tags.length > 0 && (
         <div className="pt-8 border-t border-border">
           <div className="flex flex-wrap gap-2">

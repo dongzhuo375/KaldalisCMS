@@ -83,9 +83,9 @@ export default function RegisterPage() {
           <Button className="w-full" type="submit" disabled={loading}>
             {loading ? t('common.loading') : t('auth.sign_up')}
           </Button>
-          <div className="text-sm text-center text-slate-500">
+          <div className="text-sm text-center text-muted-foreground">
             {t('auth.already_have_account')}{" "}
-            <Link href="/login" className="text-blue-600 hover:underline">
+            <Link href="/login" className="text-accent hover:underline font-medium">
               {t('auth.sign_in')}
             </Link>
           </div>

@@ -34,7 +34,6 @@ func NewPostServiceWithMedia(repo core.PostRepository, media *MediaService, auth
 }
 
 // ListPublicPosts returns only published posts.
-// Public delivery layers must never call a method that exposes drafts implicitly.
 func (s *PostService) ListPublicPosts(ctx context.Context) ([]entity.Post, error) {
 	posts, err := s.repo.GetPublished(ctx)
 	if err != nil {
@@ -53,7 +52,6 @@ func (s *PostService) GetPublicPostByID(ctx context.Context, id uint) (entity.Po
 }
 
 // ListAdminPosts returns the management view of posts for the acting user.
-// Capability checks decide whether the caller gets the global moderation view or only owner-scoped drafts.
 func (s *PostService) ListAdminPosts(ctx context.Context, actorUserID uint, actorRole string) ([]entity.Post, error) {
 	canListAny, err := s.hasPostPermission(ctx, actorRole, core.PostPermissionListAnyPost)
 	if err != nil {
@@ -82,7 +80,6 @@ func (s *PostService) ListAdminPosts(ctx context.Context, actorUserID uint, acto
 }
 
 // GetAdminPostByID returns a single manageable post for the acting user.
-// Authors can only access their own draft records; admins can access any post.
 func (s *PostService) GetAdminPostByID(ctx context.Context, id uint, actorUserID uint, actorRole string) (entity.Post, error) {
 	post, err := s.loadManageablePost(ctx, id, actorUserID, actorRole)
 	if err != nil {
@@ -92,37 +89,36 @@ func (s *PostService) GetAdminPostByID(ctx context.Context, id uint, actorUserID
 }
 
 // CreateAdminPost persists a new post as Draft.
-// The authenticated actor is always recorded as the author to keep ownership trustworthy.
-func (s *PostService) CreateAdminPost(ctx context.Context, actorUserID uint, actorRole string, post entity.Post) error {
+func (s *PostService) CreateAdminPost(ctx context.Context, actorUserID uint, actorRole string, post entity.Post) (entity.Post, error) {
 	if actorUserID == 0 {
-		return core.ErrPermission
+		return entity.Post{}, core.ErrPermission
 	}
 	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionCreateOwnDraft); err != nil {
-		return err
+		return entity.Post{}, err
 	}
 
 	post.AuthorID = actorUserID
 	post.Status = entity.StatusDraft
 
 	if err := post.CheckValidity(); err != nil {
-		return fmt.Errorf("%w: invalid post payload: %v", core.ErrInvalidInput, err)
+		return entity.Post{}, fmt.Errorf("%w: invalid post payload: %v", core.ErrInvalidInput, err)
 	}
 
 	generatedSlug := slug.Make(post.Title)
 	if generatedSlug == "" {
-		return fmt.Errorf("%w: title cannot generate a valid slug", core.ErrInvalidInput)
+		return entity.Post{}, fmt.Errorf("%w: title cannot generate a valid slug", core.ErrInvalidInput)
 	}
 
 	finalSlug, err := s.generateUniqueSlug(ctx, generatedSlug)
 	if err != nil {
-		return err
+		return entity.Post{}, err
 	}
 
 	post.Slug = finalSlug
 
 	created, err := s.repo.Create(ctx, post)
 	if err != nil {
-		return normalizeServiceErrorWithOpMsg("post.create_admin", "create admin draft post failed", err)
+		return entity.Post{}, normalizeServiceErrorWithOpMsg("post.create_admin", "create admin draft post failed", err)
 	}
 
 	if s.media != nil {
@@ -133,7 +129,7 @@ func (s *PostService) CreateAdminPost(ctx context.Context, actorUserID uint, act
 			log.Printf("[ERROR] Post created (ID: %d) but failed to sync media references: %v", created.ID, err)
 		}
 	}
-	return nil
+	return created, nil
 }
 
 func (s *PostService) generateUniqueSlug(ctx context.Context, initialSlug string) (string, error) {
@@ -160,8 +156,7 @@ func (s *PostService) generateUniqueSlug(ctx context.Context, initialSlug string
 	}
 }
 
-// UpdateAdminPost updates editable post content fields within the caller's management scope.
-// Status transitions are intentionally excluded here and must go through dedicated workflow methods.
+// UpdateAdminPost updates editable post content fields.
 func (s *PostService) UpdateAdminPost(ctx context.Context, id uint, patch entity.PostPatch, actorUserID uint, actorRole string) error {
 	existingEntity, err := s.loadUpdatablePost(ctx, id, actorUserID, actorRole)
 	if err != nil {
@@ -206,7 +201,6 @@ func (s *PostService) UpdateAdminPost(ctx context.Context, id uint, patch entity
 }
 
 // PublishAdminPost performs the Draft -> Published transition.
-// Authorization is delegated to the workflow authorizer rather than hard-coded role checks.
 func (s *PostService) PublishAdminPost(ctx context.Context, id uint, actorRole string) error {
 	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionPublishPost); err != nil {
 		return err

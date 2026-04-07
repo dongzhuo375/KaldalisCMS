@@ -1,64 +1,67 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { toast } from 'sonner';
 
-// 创建 axios 实例
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// 创建 axios 实例 (业务 API)
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api/v1',
-  withCredentials: true, // 必须开启，否则不会发送 Cookie
+  baseURL: '/api/v1',
+  withCredentials: true,
   timeout: 10000,
 });
 
-// 🟢 请求拦截器 (Request Interceptor)
-// 在这里处理 CSRF Token
-api.interceptors.request.use(
-  (config) => {
-    // 1. 尝试从浏览器 Cookie 中获取 CSRF Token
-    const csrfToken = Cookies.get('kaldalis_csrf');
-    // Debug info
-    if (typeof window !== 'undefined') {
-       console.log("🚀 [API Debug] Request:", config.url);
-       console.log("🚀 [API Debug] All Cookies:", document.cookie);
-       console.log("🚀 [API Debug] CSRF Token found:", csrfToken);
-    }
+// 创建系统级 axios 实例 (用于根路径探测，如 healthz/readyz)
+export const sysApi = axios.create({
+  baseURL: '/',
+  withCredentials: true,
+  timeout: 5000,
+});
 
-    // 2. 如果拿到了，就塞到 Header 里
-    // 后端通常识别的 Header key 是 "X-CSRF-Token" 或 "X-Xsrf-Token"
-    if (csrfToken) {
-      config.headers['X-CSRF-Token'] = csrfToken;
-    }
+// 🟢 通用请求拦截器
+const requestInterceptor = (config: any) => {
+  const csrfToken = Cookies.get('kaldalis_csrf');
+  if (csrfToken) {
+    config.headers['X-CSRF-Token'] = csrfToken;
+  }
+  return config;
+};
 
-    return config;
-  },
+api.interceptors.request.use(requestInterceptor);
+sysApi.interceptors.request.use(requestInterceptor);
+
+// 🔵 响应拦截器
+api.interceptors.response.use(
+  (response) => response.data,
   (error) => {
+    const message = error.response?.data?.message || error.message || "Unknown error occurred";
+    const status = error.response?.status;
+    const url = error.config?.url || "";
+
+    if (status !== 401 && status !== 404) {
+      toast.error(message);
+    }
+
+    if (status !== 401 || (!url.includes('/users/profile') && !url.includes('/system/status'))) {
+      // Use console.warn instead of console.error to prevent Next.js dev overlay 
+      // from taking over the screen for expected API errors (like 401 on login).
+      console.warn(`[API Error] ${status}: ${message} (${url})`);
+    }
+
     return Promise.reject(error);
   }
 );
 
-// 🔵 响应拦截器 (Response Interceptor)
-api.interceptors.response.use(
-  (response) => {
-    // 直接返回 data，简化调用
-    return response.data;
-  },
+sysApi.interceptors.response.use(
+  (response) => response.data,
   (error) => {
-    // 统一错误处理
-    console.error("API请求错误:", error.response?.data?.message || error.message);
-    
-    // 如果是 401 (未登录) 且当前不在登录页，跳转登录
-    if (error.response?.status === 401) {
-       // 注意：Next.js 的 Router 在这里不能直接用，只能用 window.location
-       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-         // window.location.href = '/login'; // 可选：强制踢下线
-       }
+    // 系统探测实例不抛出 UI 错误，也不在控制台报错（除非是 500）
+    if (error.response?.status >= 500) {
+      console.error(`[System API Error] ${error.response.status}: ${error.message}`);
     }
-    
-    // 如果是 403 (CSRF 失败或权限不足)
-    if (error.response?.status === 403) {
-        console.error("权限不足或 CSRF 校验失败");
-    }
-
     return Promise.reject(error);
   }
 );
 
 export default api;
+

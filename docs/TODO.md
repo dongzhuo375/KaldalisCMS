@@ -184,6 +184,42 @@
 
 目标：在编辑器中提供媒体库选择、上传、插入 Markdown 链接的体验。
 
+## 后端待实现（P1：前端已占位）
+
+### P1-6) 用户管理 API
+
+目标：提供用户 CRUD 及角色分配接口，供前端用户管理页面对接。
+
+范围（代表文件）：
+- `internal/api/v1/admin_user.go`（新增管理接口）
+- `internal/service/user_service.go`（扩展业务逻辑）
+- `internal/infra/repository/postgres/user_repo.go`（扩展查询）
+
+完成标准（DoD）：
+- [ ] 用户列表接口（分页、搜索）：`GET /api/v1/admin/users`
+- [ ] 用户详情：`GET /api/v1/admin/users/:id`
+- [ ] 创建用户：`POST /api/v1/admin/users`
+- [ ] 更新用户信息/角色：`PUT /api/v1/admin/users/:id`
+- [ ] 删除/禁用用户：`DELETE /api/v1/admin/users/:id`
+- [ ] Casbin 权限策略同步（角色变更时自动更新策略）
+- [ ] 最小测试覆盖（CRUD + 权限校验）
+
+### P1-7) 数据统计/分析 API
+
+目标：提供站点基础统计数据，供前端 Analytics 页面对接。
+
+范围（代表文件）：
+- `internal/api/v1/analytics.go`（新增）
+- `internal/service/analytics_service.go`（新增）
+- `internal/infra/model/page_view.go`（新增，访问记录表）
+
+完成标准（DoD）：
+- [ ] 页面浏览量追踪中间件或埋点接口
+- [ ] 统计概览接口：`GET /api/v1/admin/analytics/overview`（总浏览量、独立访客、热门文章）
+- [ ] 时间序列数据：`GET /api/v1/admin/analytics/traffic?range=7d`（按日/小时聚合）
+- [ ] 来源统计：`GET /api/v1/admin/analytics/sources`（Referrer 聚合）
+- [ ] 最小测试覆盖
+
 ## 远期模块草案（从架构文档迁移）
 
 以下为“设计方向”，当前仓库结构中未落地对应目录/文件：
