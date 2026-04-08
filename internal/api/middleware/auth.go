@@ -58,12 +58,12 @@ func RequireAuth() gin.HandlerFunc {
 
 func CSRFCheck(sm core.SessionManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 放行审查
-		//switch c.Request.Method {
-		//case "GET", "HEAD", "OPTIONS", "TRACE":
-		//	c.Next()
-		//	return
-		//}
+		// Safe methods never carry side-effects; skip CSRF validation.
+		switch c.Request.Method {
+		case "GET", "HEAD", "OPTIONS", "TRACE":
+			c.Next()
+			return
+		}
 
 		// 只有登录用户才检查 (从 Context 拿指纹)
 		val, exists := c.Get(ctxCsrfHashKey)

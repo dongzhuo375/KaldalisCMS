@@ -16,9 +16,9 @@ type PostService interface {
 	GetAdminPostByID(ctx context.Context, id uint, actorUserID uint, actorRole string) (entity.Post, error)
 	CreateAdminPost(ctx context.Context, actorUserID uint, actorRole string, post entity.Post) (entity.Post, error)
 	UpdateAdminPost(ctx context.Context, id uint, patch entity.PostPatch, actorUserID uint, actorRole string) error
-	DeleteAdminPost(ctx context.Context, id uint, actorRole string) error
-	PublishAdminPost(ctx context.Context, id uint, actorRole string) error
-	MovePostToDraft(ctx context.Context, id uint, actorRole string) error
+	DeleteAdminPost(ctx context.Context, id uint, actorUserID uint, actorRole string) error
+	PublishAdminPost(ctx context.Context, id uint, actorUserID uint, actorRole string) error
+	MovePostToDraft(ctx context.Context, id uint, actorUserID uint, actorRole string) error
 }
 
 type UserService interface {
