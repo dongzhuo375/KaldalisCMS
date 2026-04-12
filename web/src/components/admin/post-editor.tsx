@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Post, PostStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useCreatePost, useUpdatePost } from "@/services/post-service";
+import { useCreatePost, useUpdatePost, usePublishPost, useDraftPost } from "@/services/post-service";
 import { useUploadMedia } from "@/services/media-service";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
@@ -51,9 +51,11 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
 
   const createPost = useCreatePost();
   const updatePost = useUpdatePost(initialData?.id || 0);
+  const publishPost = usePublishPost();
+  const draftPost = useDraftPost();
   const uploadMedia = useUploadMedia();
 
-  const isSubmitting = createPost.isPending || updatePost.isPending;
+  const isSubmitting = createPost.isPending || updatePost.isPending || publishPost.isPending || draftPost.isPending;
   const isPublished = formData.status === PostStatus.PUBLISHED;
 
   useEffect(() => setMounted(true), []);
@@ -91,17 +93,45 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
         createPost.mutate(submissionData, {
           onSuccess: (newPost) => {
             if (newPost?.id) {
-              router.push(`/admin/posts/${newPost.id}/edit`);
+              // If the user clicked "Publish" on a new post, publish it after creation
+              if (finalStatus === PostStatus.PUBLISHED) {
+                publishPost.mutate(newPost.id, {
+                  onSuccess: () => {
+                    router.push(`/admin/posts/${newPost.id}/edit`);
+                  },
+                });
+              } else {
+                router.push(`/admin/posts/${newPost.id}/edit`);
+              }
             } else {
               router.push("/admin/posts");
             }
           },
         });
       } else {
-        updatePost.mutate(submissionData);
+        const postId = initialData?.id || 0;
+        // Always save content changes first
+        updatePost.mutate(submissionData, {
+          onSuccess: () => {
+            // Then handle status transitions via dedicated endpoints
+            if (finalStatus === PostStatus.PUBLISHED && formData.status !== PostStatus.PUBLISHED) {
+              publishPost.mutate(postId, {
+                onSuccess: () => {
+                  setFormData((prev) => ({ ...prev, status: PostStatus.PUBLISHED }));
+                },
+              });
+            } else if (finalStatus === PostStatus.DRAFT && formData.status === PostStatus.PUBLISHED) {
+              draftPost.mutate(postId, {
+                onSuccess: () => {
+                  setFormData((prev) => ({ ...prev, status: PostStatus.DRAFT }));
+                },
+              });
+            }
+          },
+        });
       }
     },
-    [formData, mode, createPost, updatePost, router]
+    [formData, mode, createPost, updatePost, publishPost, draftPost, router, initialData?.id]
   );
 
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

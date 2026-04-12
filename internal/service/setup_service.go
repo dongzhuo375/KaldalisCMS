@@ -208,12 +208,10 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 	if err == nil {
 		enforcer.EnableAutoSave(true)
 
-		// 1. [Role: super_admin] - 建站者专享
-		if cfg.AdminFullAccess {
-			enforcer.AddPolicy("super_admin", "/api/v1/*", "*")
-		}
+		// super_admin is handled entirely by the matcher hardcode (r.sub == "super_admin"),
+		// so no explicit policy is needed.
 
-		// 2. [Role: admin] - 内容管理员
+		// 1. [Role: admin] - 内容管理员
 		// 后台文章管理统一走 /api/v1/admin/posts，公共 /posts 只承担已发布内容分发。
 		adminRules := [][]string{
 			{"admin", "/api/v1/admin/posts", "GET"},
@@ -271,12 +269,13 @@ func (s *SetupService) Install(cfg SetupConfig) error {
 			enforcer.AddPolicy("anonymous", "/api/v1/posts/:id", "GET")
 		}
 
-		// 5. [Inheritance] - 角色继承
+		// 4. [Inheritance] - 角色继承
 		enforcer.AddGroupingPolicy("admin", "user")
 		enforcer.AddGroupingPolicy("super_admin", "admin")
 
-		// 6. [Binding] - 绑定建站者
-		enforcer.AddGroupingPolicy(cfg.AdminUser, "super_admin")
+		// NOTE: No need to bind username → super_admin via AddGroupingPolicy.
+		// The Casbin subject is always the role string from JWT claims (e.g. "super_admin"),
+		// not the username. The admin user already has Role="super_admin" in the users table.
 
 		log.Printf("[SETUP] 细粒度 RBAC 体系注入完成 (AdminDelete:%v, UserUpload:%v)", cfg.AdminCanDelete, cfg.UserCanUpload)
 	} else {

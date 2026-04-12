@@ -201,14 +201,16 @@ func (s *PostService) UpdateAdminPost(ctx context.Context, id uint, patch entity
 }
 
 // PublishAdminPost performs the Draft -> Published transition.
-func (s *PostService) PublishAdminPost(ctx context.Context, id uint, actorRole string) error {
+// The actor must have publish capability AND must be able to manage the target post
+// (admin can manage any post; regular users can only manage their own drafts).
+func (s *PostService) PublishAdminPost(ctx context.Context, id uint, actorUserID uint, actorRole string) error {
 	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionPublishPost); err != nil {
 		return err
 	}
 
-	post, err := s.repo.GetByID(ctx, id)
+	post, err := s.loadManageablePost(ctx, id, actorUserID, actorRole)
 	if err != nil {
-		return normalizeServiceErrorWithOpMsg("post.publish.load", "load post before publish failed", err)
+		return err
 	}
 	if post.Status == entity.StatusPublished {
 		return fmt.Errorf("%w: post is already published", core.ErrConflict)
@@ -228,14 +230,15 @@ func (s *PostService) PublishAdminPost(ctx context.Context, id uint, actorRole s
 }
 
 // MovePostToDraft performs the minimal "offline" step by moving a post back to Draft.
-func (s *PostService) MovePostToDraft(ctx context.Context, id uint, actorRole string) error {
+// The actor must have unpublish capability AND must be able to manage the target post.
+func (s *PostService) MovePostToDraft(ctx context.Context, id uint, actorUserID uint, actorRole string) error {
 	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionUnpublishPost); err != nil {
 		return err
 	}
 
-	post, err := s.repo.GetByID(ctx, id)
+	post, err := s.loadManageablePost(ctx, id, actorUserID, actorRole)
 	if err != nil {
-		return normalizeServiceErrorWithOpMsg("post.move_draft.load", "load post before move-to-draft failed", err)
+		return err
 	}
 	if post.Status == entity.StatusDraft {
 		return fmt.Errorf("%w: post is already draft", core.ErrConflict)
@@ -252,8 +255,13 @@ func (s *PostService) MovePostToDraft(ctx context.Context, id uint, actorRole st
 }
 
 // DeleteAdminPost permanently removes a post record.
-func (s *PostService) DeleteAdminPost(ctx context.Context, id uint, actorRole string) error {
+// The actor must have delete capability AND must be able to manage the target post.
+func (s *PostService) DeleteAdminPost(ctx context.Context, id uint, actorUserID uint, actorRole string) error {
 	if err := s.authorizePostAction(ctx, actorRole, core.PostPermissionDeletePost); err != nil {
+		return err
+	}
+	// Verify the actor can access this post (ownership or admin scope).
+	if _, err := s.loadManageablePost(ctx, id, actorUserID, actorRole); err != nil {
 		return err
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {

@@ -19,29 +19,60 @@ import (
 	"gorm.io/gorm"
 )
 
-// ensurePostWorkflowPolicies backfills the post-management policies required by
-// the current application build. It intentionally seeds two complementary policy sets:
-//   - route policies used by the HTTP authorization middleware
-//   - capability policies used by the service-layer post authorizer
+// ensurePostWorkflowPolicies backfills the complete set of post-management
+// policies required by the current application build.  It covers:
+//   - role inheritance
+//   - route policies for the HTTP authorization middleware
+//   - capability policies for the service-layer post authorizer
+//
+// AddPolicy / AddGroupingPolicy are idempotent — duplicates are silently ignored.
 func ensurePostWorkflowPolicies(enforcer *casbin.Enforcer) {
 	if enforcer == nil {
 		return
 	}
 
-	// 1. 建立角色继承关系 (super_admin 继承 admin)
-	// 确保没有反向继承
+	// 1. Role inheritance (fix stale reverse inheritance if present)
 	_, _ = enforcer.RemoveGroupingPolicy("admin", "super_admin")
 	_, _ = enforcer.AddGroupingPolicy("super_admin", "admin")
+	_, _ = enforcer.AddGroupingPolicy("admin", "user")
 
-	// 2. 检查并添加缺失的基础策略
+	// 2. Route policies — must mirror what setup_service seeds
 	rules := [][]string{
+		// logout (all authenticated roles)
 		{"admin", "/api/v1/users/logout", "POST"},
 		{"user", "/api/v1/users/logout", "POST"},
 		{"super_admin", "/api/v1/users/logout", "POST"},
-		
-		// Post相关
-		{"admin", "post", "delete"},
+
+		// admin route policies
+		{"admin", "/api/v1/admin/posts", "GET"},
+		{"admin", "/api/v1/admin/posts", "POST"},
+		{"admin", "/api/v1/admin/posts/:id", "GET"},
+		{"admin", "/api/v1/admin/posts/:id", "PUT"},
+		{"admin", "/api/v1/admin/posts/:id/publish", "POST"},
+		{"admin", "/api/v1/admin/posts/:id/draft", "POST"},
+
+		// admin capability policies
+		{"admin", "post", "list:any"},
+		{"admin", "post", "read:any"},
+		{"admin", "post", "update:any"},
 		{"admin", "post", "publish"},
+		{"admin", "post", "unpublish"},
+		{"admin", "post", "delete"},
+
+		// user route policies
+		{"user", "/api/v1/posts", "GET"},
+		{"user", "/api/v1/posts/:id", "GET"},
+		{"user", "/api/v1/admin/posts", "GET"},
+		{"user", "/api/v1/admin/posts", "POST"},
+		{"user", "/api/v1/admin/posts/:id", "GET"},
+		{"user", "/api/v1/admin/posts/:id", "PUT"},
+		{"user", "/api/v1/media", "GET"},
+
+		// user capability policies
+		{"user", "post:draft", "create"},
+		{"user", "post:draft", "list:own"},
+		{"user", "post:draft", "read:own"},
+		{"user", "post:draft", "update:own"},
 	}
 
 	for _, rule := range rules {
@@ -118,8 +149,16 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, s
 		userAPI.RegisterRoutes(apiV1)
 		systemAPI.RegisterRoutes(apiV1)
 
-		apiV1.GET("/posts", publicPostAPI.GetPosts)
-		apiV1.GET("/posts/:id", publicPostAPI.GetPostByID)
+		// Public post routes go through Casbin so the AllowAnonymousRead
+		// setting actually controls anonymous access.  OptionalAuth is
+		// already applied on the parent group; Authorize falls back to
+		// "anonymous" when no role is present in the context.
+		public := apiV1.Group("/")
+		public.Use(apimw.Authorize(enforcer))
+		{
+			public.GET("/posts", publicPostAPI.GetPosts)
+			public.GET("/posts/:id", publicPostAPI.GetPostByID)
+		}
 
 		protected := apiV1.Group("/")
 		protected.Use(apimw.RequireAuth())

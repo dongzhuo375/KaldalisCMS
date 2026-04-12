@@ -228,7 +228,7 @@ func (api *AdminPostAPI) PublishPost(c *gin.Context) {
 		return
 	}
 
-	_, actorRole, ok := getPostActor(c)
+	actorUserID, actorRole, ok := getPostActor(c)
 	if !ok {
 		return
 	}
@@ -236,7 +236,7 @@ func (api *AdminPostAPI) PublishPost(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := api.service.PublishAdminPost(ctx, id, actorRole); err != nil {
+	if err := api.service.PublishAdminPost(ctx, id, actorUserID, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			errorx.RespondTimeoutError(c, "publish post timed out")
 			return
@@ -271,7 +271,7 @@ func (api *AdminPostAPI) DraftPost(c *gin.Context) {
 		return
 	}
 
-	_, actorRole, ok := getPostActor(c)
+	actorUserID, actorRole, ok := getPostActor(c)
 	if !ok {
 		return
 	}
@@ -279,7 +279,7 @@ func (api *AdminPostAPI) DraftPost(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := api.service.MovePostToDraft(ctx, id, actorRole); err != nil {
+	if err := api.service.MovePostToDraft(ctx, id, actorUserID, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			errorx.RespondTimeoutError(c, "move post to draft timed out")
 			return
@@ -314,7 +314,7 @@ func (api *AdminPostAPI) DeletePost(c *gin.Context) {
 		return
 	}
 
-	_, actorRole, ok := getPostActor(c)
+	actorUserID, actorRole, ok := getPostActor(c)
 	if !ok {
 		return
 	}
@@ -322,7 +322,7 @@ func (api *AdminPostAPI) DeletePost(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	if err := api.service.DeleteAdminPost(ctx, id, actorRole); err != nil {
+	if err := api.service.DeleteAdminPost(ctx, id, actorUserID, actorRole); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			errorx.RespondTimeoutError(c, "delete post timed out")
 			return
