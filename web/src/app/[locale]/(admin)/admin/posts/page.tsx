@@ -142,7 +142,7 @@ export default function PostsPage() {
                    <DropdownMenuCheckboxItem 
                     key={s}
                     checked={statusFilter === s} 
-                    onCheckedChange={() => setStatusFilter(s as any)}
+                    onCheckedChange={() => setStatusFilter(s as "all" | "published" | "draft" | "archived")}
                     className="capitalize font-medium"
                    >
                      {s}

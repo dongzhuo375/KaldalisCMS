@@ -19,7 +19,7 @@ export const sysApi = axios.create({
 });
 
 // 🟢 通用请求拦截器
-const requestInterceptor = (config: any) => {
+const requestInterceptor = (config: import('axios').InternalAxiosRequestConfig) => {
   const csrfToken = Cookies.get('kaldalis_csrf');
   if (csrfToken) {
     config.headers['X-CSRF-Token'] = csrfToken;

@@ -26,8 +26,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { useParams } from "next/navigation";
 
 export default function AdminLayout({
   children,
@@ -36,20 +34,25 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const params = useParams();
-  const rawLocale = params?.locale as string;
-  const locale =
-    rawLocale && rawLocale !== "undefined" ? rawLocale : "zh-CN";
 
   const t = useTranslations("admin");
   const { user, isLoggedIn, logout } = useAuthStore();
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const saved = window.localStorage.getItem("sidebar-collapsed");
+    return saved === "true";
+  });
+
+  const toggle = React.useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem("sidebar-collapsed");
-    if (saved !== null) setCollapsed(saved === "true");
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "b") {
         e.preventDefault();
@@ -58,15 +61,7 @@ export default function AdminLayout({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  const toggle = () => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem("sidebar-collapsed", String(next));
-      return next;
-    });
-  };
+  }, [toggle]);
 
   React.useEffect(() => {
     if (!isLoggedIn) {

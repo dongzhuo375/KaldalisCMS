@@ -126,9 +126,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
       {post.tags && post.tags.length > 0 && (
         <div className="pt-8 border-t border-border">
           <div className="flex flex-wrap gap-2">
-            {post.tags.map((tag: any, i: number) => (
+            {post.tags.map((tag: { name?: string } | string, i: number) => (
               <Badge key={i} variant="outline" className="text-muted-foreground border-border hover:bg-muted">
-                # {tag.name || tag}
+                # {typeof tag === "string" ? tag : tag.name}
               </Badge>
             ))}
           </div>

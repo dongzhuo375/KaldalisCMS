@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/routing";
 import { Link } from '@/i18n/routing';
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
+import type { User } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +33,7 @@ export default function LoginPage() {
     };
 
     try {
-      const res: any = await api.post("/users/login", payload);
+      const res = await api.post("/users/login", payload) as { user?: User };
       const userData = res.user;
 
       if (!userData || !userData.role) {
@@ -47,9 +48,10 @@ export default function LoginPage() {
         router.replace("/");
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("登录错误:", err);
-      setError(err.response?.data?.message || err.message || t('auth.login_failed'));
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(e.response?.data?.message || e.message || t('auth.login_failed'));
     } finally {
       setLoading(false);
     }
