@@ -41,9 +41,10 @@ export default function RegisterPage() {
 
       alert("Registration successful! Please login.");
       router.push("/login"); 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.response?.data?.message || "Registration failed");
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
     }

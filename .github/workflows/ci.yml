@@ -1,0 +1,56 @@
+name: KaldalisCMS CI 基础检查
+
+# 触发条件：当代码推送到 main 分支，或者向 main 分支提 PR 时触发
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  #1: Go 后端 检查
+  build-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 配置 Go 环境
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24' 
+
+    - name: 下载依赖
+      run: go mod download
+
+    - name: 编译构建 (检查语法错误)
+      run: go build -v ./...
+
+  #2：Next.js 前端 检查
+  build-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 配置 Node.js 环境
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20' 
+
+    - name: 安装依赖
+      run: npm install
+
+    - name: 代码格式与规范检查 (Lint)
+      run: npm run lint --if-present
+
+    - name: 编译构建 (检查能否成功打包)
+      run: npm run build

@@ -16,7 +16,7 @@ export const useSystemStatus = () => {
     queryKey: ["system-status"],
     queryFn: async () => {
       const response = await api.get("/system/status");
-      return response as SystemStatus;
+      return response as unknown as SystemStatus;
     },
     refetchOnWindowFocus: false,
   });
@@ -27,7 +27,7 @@ export const useReadyz = () => {
     queryKey: ["readyz"],
     queryFn: async () => {
       const response = await sysApi.get("/readyz");
-      return response as HealthResponse;
+      return response as unknown as HealthResponse;
     },
     refetchInterval: 5000,
   });

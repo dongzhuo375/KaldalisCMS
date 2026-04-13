@@ -103,6 +103,12 @@ export interface LoginDTO {
   password?: string;
 }
 
+export interface RegisterDTO {
+  username: string;
+  email: string;
+  password: string;
+}
+
 export interface MediaAsset {
   id: number;
   filename: string;

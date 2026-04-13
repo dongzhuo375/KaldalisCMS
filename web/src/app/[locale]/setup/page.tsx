@@ -32,13 +32,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import FluidSimulationBackground from "@/components/site/fluid-simulation-background";
+import SunWaveBackground from "@/components/site/sun-wave-background";
 import { useCheckDB, useSetup } from "@/services/system-service";
 import { cn } from "@/lib/utils";
 
 const setupSchema = z.object({
   dbHost: z.string().min(1, "Host is required"),
-  dbPort: z.string().transform(Number),
+  dbPort: z.string().regex(/^\d+$/, "Port must be a number"),
   dbUser: z.string().min(1, "User is required"),
   dbPass: z.string(),
   dbName: z.string().min(1, "Database name is required"),
@@ -47,10 +47,10 @@ const setupSchema = z.object({
   adminEmail: z.string().email("Invalid email address"),
   adminPassword: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
-  adminFullAccess: z.boolean().default(true),
-  adminCanDelete: z.boolean().default(true),
-  userCanUpload: z.boolean().default(true),
-  allowAnonymousRead: z.boolean().default(true),
+  adminFullAccess: z.boolean(),
+  adminCanDelete: z.boolean(),
+  userCanUpload: z.boolean(),
+  allowAnonymousRead: z.boolean(),
 }).refine((data) => data.adminPassword === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -75,7 +75,7 @@ export default function SetupPage() {
     resolver: zodResolver(setupSchema),
     defaultValues: {
       dbHost: "localhost",
-      dbPort: "5432" as any,
+      dbPort: "5432",
       dbUser: "postgres",
       dbPass: "",
       dbName: "kaldalis_cms",
@@ -140,7 +140,7 @@ export default function SetupPage() {
   if (setupMutation.isSuccess) {
     return (
       <div className="relative min-h-screen flex items-center justify-center p-4">
-        <FluidSimulationBackground />
+        <SunWaveBackground />
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
           <Card className="w-full max-w-md border-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl shadow-2xl">
             <CardHeader className="text-center pb-2">
@@ -166,7 +166,7 @@ export default function SetupPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden bg-slate-950">
-      <FluidSimulationBackground />
+      <SunWaveBackground />
       
       <div className="w-full max-w-xl z-10">
         <div className="flex justify-between mb-12 px-4">

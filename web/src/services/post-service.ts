@@ -27,7 +27,7 @@ export const usePublicPosts = () => {
     queryKey: postKeys.publicAll,
     queryFn: async () => {
       const response = await api.get("/posts");
-      return response as Post[];
+      return response as unknown as Post[];
     },
   });
 };
@@ -40,7 +40,7 @@ export const usePublicPost = (idOrSlug: string | number) => {
     queryKey: postKeys.publicDetail(idOrSlug),
     queryFn: async () => {
       const response = await api.get(`/posts/${idOrSlug}`);
-      return response as Post;
+      return response as unknown as Post;
     },
     enabled: !!idOrSlug,
   });
@@ -58,7 +58,7 @@ export const useAdminPosts = () => {
     queryKey: postKeys.adminAll,
     queryFn: async () => {
       const response = await api.get("/admin/posts");
-      return response as Post[];
+      return response as unknown as Post[];
     },
   });
 };
@@ -71,7 +71,7 @@ export const useAdminPost = (id: string | number) => {
     queryKey: postKeys.adminDetail(id),
     queryFn: async () => {
       const response = await api.get(`/admin/posts/${id}`);
-      return response as Post;
+      return response as unknown as Post;
     },
     enabled: !!id,
   });
@@ -85,7 +85,7 @@ export const useCreatePost = () => {
   return useMutation({
     mutationFn: async (data: CreatePostDTO) => {
       const response = await api.post("/admin/posts", data);
-      return response as Post;
+      return response as unknown as Post;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: postKeys.adminAll });
@@ -102,7 +102,7 @@ export const useUpdatePost = (id: number) => {
   return useMutation({
     mutationFn: async (data: UpdatePostDTO) => {
       const response = await api.put(`/admin/posts/${id}`, data);
-      return response as Post;
+      return response as unknown as Post;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: postKeys.adminAll });

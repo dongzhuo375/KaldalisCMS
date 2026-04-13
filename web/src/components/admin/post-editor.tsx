@@ -58,7 +58,10 @@ export function PostEditor({ initialData, mode }: PostEditorProps) {
   const isSubmitting = createPost.isPending || updatePost.isPending || publishPost.isPending || draftPost.isPending;
   const isPublished = formData.status === PostStatus.PUBLISHED;
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const title = e.target.value;

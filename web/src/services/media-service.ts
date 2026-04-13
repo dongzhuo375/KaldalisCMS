@@ -8,7 +8,7 @@ export const useMedia = (params?: Record<string, unknown>) => {
     queryKey: ["media", params],
     queryFn: async () => {
       const response = await api.get("/media", { params });
-      return response as MediaListResponse;
+      return response as unknown as MediaListResponse;
     },
   });
 };
@@ -24,7 +24,7 @@ export const useUploadMedia = () => {
           "Content-Type": "multipart/form-data",
         },
       });
-      return (response as MediaUploadResponse).asset;
+      return (response as unknown as MediaUploadResponse).asset;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["media"] });
