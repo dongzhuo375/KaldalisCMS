@@ -9,7 +9,7 @@ export const useProfile = () => {
     queryKey: ["profile"],
     queryFn: async () => {
       const response = await api.get("/users/profile");
-      return response as User;
+      return response as unknown as User;
     },
     retry: false,
   });
@@ -22,7 +22,7 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: async (data: LoginDTO) => {
       const response = await api.post("/users/login", data);
-      return response as User;
+      return response as unknown as User;
     },
     onSuccess: (user) => {
       setLogin(user);
