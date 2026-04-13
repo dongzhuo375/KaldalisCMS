@@ -30,6 +30,12 @@ jobs:
     - name: 编译构建 (检查语法错误)
       run: go build -v ./...
 
+    - name: 静态检查 (go vet)
+      run: go vet ./...
+
+    - name: 单元测试
+      run: go test -race -count=1 ./...
+
   #2：Next.js 前端 检查
   build-frontend:
     runs-on: ubuntu-latest
