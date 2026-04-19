@@ -2,6 +2,48 @@
 
 本文记录**已落地且代码中可追溯**的关键实现点。每条尽量附带“对应文件/函数”，方便维护与排查。
 
+## 错误平台化与观测闭环 - [2026-04-19 新增]
+
+### 统一错误出口
+
+- handler/middleware/router 全部通过 `internal/api/errorx/responses.go` 写出错误响应。
+- 统一注入 `details.request_id`，并同步响应头 `X-Request-Id`，便于前端与日志联查。
+- 出站前执行 `details` 白名单与敏感键剔除（`password/token/secret/authorization`）。
+
+代表文件：
+- `internal/core/error.go`
+- `internal/api/errorx/responses.go`
+- `internal/api/middleware/auth.go`
+- `internal/api/middleware/casbin.go`
+- `internal/router/swagger_routes_enabled.go`
+
+### 统一请求上下文与恢复策略
+
+- 新增 `RequestContext` 中间件：透传或生成 request_id 并写入 Gin context。
+- 新增 `RecoverAsContract`：panic 统一转为错误契约包络，避免默认 recovery 的非契约输出。
+
+代表文件：
+- `internal/api/middleware/observability.go`
+- `internal/router/router.go`
+
+### 指标与结构化日志
+
+- 新增 Prometheus 指标：
+  - `kaldalis_http_requests_total{method,route,status,code}`
+  - `kaldalis_http_request_duration_seconds{method,route}`
+- 新增结构化访问日志字段：`request_id/method/route/status/duration_ms/code/ip`。
+
+推荐告警基线（5 分钟窗口）：
+
+- 5xx 比例异常：
+  `sum(rate(kaldalis_http_requests_total{status=~"5.."}[5m])) / sum(rate(kaldalis_http_requests_total[5m])) > 0.05`
+- 特定错误码激增（示例：`INTERNAL_ERROR`）：
+  `sum(rate(kaldalis_http_requests_total{code="INTERNAL_ERROR"}[5m])) > 2`
+
+代表文件：
+- `internal/api/middleware/observability.go`
+- `internal/router/router.go`
+
 ## 系统初始化与安装模式（Setup Mode）- [2026-03-06 新增]
 
 ### 自动模式切换与安装探测

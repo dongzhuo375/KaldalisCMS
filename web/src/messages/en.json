@@ -134,7 +134,17 @@
     "server_error": "Server error, please contact administrator",
     "unauthorized": "Unauthorized, please login again",
     "not_found": "Page not found",
-    "unknown_error": "Unknown error"
+    "unknown_error": "Unknown error",
+    "codes": {
+      "VALIDATION_FAILED": "Please check your input and try again.",
+      "UNAUTHORIZED": "Your session has expired, please login again.",
+      "FORBIDDEN": "You do not have permission to perform this action.",
+      "NOT_FOUND": "The requested resource was not found.",
+      "DUPLICATE_RESOURCE": "This resource already exists.",
+      "CONFLICT": "This operation conflicts with current state.",
+      "TIMEOUT": "The request timed out. Please retry.",
+      "INTERNAL_ERROR": "A server error occurred. Please try again later."
+    }
   },
   "setup": {
     "title": "Welcome to Kaldalis",

@@ -136,7 +136,17 @@
     "server_error": "服务器错误，请联系管理员",
     "unauthorized": "未授权，请重新登录",
     "not_found": "页面不存在",
-    "unknown_error": "未知错误"
+    "unknown_error": "未知错误",
+    "codes": {
+      "VALIDATION_FAILED": "请检查输入内容后重试。",
+      "UNAUTHORIZED": "登录状态已过期，请重新登录。",
+      "FORBIDDEN": "您没有权限执行此操作。",
+      "NOT_FOUND": "请求的资源不存在。",
+      "DUPLICATE_RESOURCE": "资源已存在，请勿重复提交。",
+      "CONFLICT": "当前操作与系统状态冲突。",
+      "TIMEOUT": "请求超时，请稍后重试。",
+      "INTERNAL_ERROR": "服务器发生错误，请稍后再试。"
+    }
   },
   "setup": {
     "title": "欢迎使用 Kaldalis",

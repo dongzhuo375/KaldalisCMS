@@ -3,10 +3,10 @@
 package router
 
 import (
+	"KaldalisCMS/internal/api/errorx"
 	"KaldalisCMS/internal/core"
 	docs "KaldalisCMS/internal/docs"
 	"encoding/json"
-	"net/http"
 	"sync"
 
 	"github.com/getkin/kin-openapi/openapi2"
@@ -43,14 +43,10 @@ func registerSwaggerRoutes(r *gin.Engine, opts SwaggerOptions) {
 	r.GET(openAPI3Path, func(c *gin.Context) {
 		spec, err := getOpenAPI3Spec()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    string(core.CodeInternalError),
-				"message": "failed to build openapi spec",
-				"details": map[string]any{"reason": err.Error()},
-			})
+			errorx.RespondError(c, core.HTTPStatusOf(core.CodeInternalError), core.CodeInternalError, "failed to build openapi spec", map[string]any{"reason": err.Error()})
 			return
 		}
-		c.Data(http.StatusOK, "application/json; charset=utf-8", spec)
+		c.Data(200, "application/json; charset=utf-8", spec)
 	})
 
 	r.GET(swaggerPath+"/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL(openAPI3Path)))

@@ -2,6 +2,7 @@ package service
 
 import (
 	"KaldalisCMS/internal/core"
+	"context"
 	"errors"
 	"fmt"
 )
@@ -17,6 +18,8 @@ func normalizeServiceErrorWithOp(op string, err error) error {
 
 	target := core.ErrInternalError
 	switch {
+	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
+		target = core.ErrTimeout
 	case errors.Is(err, core.ErrInvalidInput):
 		target = core.ErrInvalidInput
 	case errors.Is(err, core.ErrInvalidCredentials):
@@ -29,6 +32,8 @@ func normalizeServiceErrorWithOp(op string, err error) error {
 		target = core.ErrDuplicate
 	case errors.Is(err, core.ErrConflict):
 		target = core.ErrConflict
+	case errors.Is(err, core.ErrTimeout):
+		target = core.ErrTimeout
 	case errors.Is(err, core.ErrInternalError):
 		target = core.ErrInternalError
 	}
