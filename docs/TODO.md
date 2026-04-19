@@ -129,6 +129,58 @@
 - [x] 将 `internal/service/post_service.go` 中关键 `errors.New/fmt.Errorf` 分支替换为可识别的 `core` 语义错误（validation/conflict）。
 - [x] 定义并落地 `internal/service/media_service.go` 业务错误到 `core.ErrorCode` 的映射策略（保持 409/400 语义稳定）。
 
+### P0-8) 双轨日志体系（Operation Log + Audit Event）
+
+目标：建设“操作日志（运营/客服排障）+ 审计事件（安全/合规追踪）”双轨体系，并采用“service 层统一采集 + outbox 异步投递 + 关键事件同步兜底”模式。
+
+意义（为什么现在做）：
+- 将排障从“看零散日志猜问题”升级为“按 request_id / actor / action 直接追踪链路”。
+- 将安全追责从“事后人工拼接”升级为“结构化事件可检索、可导出、可告警”。
+- 为后续用户管理、内容治理、合规报表提供统一数据底座。
+
+现状收益（本轮已完成基础能力）：
+- [x] `request_id` 注入与透传：`internal/api/middleware/observability.go`、`internal/api/errorx/responses.go`
+- [x] 统一 panic 收敛出口：`RecoverAsContract`
+- [x] 结构化访问日志字段：`request_id/method/route/status/duration_ms/code/ip`
+- [x] HTTP 指标：`kaldalis_http_requests_total`、`kaldalis_http_request_duration_seconds`
+- [x] 统一错误契约与 details 脱敏基线：`docs/ERROR_CONTRACT.md`
+
+当前差距（与工业目标对比）：
+- [ ] P0：缺统一 `AuditEvent` 事件模型（`event_id/occurred_at/actor/action/resource/result/risk_level/...`）。
+- [ ] P0：缺审计落库与检索能力（当前以访问日志为主，不等于审计轨）。
+- [ ] P0：缺 outbox 表/repo/worker，尚未实现“业务写入 + 事件写入”同事务原子性。
+- [ ] P0：缺关键事件同步兜底（异步失败时关键事件仍需同步落库）。
+- [ ] P1：缺审计查询 API、导出能力、告警基线与值班手册。
+- [ ] P2：缺不可篡改增强（append-only 约束、哈希链/签名校验）。
+
+范围（代表文件）：
+- `internal/core/`（新增 `audit.go`：事件模型、风险等级、采集接口）
+- `internal/service/`（`post/media/user/setup` 统一采集埋点）
+- `internal/api/middleware/`（请求上下文字段与 actor 提取补强）
+- `internal/infra/model/`、`internal/infra/repository/postgres/`（审计表 + outbox 表 + repo）
+- `internal/router/router.go`（outbox relay worker 生命周期挂载）
+- `docs/IMPLEMENTATION_NOTES.md`、`docs/ERROR_CONTRACT.md`（规则与运维手册）
+
+分阶段施工与 DoD：
+
+阶段 1（P0，打地基）
+- [ ] 定义 `AuditEvent` 统一模型并冻结字段规范（含脱敏规则）。
+- [ ] 落地本地审计表与 outbox 表（最小可用）。
+- [ ] 核心写操作（user/post/media/setup）都能产出结构化事件并带 `request_id`。
+- [ ] DoD：单次请求可通过 `request_id` 串联 API 错误、访问日志、审计事件。
+
+阶段 2（P1，一致性与覆盖）
+- [ ] 在 `post/media/user/setup` service 层完成 P0 事件清单全覆盖（成功/失败都记录）。
+- [ ] Outbox relay 支持重试、退避、失败计数；关键事件同步兜底。
+- [ ] 失败分类统一对齐 `core.ErrorCode`，沉淀事件 `result/error_code`。
+- [ ] DoD：P0 清单覆盖率 >= 95%，写链路性能增量可控（P95 增量 < 5%）。
+
+阶段 3（P2，治理与合规）
+- [ ] 审计查询 API（仅 `super_admin`/安全角色）+ CSV/JSON 导出。
+- [ ] 留存与归档策略（冷热分层）+ 告警规则（高风险行为/登录失败爆发/越权尝试）。
+- [ ] append-only 与篡改检测（哈希链/签名批校验至少一种）。
+- [ ] DoD：可按用户/资源/时间/动作追溯，并可生成审计报表。
+
 #
 
 ## 上线前强烈建议（P1）
