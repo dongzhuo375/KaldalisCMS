@@ -9,6 +9,7 @@ import (
 	"KaldalisCMS/internal/utils"
 
 	"context"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -84,7 +85,10 @@ func ensurePostWorkflowPolicies(enforcer *casbin.Enforcer) {
 
 // NewAppRouter initializes the router for the fully functional application.
 func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, swaggerOpts SwaggerOptions) *gin.Engine {
-	r := gin.Default()
+	r := gin.New()
+	r.Use(apimw.RequestContext())
+	r.Use(apimw.ObserveHTTP())
+	r.Use(apimw.RecoverAsContract())
 	r.Use(apimw.CORSMiddleware())
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	registerSwaggerRoutes(r, swaggerOpts)
@@ -138,7 +142,7 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, s
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
 			if err := mediaSvc.CleanupStaleMedia(ctx); err != nil {
-				println("Error cleaning up media:", err.Error())
+				log.Printf("level=error event=media_gc_cleanup message=%q", err.Error())
 			}
 		})
 	}()
@@ -184,7 +188,10 @@ func NewAppRouter(db *gorm.DB, authCfg auth.Config, enforcer *casbin.Enforcer, s
 }
 
 func NewSetupRouter(save func(string, int, string, string, string) error, reload func() error, swaggerOpts SwaggerOptions) *gin.Engine {
-	r := gin.Default()
+	r := gin.New()
+	r.Use(apimw.RequestContext())
+	r.Use(apimw.ObserveHTTP())
+	r.Use(apimw.RecoverAsContract())
 	r.Use(apimw.CORSMiddleware())
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	registerSwaggerRoutes(r, swaggerOpts)

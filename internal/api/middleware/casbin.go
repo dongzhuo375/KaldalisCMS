@@ -1,8 +1,8 @@
 package middleware
 
 import (
+	"KaldalisCMS/internal/api/errorx"
 	"KaldalisCMS/internal/core"
-	"net/http"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
@@ -31,12 +31,12 @@ func Authorize(e *casbin.Enforcer) gin.HandlerFunc {
 		// 4. 使用 Casbin 执行器进行权限检查
 		ok, err := e.Enforce(sub, obj, act)
 		if err != nil {
-			abortWithCoreError(c, http.StatusInternalServerError, core.CodeInternalError, "authorization check error", nil)
+			errorx.AbortError(c, core.HTTPStatusOf(core.CodeInternalError), core.CodeInternalError, "authorization check error", nil)
 			return
 		}
 
 		if !ok {
-			abortWithCoreError(c, http.StatusForbidden, core.CodeForbidden, "permission denied", nil)
+			errorx.AbortError(c, core.HTTPStatusOf(core.CodeForbidden), core.CodeForbidden, core.DefaultMessageOf(core.CodeForbidden), nil)
 			return
 		}
 

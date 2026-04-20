@@ -128,3 +128,26 @@ export interface MediaListResponse {
 export interface MediaUploadResponse {
   asset: MediaAsset;
 }
+
+export interface ApiErrorEnvelope {
+  code: string;
+  message: string;
+  details: Record<string, unknown> | null;
+}
+
+export interface NormalizedApiError {
+  status: number;
+  code: string;
+  message: string;
+  details: Record<string, unknown>;
+  requestId?: string;
+  url?: string;
+  raw: unknown;
+}
+
+export interface ErrorInteractionStrategy {
+  toast: boolean;
+  retryable: boolean;
+  redirectToLogin: boolean;
+}
+
