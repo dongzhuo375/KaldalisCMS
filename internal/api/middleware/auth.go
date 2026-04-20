@@ -1,10 +1,10 @@
 package middleware
 
 import (
+	"KaldalisCMS/internal/api/errorx"
 	"KaldalisCMS/internal/core"
 	"KaldalisCMS/internal/infra/auth"
 	"errors"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,14 +14,6 @@ const (
 	ctxCsrfHashKey = "kaldalis_csrf_h"
 	ctxUserRoleKey = "kaldalis_user_role" // 新增: 用于在 Gin context 中存储用户角色
 )
-
-func abortWithCoreError(c *gin.Context, status int, code core.ErrorCode, message string, details map[string]any) {
-	c.AbortWithStatusJSON(status, gin.H{
-		"code":    string(code),
-		"message": message,
-		"details": details,
-	})
-}
 
 // 识别
 func OptionalAuth(sm core.SessionManager) gin.HandlerFunc {
@@ -49,7 +41,7 @@ func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 不再解析 JWT
 		if _, exists := c.Get(ctxUserIDKey); !exists {
-			abortWithCoreError(c, http.StatusUnauthorized, core.CodeUnauthorized, "unauthorized", nil)
+			errorx.AbortError(c, core.HTTPStatusOf(core.CodeUnauthorized), core.CodeUnauthorized, core.DefaultMessageOf(core.CodeUnauthorized), nil)
 			return
 		}
 		c.Next()
@@ -74,7 +66,7 @@ func CSRFCheck(sm core.SessionManager) gin.HandlerFunc {
 
 		// CSRF校验
 		if err := sm.ValidateCSRF(c.Request, val.(string)); err != nil {
-			abortWithCoreError(c, http.StatusForbidden, core.CodeForbidden, "permission denied", map[string]any{"reason": err.Error()})
+			errorx.AbortError(c, core.HTTPStatusOf(core.CodeForbidden), core.CodeForbidden, core.DefaultMessageOf(core.CodeForbidden), map[string]any{"reason": err.Error()})
 			return
 		}
 
