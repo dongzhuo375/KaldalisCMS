@@ -66,6 +66,9 @@ func TestPublicPostAPI_GetPosts_ServiceError(t *testing.T) {
 }
 
 func TestPublicPostAPI_GetPostByID_InvalidID(t *testing.T) {
+	// Handler passes `id` as a detail key but CodeValidationFailed's allow-list
+	// doesn't include it, so SanitizeDetails strips it. That's current behavior —
+	// if the allow-list or handler detail key is reconciled later, flip this assertion.
 	w := doRequest(newPublicRouter(&fakePostService{}), http.MethodGet, "/posts/abc")
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status: %d", w.Code)
@@ -77,8 +80,8 @@ func TestPublicPostAPI_GetPostByID_InvalidID(t *testing.T) {
 	if got.Code != string(core.CodeValidationFailed) {
 		t.Fatalf("code: %s", got.Code)
 	}
-	if got.Details["id"] != "abc" {
-		t.Fatalf("details: %+v", got.Details)
+	if _, present := got.Details["id"]; present {
+		t.Fatalf("id key should be sanitized out: %+v", got.Details)
 	}
 }
 

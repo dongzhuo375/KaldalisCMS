@@ -35,20 +35,25 @@ func decodeErr(t *testing.T, body []byte) dto.ErrorResponse {
 }
 
 func TestRespondErrorByCore_Mapping(t *testing.T) {
+	// SanitizeDetails enforces a per-code allow-list: `field` is only kept for
+	// validation + duplicate. Every case passes the same payload and asserts
+	// survival based on that policy, so this test pins both the code→HTTP
+	// mapping and the sanitization contract.
 	cases := []struct {
-		name     string
-		err      error
-		wantCode core.ErrorCode
-		wantHTTP int
+		name      string
+		err       error
+		wantCode  core.ErrorCode
+		wantHTTP  int
+		fieldKept bool
 	}{
-		{"validation", core.ErrInvalidInput, core.CodeValidationFailed, http.StatusBadRequest},
-		{"credentials", core.ErrInvalidCredentials, core.CodeUnauthorized, http.StatusUnauthorized},
-		{"forbidden", core.ErrPermission, core.CodeForbidden, http.StatusForbidden},
-		{"not found", core.ErrNotFound, core.CodeNotFound, http.StatusNotFound},
-		{"duplicate", core.ErrDuplicate, core.CodeDuplicateResource, http.StatusConflict},
-		{"conflict", core.ErrConflict, core.CodeConflict, http.StatusConflict},
-		{"unknown -> internal", errors.New("unexpected"), core.CodeInternalError, http.StatusInternalServerError},
-		{"wrapped not found", fmt.Errorf("lookup: %w", core.ErrNotFound), core.CodeNotFound, http.StatusNotFound},
+		{"validation", core.ErrInvalidInput, core.CodeValidationFailed, http.StatusBadRequest, true},
+		{"credentials", core.ErrInvalidCredentials, core.CodeUnauthorized, http.StatusUnauthorized, false},
+		{"forbidden", core.ErrPermission, core.CodeForbidden, http.StatusForbidden, false},
+		{"not found", core.ErrNotFound, core.CodeNotFound, http.StatusNotFound, false},
+		{"duplicate", core.ErrDuplicate, core.CodeDuplicateResource, http.StatusConflict, true},
+		{"conflict", core.ErrConflict, core.CodeConflict, http.StatusConflict, false},
+		{"unknown -> internal", errors.New("unexpected"), core.CodeInternalError, http.StatusInternalServerError, false},
+		{"wrapped not found", fmt.Errorf("lookup: %w", core.ErrNotFound), core.CodeNotFound, http.StatusNotFound, false},
 	}
 
 	for _, tc := range cases {
@@ -65,10 +70,33 @@ func TestRespondErrorByCore_Mapping(t *testing.T) {
 			if got.Message == "" {
 				t.Fatal("message empty")
 			}
-			if got.Details["field"] != "title" {
-				t.Fatalf("details lost: %+v", got.Details)
+			if tc.fieldKept {
+				if got.Details["field"] != "title" {
+					t.Fatalf("field should survive for %s: %+v", tc.wantCode, got.Details)
+				}
+			} else if _, present := got.Details["field"]; present {
+				t.Fatalf("field should be sanitized for %s: %+v", tc.wantCode, got.Details)
 			}
 		})
+	}
+}
+
+func TestSanitizeDetails_StripsSensitiveKeys(t *testing.T) {
+	c, w := newTestCtx()
+	RespondError(c, http.StatusBadRequest, core.CodeValidationFailed, "bad", map[string]any{
+		"field":         "title",
+		"password":      "hunter2",
+		"auth_token":    "abc",
+		"Authorization": "Bearer x",
+	})
+	got := decodeErr(t, w.Body.Bytes())
+	if got.Details["field"] != "title" {
+		t.Fatalf("allowed key dropped: %+v", got.Details)
+	}
+	for _, bad := range []string{"password", "auth_token", "Authorization"} {
+		if _, present := got.Details[bad]; present {
+			t.Fatalf("sensitive key %q leaked: %+v", bad, got.Details)
+		}
 	}
 }
 
